@@ -1,0 +1,8 @@
+<launch>
+  <group ns="prosilica">
+    <rosparam command="load" file="$(find prosilica_camera)/cam_settings.yaml" />
+    <param name="trigger_mode" type="str" value="streaming"/>
+    <param name="ip_address" type="str" value="10.68.0.20"/>
+  </group>
+  <node name="prosilica" pkg="prosilica_camera" type="prosilica_node" respawn="false" output="screen" machine="c1"/>
+</launch>

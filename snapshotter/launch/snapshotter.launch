@@ -1,0 +1,6 @@
+<launch>
+	<node pkg="snapshotter" type="snapshotter.py" name="snapshotter_forearm" output="screen">
+		<param name="camera" value="l_forearm_cam" />
+	</node>
+
+</launch>
