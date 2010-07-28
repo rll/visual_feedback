@@ -13,10 +13,11 @@ import tf
 from tf.msg import tfMessage
 import cv
 from std_msgs.msg import String
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image,CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
 import thread
 from snapshotter.srv import *
+from snapshotter.msg import *
 import time
 
 ## Snapshotter documentation
@@ -27,21 +28,30 @@ class Snapshotter:
     ##   The constructor
     #    @param self The object pointer
     #    @param cameraName The name of the camera to watch
-    def __init__(self,cameraName):
+    def __init__(self,cameraName,output_topic):
         self.name = rospy.get_name()
         self.bridge = CvBridge()
         self.image_lock = thread.allocate_lock()
+        self.info_lock = thread.allocate_lock()
         self.latest_image = None
+        self.latest_info = None
         self.cameraName = cameraName
+        self.output_topic = output_topic
+        self.output_pub = rospy.Publisher(self.output_topic,Snapshot)
         self.cameraTopic = "%s/image_rect_color"%cameraName
+        self.cameraInfoTopic = "%s/camera_info"%cameraName
         self.camera_sub = rospy.Subscriber(self.cameraTopic,Image,self.update_image)
-        
-        self.snapshot_serv = rospy.Service("%s/get_snapshot"%self.name,GetSnapshot,self.get_snapshot)
-        self.saver_serv = rospy.Service("%s/save_snapshot"%self.name,SaveSnapshot,self.save_snapshot)
+        self.camera_info_sub = rospy.Subscriber(self.cameraInfoTopic,CameraInfo,self.update_camera_info)
+        self.get_snapshot_serv = rospy.Service("%s/get_snapshot"%self.name,GetSnapshot,self.get_snapshot)
+        self.take_snapshot_serv = rospy.Service("%s/take_snapshot"%self.name,TakeSnapshot,self.take_snapshot)
+        self.saver_serv = rospy.Service("%s/take_and_save_snapshot"%self.name,TakeAndSaveSnapshot,self.save_snapshot)
     ##   Updates the iomage, given a new packet of camera data
     #    @param data The camera data (in Image format)
-    def update_image(self,data):
-        self.set_image(data)
+    def update_image(self,image):
+        self.set_image(image)
+        
+    def update_camera_info(self,info):
+        self.set_info(info)
         
     def set_image(self,image):
         self.image_lock.acquire()
@@ -55,29 +65,45 @@ class Snapshotter:
         self.image_lock.release()
         return image
         
+    def set_info(self,info):
+        self.info_lock.acquire()
+        self.latest_info = info
+        self.info_lock.release()
+    
+    def get_info(self):
+        info = None
+        self.info_lock.acquire()
+        info = self.latest_info
+        self.info_lock.release()
+        return info
+        
     def get_snapshot(self,req):
         image = self.get_image()
-        return GetSnapshotResponse(image)
+        info = self.get_info()
+        return GetSnapshotResponse(Snapshot(image=image,info=info))
+        
+    def take_snapshot(self,req):
+        image = self.get_image()
+        info = self.get_info()
+        self.output_pub.publish(Snapshot(image=image,info=info))
+        return TakeSnapshotResponse()
         
     def save_snapshot(self,req):
-        filepath = req.filepath
-        image = self.get_image()
         try:
-            cv_image = self.bridge.imgmsg_to_cv(image, "bgr8")
-        except CvBridgeError, e:
-            print e
-        now = time.localtime()
-        name = "%s_%04d-%02d-%02d__%02d-%02d-%02d.png"%(self.name,now.tm_year,now.tm_mon,now.tm_mday,now.tm_hour,now.tm_min,now.tm_sec)
-        filename = "%s/%s"%(filepath,name)
-        cv.SaveImage(filename,cv_image)
-        return SaveSnapshotResponse()
-        
+            srv = rospy.ServiceProxy("saver/save_snapshot",SaveSnapshot)
+            resp = srv(SaveSnapshotRequest(req.filepath,Snapshot(self.get_image(),self.get_info(),[])))
+        except rospy.ServiceException,e:
+            rospy.loginfo("Service Call Failed: %s"%e)
+        return TakeAndSaveSnapshotResponse()
+
 
 ## Instantiate a new snapshotter node
 def main(args):
     rospy.init_node("snapshotter")
     cameraName = rospy.get_param("~camera","defaultSnapshotterCamera")
-    snap = Snapshotter(cameraName=cameraName)
+    output_topic = rospy.get_param("~output","%s/output"%rospy.get_name())
+    print output_topic
+    snap = Snapshotter(cameraName=cameraName,output_topic=output_topic)
     rospy.spin()
 
 if __name__ == '__main__':

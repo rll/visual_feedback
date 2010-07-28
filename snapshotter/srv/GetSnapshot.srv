@@ -1,2 +1,2 @@
 ---
-sensor_msgs/Image image
+snapshotter/Snapshot snapshot
