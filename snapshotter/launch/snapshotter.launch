@@ -1,6 +1,6 @@
 <launch>
 	<node pkg="snapshotter" type="snapshotter.py" name="snapshotter_forearm" output="screen">
-		<param name="camera" value="wide_stereo/left" />
+		<param name="camera" value="prosilica" />
 		<param name="output" value="snapshot_output" />
 	</node>
 	<node pkg="snapshotter" type="birdseye_filter.py" name="birdseye1" output="screen">
@@ -9,13 +9,8 @@
 	    <param name="filled" value="True" />
 	</node>
 	
-	<node pkg="snapshotter" type="circle_filter" name="birdseye2" output="screen">
-	    <param name="input" value="birdseye1_output" />
-	    <param name="output" value="birdseye2_output" />
-	</node>
-	
 	<node pkg="snapshotter" type="snapshot_saver.py" name="saver" output="screen">
-	    <param name="input" value="birdseye2_output" />
+	    <param name="input" value="birdseye1_output" />
 	    <param name="default_filepath" value="~/snapshots" />
 	    <param name="streaming" value="true" />
 	</node>

@@ -1,0 +1,14 @@
+<package>
+  <description brief="visual_feedback_utils">
+
+     visual_feedback_utils
+
+  </description>
+  <author>Stephen Miller</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/visual_feedback_utils</url>
+
+</package>
+
+

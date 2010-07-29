@@ -39,9 +39,11 @@ class SnapshotFilter:
     def handle_input(self,snapshot):
         try:
             input_cv_image = self.bridge.imgmsg_to_cv(snapshot.image, "bgr8")
+            copy_input_cv_image = cv.CreateImage((input_cv_image.width,input_cv_image.height),8,3)
+            cv.Copy(input_cv_image,copy_input_cv_image)
         except CvBridgeError, e:
             print e
-        output_cv_image = self.image_filter(cv_image=input_cv_image,info=snapshot.info)
+        output_cv_image = self.image_filter(cv_image=input_cv_image,info=snapshot.info,copy=copy_input_cv_image)
         output_info = snapshot.info
         try:
             output_image = self.bridge.cv_to_imgmsg(output_cv_image, "bgr8")
@@ -55,7 +57,7 @@ class SnapshotFilter:
         
         
     #Abstract method, returns the altered image and info
-    def image_filter(self,cv_image,info):
+    def image_filter(self,cv_image,info,copy=None):
         abstract
     
 ## Instantiate a new snapshotter node

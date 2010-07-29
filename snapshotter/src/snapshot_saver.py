@@ -18,6 +18,8 @@ from snapshotter.msg import *
 import time
 import re
 import os.path
+import pickle
+from pickle_utils import *
 
 class SnapshotSaver:
 
@@ -26,6 +28,7 @@ class SnapshotSaver:
     def __init__(self):
         self.name = rospy.get_name()
         self.streaming = rospy.get_param("~streaming",False)
+        self.save_camera_info = rospy.get_param("~save_camera_info",False)
         self.input_topic = rospy.get_param("~input","%s/input"%self.name)
         self.default_filepath = rospy.get_param("~default_filepath","~/snapshots")
         self.bridge = CvBridge()
@@ -40,16 +43,17 @@ class SnapshotSaver:
             cv_image = self.bridge.imgmsg_to_cv(snapshot.image, "bgr8")
         except CvBridgeError, e:
             print "CVERROR!!!"
-        self.save(cv_image=cv_image,filepath=self.default_filepath,filename=self.generate_name(snapshot))
+        self.save(cv_image=cv_image,filepath=self.default_filepath,filename=self.generate_name(snapshot),camera_info = snapshot.info)
         
     def save_snapshot(self,req):
         snapshot = req.snapshot
         filepath = req.filepath
+        camera_info = snapshot.info
         try:
             cv_image = self.bridge.imgmsg_to_cv(snapshot.image, "bgr8")
         except CvBridgeError, e:
             print e
-        self.save(cv_image=cv_image,filepath=filepath,filename=self.generate_name(snapshot))
+        self.save(cv_image=cv_image,filepath=filepath,filename=self.generate_name(snapshot),camera_info = camera_info)
         return SaveSnapshotResponse()
         
     def generate_name(self,snapshot):
@@ -67,14 +71,19 @@ class SnapshotSaver:
             return "%s_%s.png"%(cam_prefix,timestamp)
         
     
-    def save(self,cv_image,filepath,filename):
+    def save(self,cv_image,filepath,filename,camera_info):
         corrected_filepath = os.path.expanduser(filepath)
         fullname = "%s/%s"%(corrected_filepath,filename)
-        print fullname
-        print cv_image
         cv.SaveImage(fullname,cv_image)
+        print "Saved image to %s"%fullname
+        if self.save_camera_info:
+            infofullname = fullname.replace(".png",".pickle")
+            infofile = open(infofullname,'w')
+            info_pickle = InfoPickle(camera_info)
+            pickle.dump(info_pickle,infofile)
+            print "Saved camera info to %s"%infofullname
         
-    
+  
 ## Instantiate a new snapshotter node
 def main(args):
     rospy.init_node("shapshot_saver")
