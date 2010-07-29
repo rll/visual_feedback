@@ -20,57 +20,26 @@ class BirdseyeFilter(SnapshotFilter):
     def get_extended_params(self):
         self.cols = rospy.get_param("~cols",5)
         self.rows = rospy.get_param("~rows",4)
-        self.height = rospy.get_param("~init_height",-70)
+        self.width = rospy.get_param("~width",0.024)
+        self.height = rospy.get_param("~height",0.024)
     
     def image_filter(self,cv_image,info,copy=None):
-        board_w = self.cols
-        board_h = self.rows
-        board_n  = board_w * board_h
-        board_sz = (board_w,board_h)
-        intrinsic = self.intrinsic_matrix_from_info(info)
-        distortion = self.dist_coeff_from_info(info)
-        image = cv_image
-        init_height = self.height
-        gray_image = cv.CreateImage(GetSize(image),8,1)
-        cv.CvtColor(image, gray_image, cv.CV_BGR2GRAY)
         
-        #Undistort Image
-        mapx = cv.CreateImage( GetSize(image), cv.IPL_DEPTH_32F, 1 )
-        mapy = cv.CreateImage( GetSize(image), cv.IPL_DEPTH_32F, 1 )
-        cv.InitUndistortMap(  
-            intrinsic,  
-            distortion,  
-            mapx,  
-            mapy  
-            )
-        t = CloneImage(image)
-        cv.Remap( t, image, mapx, mapy )
-        corner_count = 0
-        (found,corners) = cv.FindChessboardCorners(image,board_sz, (cv.CV_CALIB_CB_ADAPTIVE_THRESH | cv.CV_CALIB_CB_FILTER_QUADS))
-        if(not found):
-            print "Couldn't aquire checkerboard, only found %d of %d corners\n"%(corner_count,board_n)
-            return cv_image
-        cv.FindCornerSubPix(gray_image, corners, corner_count,   
-              (11,11),(-1,-1),   
-              ( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1 ))
-        objPts = point_array(4)
-        imgPts = point_array(4)
-        objPts[0] = (0,0)
-        objPts[1] = (board_w-1,0)
-        objPts[2] = (0,board_h-1)
-        objPts[3] = (board_w-1,board_h-1)
-        imgPts[0] = corners[0]
-        imgPts[1] = corners[board_w-1]
-        imgPts[2] = corners[(board_h-1)*board_w]
-        imgPts[3] = corners[(board_h-1)*board_w + board_w - 1]
-        H = cvCreateMat( 3, 3, CV_32F)
-        cv.GetPerspectiveTransform(objPts,imgPts,H)
-        birds_image = CloneImage(image)
-        H[2][2] = init_height
-        cv.WarpPerspective(image,birds_image,H,  
-            cv.CV_INTER_LINEAR+cv.CV_WARP_INVERSE_MAP+cv.CV_WARP_FILL_OUTLIERS )
-        print birds_image
-        return birds_image
+        (corners,corners_cv,model) = self.detect(cv_image,self.cols,self.rows,self.width,self.height)
+        cv.DrawChessboardCorners(cv_image,(self.cols,self.rows),corners,1)
+        return cv_image
+        intrinsics = self.intrinsic_matrix_from_info(info)
+        dist_coeff = self.dist_coeff_from_info(info)
+        rot = cv.CreateMat(3, 1, cv.CV_32FC1)
+        trans = cv.CreateMat(3, 1, cv.CV_32FC1)
+        cv.FindExtrinsicCameraParams2(model,corners_cv,intrinsics,dist_coeff,rot, trans)
+        print rot
+        print trans
+        H = cv.CreateMat(3, 3, cv.CV_64FC1)
+        cv.GetPerspectiveTransform(model,corners_cv,H)
+        
+        #cv.WarpPerspective(cv_image,copy,H)
+        return copy
         
     def intrinsic_matrix_from_info(self, cam_info):
        intrinsic_matrix = cv.CreateMat(3, 3, cv.CV_32FC1)
@@ -152,21 +121,7 @@ class BirdseyeFilter(SnapshotFilter):
             #cv.WaitKey(600)
             rospy.logwarn("Didn't find checkerboard")
             return (None, None)
-
-def point_array(length):
-    lst = []
-    for i in range(length):
-        lst.append((0,0))
-    return lst
     
-def CloneImage(image):
-    new_image = cv.CreateImage(GetSize(image),8,3)
-    cv.Copy(image,new_image)
-    return new_image
-    
-def GetSize(image):
-    return (image.width,image.height)
-
 ## Instantiate a new snapshotter node
 def main(args):
     rospy.init_node("birdseye_filter")
