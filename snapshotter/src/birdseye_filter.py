@@ -24,9 +24,10 @@ class BirdseyeFilter(SnapshotFilter):
         self.height = rospy.get_param("~height",0.024)
     
     def image_filter(self,cv_image,info,copy=None):
-        return copy
+        
         (corners,corners_cv,model) = self.detect(cv_image,self.cols,self.rows,self.width,self.height)
-        #cv.DrawChessboardCorners(cv_image,(self.cols,self.rows),corners,1)
+        cv.DrawChessboardCorners(cv_image,(self.cols,self.rows),corners,1)
+        return cv_image
         intrinsics = self.intrinsic_matrix_from_info(info)
         dist_coeff = self.dist_coeff_from_info(info)
         rot = cv.CreateMat(3, 1, cv.CV_32FC1)
@@ -85,7 +86,7 @@ class BirdseyeFilter(SnapshotFilter):
             square_size = perimeter / ((corners_x - 1 + corners_y - 1) * 2)
             radius = int(square_size * 0.5 + 0.5)
 
-            corners = cv.FindCornerSubPix(image_scaled, corners, (radius, radius), (-1, -1), (cv.CV_TERMCRIT_EPS + cv.CV_TERMCRIT_ITER, 30, 0.1))
+            #corners = cv.FindCornerSubPix(image_scaled, corners, (radius, radius), (-1, -1), (cv.CV_TERMCRIT_EPS + cv.CV_TERMCRIT_ITER, 30, 0.1))
 
             #uncomment to debug chessboard detection
             print 'Chessboard found'

@@ -82,8 +82,28 @@ class SnapshotSaver:
             info_pickle = InfoPickle(camera_info)
             pickle.dump(info_pickle,infofile)
             print "Saved camera info to %s"%infofullname
+            intrinsicsfile = fullname.replace(".png","_intrinsics.xml")
+            cv.Save(intrinsicsfile,self.intrinsic_matrix_from_info(camera_info),"intrinsics","Intrinsics for our camera")
+            print "Saved intrinsics to %s"%intrinsicsfile
+            distfile = fullname.replace(".png","_distortion.xml")
+            cv.Save(distfile,self.dist_coeff_from_info(camera_info),"dist_coeff","Distortion coefficients for our camera")
+            print "Saved distortion to %s"%distfile
         
-  
+    def intrinsic_matrix_from_info(self, cam_info):
+       intrinsic_matrix = cv.CreateMat(3, 3, cv.CV_32FC1)
+
+       #Because we only want the upper 3x3 (normal) portion of the rectified intrinsic matrix
+       for i in range(0, 3):
+         for j in range(0, 3):
+           intrinsic_matrix[i, j] = cam_info.P[4*i+j]
+       return intrinsic_matrix
+       
+    def dist_coeff_from_info(self,cam_info):
+        dist_coeff = cv.CreateMat(1, len(cam_info.D), cv.CV_32FC1)
+        for i in range(0,len(cam_info.D)-1):
+            dist_coeff[0,i] = cam_info.D[i]
+        return dist_coeff
+        
 ## Instantiate a new snapshotter node
 def main(args):
     rospy.init_node("shapshot_saver")
