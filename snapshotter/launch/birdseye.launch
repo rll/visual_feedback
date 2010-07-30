@@ -18,8 +18,14 @@
 	    <param name="y_max" value="65" />
 	</node>
 	
-	<node pkg="snapshotter" type="snapshot_saver.py" name="saver" output="screen">
+	<node pkg="snapshotter" type="snapshot_saver.py" name="birdseye_saver" output="screen">
 	    <param name="input" value="crop_output" />
+	    <param name="default_filepath" value="~/snapshots" />
+	    <param name="streaming" value="true" />
+	</node>
+	
+	<node pkg="snapshotter" type="snapshot_saver.py" name="raw_saver" output="screen">
+	    <param name="input" value="snapshot_output" />
 	    <param name="default_filepath" value="~/snapshots" />
 	    <param name="streaming" value="true" />
 	</node>
