@@ -15,21 +15,31 @@ import os.path
 import pickle
 import Geometry2D
 
-SHOW_CONTOURS = False
+SHOW_CONTOURS = True
 SHOW_UNSCALED_MODEL = False
 SHOW_SCALED_MODEL = True
 SHOW_POINTS = False
+SHOW_ITER = True
 
 class PassiveShapeMaker:
     def __init__(self,corrected_filepath,corrected_modelpath):
-        self.slider_pos = 100
+        self.slider_pos = 90
         self.load_model(corrected_modelpath)
-        self.image = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_GRAYSCALE)
-        self.image1 = cv.CloneImage( self.image )
-        self.image2 = cv.CloneImage( self.image )
+        image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
+        self.image_gray = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_GRAYSCALE)
+        self.image_raw = image_raw
+        image_hsv = cv.CloneImage(image_raw)
+        cv.CvtColor(image_raw,image_hsv,cv.CV_RGB2HSV)
+        print image_hsv
+        hue = cv.CreateImage(cv.GetSize(image_hsv),8,1)
+        sat = cv.CreateImage(cv.GetSize(image_hsv),8,1)
+        val = cv.CreateImage(cv.GetSize(image_hsv),8,1)
+        trash = cv.CreateImage(cv.GetSize(image_hsv),8,1)
+        cv.Split(image_hsv,hue,None,None,None)
+        self.image = hue
         cv.NamedWindow("Source",1)
         cv.NamedWindow("Result",1)
-        cv.ShowImage("Source",self.image)
+        cv.ShowImage("Source",image_raw)
         cv.CreateTrackbar( "Threshold", "Result", self.slider_pos, 255, self.process_image )
         self.process_image(self.slider_pos)
         cv.WaitKey(0)
@@ -40,32 +50,49 @@ class PassiveShapeMaker:
     def load_model(self,filepath):
         modelPoly = pickle.load(open(filepath))
         self.model = [vert.toTuple() for vert in modelPoly.vertices()]
-        self.model = rotate_poly(self.model,pi/4)
+
         
         
     def process_image(self,thresh):
         storage = cv.CreateMemStorage(0)
+        
         self.image1 = cv.CloneImage( self.image )
-        self.image2 = cv.CloneImage( self.image )
+        self.image3 = cv.CloneImage( self.image )
+        self.image4 = cv.CloneImage( self.image_gray)
+        self.image2 = cv.CloneImage( self.image_raw )
         cv.Threshold( self.image, self.image1, thresh, 255, cv.CV_THRESH_BINARY )
+        cv.Threshold( self.image, self.image3, thresh, 255, cv.CV_THRESH_BINARY_INV )
+        cv.Threshold( self.image_gray, self.image4, thresh, 255, cv.CV_THRESH_BINARY )
+        #self.image2 = cv.CloneImage( self.image1 )
         #cv.Canny(self.image,self.image1,thresh*0.1,thresh*1.5)
-        contour = cv.FindContours   ( self.image1, storage,
+        contour_reg = cv.FindContours   ( self.image1, storage,
                                     cv.CV_RETR_LIST, cv.CV_CHAIN_APPROX_NONE, (0,0))
+        contour_inv = cv.FindContours   ( self.image3, storage,
+                                    cv.CV_RETR_LIST, cv.CV_CHAIN_APPROX_NONE, (0,0))
+        contour_gray = cv.FindContours   ( self.image4, storage,
+                                    cv.CV_RETR_LIST, cv.CV_CHAIN_APPROX_NONE, (0,0))
+        #contour_hue = min([contour_reg,contour_inv],key=lambda c: len(c))
+        #contour = min([contour_hue,contour_gray],key=lambda c: len(c))
+        
         max_length = 0
         max_contour = None
-        while contour != None:
-            length = len(contour)
-            if length > max_length:
-                max_length = length
-                max_contour = contour
-            contour = contour.h_next()
+        for contour in (contour_reg,contour_gray):
+            while contour != None:
+                length = area(contour)   
+                if length > max_length and not self.image_edge(contour):
+                    max_length = length
+                    max_contour = contour
+                    print "Replaced with %f"%length
+                contour = contour.h_next()
         if max_contour == None:
             return
         else:
-            print len(max_contour)
+            print area(max_contour)
         shape_contour = max_contour
         if SHOW_CONTOURS:
-            cv.DrawContours(self.image2,shape_contour,cv.CV_RGB(255,255,255),cv.CV_RGB(255,255,255),0,1,8,(0,0))
+            cv.DrawContours(self.image2,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,1,8,(0,0))
+        #cv.ShowImage("Result",self.image2)
+        #return
         (real_center,real_top,real_theta,real_scale) = self.get_principle_info(shape_contour)
         #self.model = translate_poly(rotate_poly(shape_contour,-0.2,real_center),(500,500)) ##FIXME
         if SHOW_UNSCALED_MODEL:
@@ -87,15 +114,71 @@ class PassiveShapeMaker:
         model_rot = rotate_poly(model_trans,-1*angle,real_center)
         #scale = 1 #FIXME
         model_scaled = scale_poly(model_rot,scale,real_center)
-        if SHOW_SCALED_MODEL:
-            cv.PolyLine(self.image2,[model_scaled],1,cv.CV_RGB(100,100,100),2)
+        
         (model_center,model_top,model_theta,model_scale) = self.get_principle_info(model_scaled)
         if SHOW_POINTS:
             self.highlight_pt(model_center,cv.CV_RGB(128,128,128))
             self.highlight_pt(model_top,cv.CV_RGB(128,128,128))
+        
+
+            
+        ALPHA = 0.1
+        BETA = 0.85
+        DECAY = 1.0
+        ITERS = 30
+        SUB_ITERS = 2
+        cv.ShowImage("Result",self.image2)
+        
+        for k in range(ITERS):
+            lengths = [distance(model_scaled[i-1],model_scaled[i]) for i in range(len(model_scaled))]    
+            iter_color = cv.CV_RGB(0,0,k*(255.0/ITERS))
+            if SHOW_ITER:
+                cv.PolyLine(self.image2,[model_scaled],1,iter_color,2)  
+            
+            print "Lengths: %s"%lengths
+            for i in range(len(model_scaled)):
+                vert = model_scaled[i]
+                nearest_pt = min(shape_contour,key=lambda pt: distance(pt,vert))
+                if SHOW_ITER:
+                    self.highlight_pt(nearest_pt,iter_color)
+                    cv.ShowImage("Result",self.image2)
+                    cv.WaitKey(10)
+                (dx,dy) = displacement(vert,nearest_pt)
+                dx *= ALPHA*(DECAY**k)
+                dy *= ALPHA*(DECAY**k)
+                model_scaled[i] = translate_pt(vert,(dx,dy))
+                
+            for j in range(SUB_ITERS):
+                for i in range(len(model_scaled)):
+                    old_length = lengths[i]
+                    new_length = distance(model_scaled[i-1],model_scaled[i])
+                    side = displacement(model_scaled[i-1],model_scaled[i])
+                    move_amt = (old_length - new_length) / float(new_length) * BETA*(DECAY**k) / SUB_ITERS
+                    
+                    move_displ = scale_pt(side,move_amt)
+                    print "Old_length: %f, New_length: %f, Move_amount: %f,Length of Move Displ:%f"%(old_length,new_length,move_amt,distance(move_displ,(0,0)))
+                    model_scaled[i] = translate_pt(model_scaled[i],scale_pt(move_displ,0.5))
+                    model_scaled[i-1] = translate_pt(model_scaled[i-1],scale_pt(move_displ,0.5))
+                """
+                for i in range(len(model_scaled)-2,-2,-1):
+                    old_length = lengths[i+1]
+                    new_length = distance(model_scaled[i+1],model_scaled[i])
+                    side = displacement(model_scaled[i+1],model_scaled[i])
+                    move_amt = (old_length - new_length) / float(new_length) * BETA
+                    
+                    move_displ = scale_pt(side,move_amt)
+                    print "Old_length: %f, New_length: %f, Move_amount: %f,Length of Move Displ:%f"%(old_length,new_length,move_amt,distance(move_displ,(0,0)))
+                    model_scaled[i] = translate_pt(model_scaled[i],scale_pt(move_displ,1.0))
+                    #model_scaled[i-1] = translate_pt(model_scaled[i-1],scale_pt(move_displ,-0.5))
+                 """
+        if SHOW_SCALED_MODEL:
+            cv.PolyLine(self.image2,[model_scaled],1,cv.CV_RGB(0,0,255),2)
+              
+        
         for vert in model_scaled:
             nearest_pt = min(shape_contour,key=lambda pt: distance(pt,vert))
             self.highlight_pt(nearest_pt,cv.CV_RGB(255,255,255))
+            
         """
         for pt in shape_contour:
             rot_pt = rotate(pt,1*theta,center)
@@ -104,10 +187,25 @@ class PassiveShapeMaker:
         cv.ShowImage("Result",self.image2)
         return
         
+    def image_edge(self,contour):
+        width = self.image.width
+        height = self.image.height
+        for (x,y) in contour:
+            if x < 30:
+                return True
+            if x > width - 30:
+                return True
+            if y < 30:
+                return True
+            if y > height - 30:
+                return True
+        return False
+        
     def highlight_pt(self,pt,color=None):
         if color == None:
             color = cv.CV_RGB(128,128,128)
         cv.Circle(self.image2,pt,5,color,-1)
+    
     
     def get_principle_info(self,shape):
         """
@@ -203,6 +301,12 @@ def get_center(moments):
     x = float(m10) / m00
     y = float(m01) / m00
     return (x,y)
+    
+def area(contour):
+    return abs(cv.ContourArea(contour))
+    
+    
+    
     
 def main(args):
     corrected_filepath = args[0]
