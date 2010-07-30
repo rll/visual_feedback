@@ -3,14 +3,14 @@
 		<param name="camera" value="prosilica" />
 		<param name="output" value="snapshot_output" />
 	</node>
-	<node pkg="snapshotter" type="birdseye_filter.py" name="birdseye1" output="screen">
+	<node pkg="snapshotter" type="checker_filter.py" name="checker" output="screen">
 	    <param name="input" value="snapshot_output" />
-	    <param name="output" value="birdseye1_output" />
+	    <param name="output" value="checker_output" />
 	    <param name="filled" value="True" />
 	</node>
 	
 	<node pkg="snapshotter" type="snapshot_saver.py" name="saver" output="screen">
-	    <param name="input" value="birdseye1_output" />
+	    <param name="input" value="checker_output" />
 	    <param name="default_filepath" value="~/snapshots" />
 	    <param name="streaming" value="true" />
 	</node>

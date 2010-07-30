@@ -31,12 +31,12 @@ class BirdseyeFilter(SnapshotFilter):
         distortion = self.dist_coeff_from_info(info)
         image = cv_image
         init_height = self.height
-        gray_image = cv.CreateImage(GetSize(image),8,1)
+        gray_image = cv.CreateImage(cv.GetSize(image),8,1)
         cv.CvtColor(image, gray_image, cv.CV_BGR2GRAY)
         
         #Undistort Image
-        mapx = cv.CreateImage( GetSize(image), cv.IPL_DEPTH_32F, 1 )
-        mapy = cv.CreateImage( GetSize(image), cv.IPL_DEPTH_32F, 1 )
+        mapx = cv.CreateImage( cv.GetSize(image), cv.IPL_DEPTH_32F, 1 )
+        mapy = cv.CreateImage( cv.GetSize(image), cv.IPL_DEPTH_32F, 1 )
         cv.InitUndistortMap(  
             intrinsic,  
             distortion,  
@@ -50,9 +50,9 @@ class BirdseyeFilter(SnapshotFilter):
         if(not found):
             print "Couldn't aquire checkerboard, only found %d of %d corners\n"%(corner_count,board_n)
             return cv_image
-        cv.FindCornerSubPix(gray_image, corners, corner_count,   
+        cv.FindCornerSubPix(gray_image, corners,    
               (11,11),(-1,-1),   
-              ( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1 ))
+              ( cv.CV_TERMCRIT_EPS+cv.CV_TERMCRIT_ITER, 30, 0.1 ))
         objPts = point_array(4)
         imgPts = point_array(4)
         objPts[0] = (0,0)
@@ -63,10 +63,11 @@ class BirdseyeFilter(SnapshotFilter):
         imgPts[1] = corners[board_w-1]
         imgPts[2] = corners[(board_h-1)*board_w]
         imgPts[3] = corners[(board_h-1)*board_w + board_w - 1]
-        H = cvCreateMat( 3, 3, CV_32F)
+        H = cv.CreateMat( 3, 3, cv.CV_32FC1)
+        print H
         cv.GetPerspectiveTransform(objPts,imgPts,H)
         birds_image = CloneImage(image)
-        H[2][2] = init_height
+        H[2,2] = init_height
         cv.WarpPerspective(image,birds_image,H,  
             cv.CV_INTER_LINEAR+cv.CV_WARP_INVERSE_MAP+cv.CV_WARP_FILL_OUTLIERS )
         print birds_image
@@ -160,7 +161,7 @@ def point_array(length):
     return lst
     
 def CloneImage(image):
-    new_image = cv.CreateImage(GetSize(image),8,3)
+    new_image = cv.CreateImage(cv.GetSize(image),8,3)
     cv.Copy(image,new_image)
     return new_image
     

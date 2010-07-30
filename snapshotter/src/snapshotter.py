@@ -19,6 +19,7 @@ import thread
 from snapshotter.srv import *
 from snapshotter.msg import *
 import time
+import os.path
 
 ## Snapshotter documentation
 #
@@ -44,8 +45,9 @@ class Snapshotter:
         self.camera_info_sub = rospy.Subscriber(self.cameraInfoTopic,CameraInfo,self.update_camera_info)
         self.get_snapshot_serv = rospy.Service("%s/get_snapshot"%self.name,GetSnapshot,self.get_snapshot)
         self.take_snapshot_serv = rospy.Service("%s/take_snapshot"%self.name,TakeSnapshot,self.take_snapshot)
+        self.load_snapshot_serv = rospy.Service("%s/load_snapshot"%self.name,LoadSnapshot,self.load_snapshot)
         self.saver_serv = rospy.Service("%s/take_and_save_snapshot"%self.name,TakeAndSaveSnapshot,self.save_snapshot)
-    ##   Updates the iomage, given a new packet of camera data
+    ##   Updates the image, given a new packet of camera data
     #    @param data The camera data (in Image format)
     def update_image(self,image):
         self.set_image(image)
@@ -81,6 +83,13 @@ class Snapshotter:
         image = self.get_image()
         info = self.get_info()
         return GetSnapshotResponse(Snapshot(image=image,info=info))
+        
+    def load_snapshot(self,req):
+        cv_image = cv.LoadImage(os.path.expanduser(req.filepath))
+        image = self.bridge.cv_to_imgmsg(cv_image,"bgr8")
+        info = self.get_info()
+        self.output_pub.publish(Snapshot(image=image,info=info))
+        return LoadSnapshotResponse()
         
     def take_snapshot(self,req):
         image = self.get_image()
