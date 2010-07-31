@@ -20,6 +20,7 @@ from snapshotter.srv import *
 from snapshotter.msg import *
 import time
 import os.path
+from pickle_utils import *
 
 ## Snapshotter documentation
 #
@@ -87,7 +88,10 @@ class Snapshotter:
     def load_snapshot(self,req):
         cv_image = cv.LoadImage(os.path.expanduser(req.filepath))
         image = self.bridge.cv_to_imgmsg(cv_image,"bgr8")
-        info = self.get_info()
+        if req.infofile:
+            info = load_info(os.path.expanduser(req.infofile))
+        else:
+            info = self.get_info()
         self.output_pub.publish(Snapshot(image=image,info=info))
         return LoadSnapshotResponse()
         

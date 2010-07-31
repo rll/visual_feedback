@@ -78,9 +78,7 @@ class SnapshotSaver:
         print "Saved image to %s"%fullname
         if self.save_camera_info:
             infofullname = fullname.replace(".png",".pickle")
-            infofile = open(infofullname,'w')
-            info_pickle = InfoPickle(camera_info)
-            pickle.dump(info_pickle,infofile)
+            dump_info(camera_info,infofullname)
             print "Saved camera info to %s"%infofullname
             intrinsicsfile = fullname.replace(".png","_intrinsics.xml")
             cv.Save(intrinsicsfile,self.intrinsic_matrix_from_info(camera_info),"intrinsics","Intrinsics for our camera")

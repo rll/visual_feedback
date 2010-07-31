@@ -122,14 +122,17 @@ class PassiveShapeMaker:
         
 
             
-        ALPHA = 0.1
-        BETA = 0.85
-        DECAY = 1.0
+        ALPHA = 1.0
+        ALPHA_DECAY = 1.0
+        BETA = 0.9
+        BETA_DECAY = 1.0
         ITERS = 30
         SUB_ITERS = 2
         cv.ShowImage("Result",self.image2)
         
         for k in range(ITERS):
+            model_scaled.reverse()
+            print "Starthing iteration number: %d"%k
             lengths = [distance(model_scaled[i-1],model_scaled[i]) for i in range(len(model_scaled))]    
             iter_color = cv.CV_RGB(0,0,k*(255.0/ITERS))
             if SHOW_ITER:
@@ -144,21 +147,28 @@ class PassiveShapeMaker:
                     cv.ShowImage("Result",self.image2)
                     cv.WaitKey(10)
                 (dx,dy) = displacement(vert,nearest_pt)
-                dx *= ALPHA*(DECAY**k)
-                dy *= ALPHA*(DECAY**k)
+                dx *= ALPHA*(ALPHA_DECAY**k)
+                dy *= ALPHA*(ALPHA_DECAY**k)
                 model_scaled[i] = translate_pt(vert,(dx,dy))
                 
             for j in range(SUB_ITERS):
+                #model_scaled.reverse()
+                #lengths.reverse()
+                #new_lengths = []
+                #for i in range(len(lengths)):
+                #    new_lengths.append(lengths[i-1])
+                #lengths = new_lengths
+                
                 for i in range(len(model_scaled)):
                     old_length = lengths[i]
                     new_length = distance(model_scaled[i-1],model_scaled[i])
                     side = displacement(model_scaled[i-1],model_scaled[i])
-                    move_amt = (old_length - new_length) / float(new_length) * BETA*(DECAY**k) / SUB_ITERS
+                    move_amt = (old_length - new_length) / float(new_length) * BETA*(BETA_DECAY**k) / SUB_ITERS
                     
                     move_displ = scale_pt(side,move_amt)
                     print "Old_length: %f, New_length: %f, Move_amount: %f,Length of Move Displ:%f"%(old_length,new_length,move_amt,distance(move_displ,(0,0)))
-                    model_scaled[i] = translate_pt(model_scaled[i],scale_pt(move_displ,0.5))
-                    model_scaled[i-1] = translate_pt(model_scaled[i-1],scale_pt(move_displ,0.5))
+                    model_scaled[i] = translate_pt(model_scaled[i],scale_pt(move_displ,1.0))
+                    model_scaled[i-1] = translate_pt(model_scaled[i-1],scale_pt(move_displ,-0.0))
                 """
                 for i in range(len(model_scaled)-2,-2,-1):
                     old_length = lengths[i+1]

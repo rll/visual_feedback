@@ -8,7 +8,8 @@
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/visual_feedback_utils</url>
-
+  <depend package="rospy"/>
+  
 </package>
 
 
