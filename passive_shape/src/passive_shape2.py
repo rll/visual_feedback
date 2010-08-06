@@ -23,10 +23,14 @@ SHOW_SCALED_MODEL = True
 SHOW_POINTS = False
 SHOW_ITER = True
 
+INV_CONTOUR = False
+CONTOURS_ONLY = False
+NEAREST_EDGE = 0.0
+
 
 class PassiveShapeMaker:
     def __init__(self,corrected_filepath,corrected_modelpath):
-        self.slider_pos = 115
+        self.slider_pos = 135
         self.load_model(corrected_modelpath)
         image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
         self.image_gray = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_GRAYSCALE)
@@ -35,7 +39,6 @@ class PassiveShapeMaker:
         cv.CvtColor(image_raw,image_hsv,cv.CV_RGB2HSV)
         self.flann = pyflann.FLANN()
         self.dist_fxn = l2_norm
-        print image_hsv
         hue = cv.CreateImage(cv.GetSize(image_hsv),8,1)
         sat = cv.CreateImage(cv.GetSize(image_hsv),8,1)
         val = cv.CreateImage(cv.GetSize(image_hsv),8,1)
@@ -66,11 +69,11 @@ class PassiveShapeMaker:
         storage = cv.CreateMemStorage(0)
         
         self.image1 = cv.CloneImage( self.image )
-        self.image3 = cv.CloneImage( self.image )
+        self.image3 = cv.CloneImage( self.image_gray )
         self.image4 = cv.CloneImage( self.image_gray)
         self.image2 = cv.CloneImage( self.image_raw )
         cv.Threshold( self.image, self.image1, thresh, 255, cv.CV_THRESH_BINARY )
-        cv.Threshold( self.image, self.image3, thresh, 255, cv.CV_THRESH_BINARY_INV )
+        cv.Threshold( self.image_gray, self.image3, thresh, 255, cv.CV_THRESH_BINARY_INV )
         cv.Threshold( self.image_gray, self.image4, thresh, 255, cv.CV_THRESH_BINARY )
         #self.image2 = cv.CloneImage( self.image1 )
         #cv.Canny(self.image,self.image1,thresh*0.1,thresh*1.5)
@@ -85,7 +88,11 @@ class PassiveShapeMaker:
         
         max_length = 0
         max_contour = None
-        for contour in (contour_reg,contour_gray):
+        if INV_CONTOUR:
+            contours = [contour_inv]
+        else:
+            contours = [contour_reg,contour_gray]
+        for contour in contours:
             while contour != None:
                 length = area(contour)   
                 if length > max_length and not self.image_edge(contour):
@@ -94,12 +101,16 @@ class PassiveShapeMaker:
                     print "Replaced with %f"%length
                 contour = contour.h_next()
         if max_contour == None:
+            print "Couldn't find any contours"
             return
         else:
             print area(max_contour)
         shape_contour = max_contour
         if SHOW_CONTOURS:
             cv.DrawContours(self.image2,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,1,8,(0,0))
+        if CONTOURS_ONLY:
+            cv.ShowImage("Result",self.image2)
+            return
         #cv.ShowImage("Result",self.image2)
         #return
         (real_center,real_top,real_theta,real_scale) = self.get_principle_info(shape_contour)
@@ -156,17 +167,28 @@ class PassiveShapeMaker:
         return
         
     def energy_fxn(self,model,contour):
-        dist_param = 1.0
+        model_dist_param = 0.5
+        contour_dist_param = 0.5
         sparse_contour = self.make_sparse(contour,1000)
+        extra_sparse_contour = self.make_sparse(contour,500)
         model_contour = model.vertices_dense(constant_length=False,density=30)
-        nn = self.nearest_neighbors_fast(model_contour,sparse_contour)
-        dist_energy = sum([self.dist_fxn(dist) for dist in nn]) / float(len(nn))
+        
+        nn_model = self.nearest_neighbors_fast(model_contour,sparse_contour)
+        model_dist_energy = sum([self.dist_fxn(dist) for dist in nn_model]) / float(len(nn_model))
         #Normalize
-        dist_energy /= float(self.dist_fxn(max(self.image2.width,self.image2.height)))
+        model_dist_energy /= float(self.dist_fxn(max(self.image2.width,self.image2.height)))
 
+        nn_contour = self.nearest_neighbors_fast(extra_sparse_contour,model_contour)
+        contour_dist_energy = sum([self.dist_fxn(dist) for dist in nn_contour]) / float(len(nn_contour))
+        #Normalize
+        contour_dist_energy /= float(self.dist_fxn(max(self.image2.width,self.image2.height)))
         
         
-        energy = dist_param * dist_energy
+        energy = model_dist_param * model_dist_energy + contour_dist_param * contour_dist_energy
+        
+        #if model.illegal():
+        #    energy = 1.0
+            
         return energy
         
 
@@ -188,13 +210,13 @@ class PassiveShapeMaker:
         width = self.image.width
         height = self.image.height
         for (x,y) in contour:
-            if x < 30:
+            if x < NEAREST_EDGE:
                 return True
-            if x > width - 30:
+            if x > width - NEAREST_EDGE:
                 return True
-            if y < 30:
+            if y < NEAREST_EDGE:
                 return True
-            if y > height - 30:
+            if y > height - NEAREST_EDGE:
                 return True
         return False
         
@@ -354,7 +376,13 @@ def get_center(moments):
     return (x,y)
     
 def area(contour):
-    return abs(cv.ContourArea(contour))
+    if contour == None:
+        return 0.0
+    ar = abs(cv.ContourArea(contour))
+    return ar
+    
+
+    
     
     
     

@@ -142,6 +142,9 @@ class Model:
     def draw_line(self,img,pt1,pt2,color):
         cv.Line(img,pt1,pt2,color)
         
+    def illegal(self):
+        return False
+        
         
 class Model_Symm(Model):
     def __init__(self,vertices,symmline):
@@ -337,6 +340,9 @@ class Model_Skel(Model):
         additional_vertices = [self.right_collar(),self.right_shoulder_joint(),self.right_shoulder_top(),self.right_sleeve_center(),self.right_sleeve_top()]
         full = my_vertices + additional_vertices
         return Model_Skel_Asymm(*full)
+        
+    def illegal(self):
+        return False
         
 class Model_Skel_Asymm(Model_Skel):
     def __init__(self,spine_bottom,spine_top,left_collar,left_shoulder_joint,left_shoulder_top,left_sleeve_center,left_sleeve_top
