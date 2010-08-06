@@ -49,7 +49,9 @@ class BirdseyeFilter(SnapshotFilter):
         (found,corners) = cv.FindChessboardCorners(image,board_sz, (cv.CV_CALIB_CB_ADAPTIVE_THRESH | cv.CV_CALIB_CB_FILTER_QUADS))
         if(not found):
             print "Couldn't aquire checkerboard, only found %d of %d corners\n"%(corner_count,board_n)
-            return cv_image
+            gr = CloneImage(image)
+            cv.CvtColor(gray_image,gr,cv.CV_GRAY2BGR)
+            return gr
         cv.FindCornerSubPix(gray_image, corners,    
               (11,11),(-1,-1),   
               ( cv.CV_TERMCRIT_EPS+cv.CV_TERMCRIT_ITER, 30, 0.1 ))
