@@ -16,6 +16,10 @@ import os.path
 import pickle
 import Geometry2D
 import Vector2D
+from sensor_msgs.msg import Image,CameraInfo
+from cv_bridge import CvBridge, CvBridgeError
+from stereo_click.msg import ClickPoint
+from snapshotter.msg import Snapshot,ImageResult
 
 SHOW_CONTOURS = True
 SHOW_UNSCALED_MODEL = False
@@ -25,17 +29,36 @@ SHOW_ITER = True
 
 INV_CONTOUR = True
 CONTOURS_ONLY = False
-NEAREST_EDGE = 0.0
+NEAREST_EDGE = 3.0
 
 
-class PassiveShapeMaker:
-    def __init__(self,corrected_filepath,corrected_modelpath):
-        self.slider_pos = 95
+class PassiveShapeNode:
+    def __init__(self):
+        self.name = rospy.get_name()
+        self.modelpath = rospy.get_param("~model","model.pickle")
+        corrected_modelpath = os.path.expanduser(self.modelpath)
+        self.input_topic = rospy.get_param("~input","%s/input"%self.name)
+        self.output_topic = rospy.get_param("~output","%s/output"%self.name)
+        self.slider_pos = rospy.get_param("~threshold",95)
         self.load_model(corrected_modelpath)
-        image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
-        self.image_gray = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_GRAYSCALE)
-        self.image_raw = image_raw
-        image_hsv = cv.CloneImage(image_raw)
+        self.bridge = CvBridge()
+        self.result_pub = rospy.Publisher(self.output_topic,ImageResult)
+        self.sub = rospy.Subscriber(self.input_topic,Snapshot,self.handle_input)
+        
+        
+    def handle_input(self,snapshot):
+        img = snapshot.image
+        try:
+            image_raw = self.bridge.imgmsg_to_cv(img, "bgr8")
+        except CvBridgeError, e:
+            print "CVERROR!!!"
+        image_gray = cv.CreateImage(cv.GetSize(image_raw),8,1)
+        
+        cv.CvtColor(image_raw,image_gray,cv.CV_RGB2GRAY)
+        self.image_gray = image_gray
+        self.image_raw = cv.CreateImage(cv.GetSize(image_raw),8,3)
+        cv.Copy(image_raw,self.image_raw)
+        image_hsv = cv.CreateImage(cv.GetSize(image_raw),8,3)
         cv.CvtColor(image_raw,image_hsv,cv.CV_RGB2HSV)
         self.flann = pyflann.FLANN()
         self.dist_fxn = l2_norm
@@ -45,16 +68,24 @@ class PassiveShapeMaker:
         trash = cv.CreateImage(cv.GetSize(image_hsv),8,1)
         cv.Split(image_hsv,hue,None,None,None)
         self.image = hue
-        cv.NamedWindow("Source",1)
-        cv.NamedWindow("Result",1)
-        cv.ShowImage("Source",image_raw)
-        cv.CreateTrackbar( "Threshold", "Result", self.slider_pos, 255, self.process_image )
-        self.process_image(self.slider_pos)
-        cv.WaitKey(0)
-    
-        cv.DestroyWindow("Source")
-        cv.DestroyWindow("Result")   
+
+        (pts,annotated_image) = self.process_image(self.slider_pos)
+        try:
+            
+            self.publish_result(snapshot,pts,annotated_image)
+        except CvBridgeError, e:
+            print "CVERRORAHHHH!"
+            
+    def publish_result(self,snapshot,pts,annotated_image):
+        result = ImageResult()
+        img = self.bridge.cv_to_imgmsg(annotated_image,"bgr8")
+        result.image = img
+        for (x,y) in pts:
+            result.points.append(ClickPoint(x=x,y=y,camera_info = snapshot.info))
+        self.result_pub.publish(result)
+            
         
+            
     def load_model(self,filepath):
         self.model = pickle.load(open(filepath))
         #self.model = modelClass.vertices_full()
@@ -155,16 +186,17 @@ class PassiveShapeMaker:
         sparse_shape_contour = self.make_sparse(shape_contour,1000)
             
         #Optimize
-        new_model_symm = black_box_opt(model=self.model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 100,delta=25.0)
+        new_model_symm = black_box_opt(model=self.model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 1,delta=25.0)
         #new_model_symm.draw_to_image(img=self.image2,color=cv.CV_RGB(0,255,0))
 
-        new_model_asymm = black_box_opt(model=new_model_symm.make_asymm(),contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=25.0,exploration_factor=1.9)  
+        new_model_asymm = black_box_opt(model=new_model_symm.make_asymm(),contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=10,delta=25.0,exploration_factor=1.9)  
         new_model_asymm.draw_to_image(img=self.image2,color=cv.CV_RGB(255,0,255))
+        pts = []
         for vert in new_model_asymm.vertices_full():
             nearest_pt = min(shape_contour,key=lambda pt: distance(pt,vert))
             self.highlight_pt(nearest_pt,cv.CV_RGB(255,255,255))
-        cv.ShowImage("Result",self.image2)
-        return
+            pts.append(nearest_pt)
+        return pts,self.image2
         
     def energy_fxn(self,model,contour):
         model_dist_param = 0.5
@@ -383,17 +415,10 @@ def area(contour):
     
 
     
-    
-    
-    
-    
 def main(args):
-    corrected_filepath = args[0]
-    corrected_modelpath = args[1]
-    #corrected_filepath = os.path.expanduser(filepath)
-    print corrected_filepath
-    psm = PassiveShapeMaker(corrected_filepath,corrected_modelpath)
-    return
+    rospy.init_node("passive_shape_node")
+    psn = PassiveShapeNode()
+    rospy.spin()
     
 if __name__ == '__main__':
     args = sys.argv[1:]

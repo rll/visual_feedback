@@ -142,8 +142,13 @@ class Model:
     def draw_line(self,img,pt1,pt2,color):
         cv.Line(img,pt1,pt2,color)
         
+
+    def make_asymm(self):
+        return self
+
     def illegal(self):
         return False
+
         
         
 class Model_Symm(Model):

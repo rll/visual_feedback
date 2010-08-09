@@ -18,10 +18,12 @@ import Geometry2D
 import pickle
 import Vector2D
 
+
+ASYMM = 0
 SYMM = 1
 SKEL = 2
 
-TYPE = SKEL
+TYPE = ASYMM
 
 class ModelMaker(ShapeWindow):
     
@@ -70,6 +72,8 @@ class ModelMaker(ShapeWindow):
                 return self.symmLineDrawer(event,x,y,flags,param)
             else:
                 return self.symmPolyDrawer(event,x,y,flags,param)
+        elif TYPE==ASYMM:
+            return self.polyDrawer(event,x,y,flags,param)
         else:
             return self.skelDrawer(event,x,y,flags,param)
             
@@ -278,12 +282,22 @@ class ModelMaker(ShapeWindow):
     
     def saveModel(self):
         file = open(self.modelpath,'w')
+        if TYPE==ASYMM:
+            model = self.getModelAsymm()
         if TYPE==SYMM:
             model = self.getModelSymm()
         elif TYPE==SKEL:
             model = self.getModelSkel()
         pickle.dump(model,file)
         
+    def getModelAsymm(self):
+        poly = self.getPolys()[0].getShape()
+        #Due to symmetry, we only need half the points)
+        vertices = poly.vertices()
+        tuple_vertices = [v.toTuple() for v in vertices]
+        model = Vector2D.Model_Asymm(tuple_vertices)
+        return model
+    
     def getModelSymm(self):
         poly = self.getPolys()[0].getShape()
         #Due to symmetry, we only need half the points)
