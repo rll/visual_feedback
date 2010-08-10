@@ -1,0 +1,42 @@
+<launch>
+	<node pkg="snapshotter" type="snapshotter.py" name="snapshotter" output="screen">
+		<param name="camera" value="wide_stereo/left" />
+		<param name="output" value="snapshot_output" />
+	</node>
+	<node pkg="snapshotter" type="birdseye_filter.py" name="birdseye" output="screen">
+	    <param name="input" value="snapshot_output" />
+	    <param name="output" value="birdseye_output" />
+
+	    <param name="cols" value="5" />
+	    <param name="rows" value="4" />
+        <!-- height: -15 good for wide, -25 good for narrow, -40 good for prosilica -->
+	    <param name="init_height" value="-15" />
+	</node>
+	
+	<node pkg="snapshotter" type="crop_filter.py" name="crop" output="screen">
+	    <param name="input" value="birdseye_output" />
+	    <param name="output" value="crop_output" />
+	    <param name="x_min" value="10" />
+	    <param name="x_max" value="55" />
+	    <param name="y_min" value="15" />
+	    <param name="y_max" value="65" />
+	</node>
+	
+	<node pkg="snapshotter" type="snapshot_saver.py" name="birdseye_saver" output="screen">
+	    <param name="input" value="birdseye_output" />
+	    <param name="default_filepath" value="~/snapshots" />
+	    <param name="streaming" value="true" />
+	</node>
+	
+	<node pkg="snapshotter" type="snapshot_saver.py" name="raw_saver" output="screen">
+	    <param name="input" value="snapshot_output" />
+	    <param name="default_filepath" value="~/snapshots" />
+	    <param name="streaming" value="true" />
+	</node>
+	
+	<node pkg="snapshotter" type="snapshot_streamer.py" name="birdseye_streamer" output="screen">
+	    <param name="input" value="birdseye_output" />
+	    <param name="output" value="birdseye_stream" />
+	</node>
+
+</launch>

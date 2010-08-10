@@ -1,0 +1,14 @@
+<launch>
+	<node pkg="snapshotter" type="snapshotter.py" name="snapshotter" output="screen">
+		<param name="camera" value="prosilica" />
+		<param name="output" value="snapshot_output" />
+	</node>
+	
+	<node pkg="snapshotter" type="snapshot_saver.py" name="saver" output="screen">
+	    <param name="input" value="snapshot_output" />
+	    <param name="default_filepath" value="~/snapshots" />
+	    <param name="save_camera_info" value="true" />
+	    <param name="streaming" value="true" />
+	</node>
+
+</launch>

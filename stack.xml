@@ -1,0 +1,9 @@
+<stack>
+  <description brief="visual_feedback">visual_feedback</description>
+  <author>Maintained by Stephen Miller</author>
+  <license>BSD</license>  
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/visual_feedback</url>
+  <depend stack="ros" />
+
+</stack>

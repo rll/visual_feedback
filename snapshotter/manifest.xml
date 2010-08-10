@@ -1,0 +1,26 @@
+<package>
+  <description brief="snapshotter">
+
+     snapshotter
+
+  </description>
+  <author>Stephen Miller</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/snapshotter</url>
+  <depend package="rospy"/>
+  <depend package="tf"/>
+  <depend package="opencv2"/>
+  <depend package="cv_bridge"/>
+  <depend package="sensor_msgs"/>
+  <depend package="std_msgs"/>
+  <depend package="std_srvs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="image_geometry"/>
+  <depend package="roscpp"/>
+  <depend package="image_transport"/>
+  <depend package="visual_feedback_utils"/>
+  <depend package="stereo_click"/>
+</package>
+
+
