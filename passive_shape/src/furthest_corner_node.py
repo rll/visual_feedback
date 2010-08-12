@@ -45,6 +45,7 @@ class PassiveShapeNode:
         
         self.bridge = CvBridge()
         self.result_pub = rospy.Publisher(self.output_topic,ImageResult)
+        self.cp_pub = rospy.Publisher(self.output_topic+"_points",ClickPoint)
         self.image_pub = rospy.Publisher(self.output_topic+"_images",Image)
         self.sub = rospy.Subscriber(self.input_topic,Snapshot,self.handle_input)
         
@@ -86,6 +87,7 @@ class PassiveShapeNode:
         for (x,y) in pts:
             result.points.append(ClickPoint(x=x,y=y,camera_info = snapshot.info))
         self.result_pub.publish(result)
+        self.cp_pub.publish(result.points[0])
         self.image_pub.publish(img)
             
         
