@@ -24,6 +24,7 @@
   <depend package="stereo_click"/>
   <depend package="snapshotter" />
   <depend package="visual_feedback_utils" />
+  <depend package="passive_shape" />
 </package>
 
 
