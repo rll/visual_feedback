@@ -1,13 +1,13 @@
 <package>
-  <description brief="snapshotter">
+  <description brief="image_processor">
 
-     snapshotter
+     image_processor
 
   </description>
   <author>Stephen Miller</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/snapshotter</url>
+  <url>http://ros.org/wiki/image_processor</url>
   <depend package="rospy"/>
   <depend package="tf"/>
   <depend package="opencv2"/>
@@ -23,7 +23,7 @@
   <depend package="folding_gui"/>
   <depend package="stereo_click"/>
   <depend package="snapshotter" />
- 
+  <depend package="visual_feedback_utils" />
 </package>
 
 

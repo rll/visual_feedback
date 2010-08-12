@@ -1,0 +1,5 @@
+string camera
+---
+geometry_msgs/PointStamped[] pts3d
+sensor_msgs/Image image_annotated_left
+sensor_msgs/Image image_annotated_right
