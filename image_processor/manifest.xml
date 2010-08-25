@@ -9,6 +9,7 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/image_processor</url>
   <depend package="rospy"/>
+  <depend package="roscpp"/>
   <depend package="tf"/>
   <depend package="opencv2"/>
   <depend package="cv_bridge"/>
@@ -25,6 +26,7 @@
   <depend package="snapshotter" />
   <depend package="visual_feedback_utils" />
   <depend package="passive_shape" />
+  <depend package="dynamic_reconfigure" />
 </package>
 
 

@@ -88,73 +88,7 @@ class BirdseyeFilter(SnapshotFilter):
         dist_coeff = cv.CreateMat(1, 4, cv.CV_32FC1)
         cv.Set(dist_coeff,0.0)
         return dist_coeff
-        
-    def get_board_corners(self, corners, corners_x, corners_y):
-        return (corners[0], corners[corners_x    - 1], 
-                corners[(corners_y - 1) * corners_x], corners[len(corners) - 1])
 
-    def detect(self, image, corners_x, corners_y, spacing_x, spacing_y, width_scaling=1.0, height_scaling=1.0):
-        #resize the image base on the scaling parameters we've been configured with
-        scaled_width = int(.5 + image.width * width_scaling)
-        scaled_height = int(.5 + image.height * height_scaling)
-        
-        #in cvMat its row, col so height comes before width
-        image_scaled = cv.CreateMat(scaled_height, scaled_width, cv.GetElemType(image))
-        cv.Resize(image, image_scaled, cv.CV_INTER_LINEAR)
-
-        #Here, we'll actually call the openCV detector        
-        found, corners = cv.FindChessboardCorners(image_scaled, (corners_x, corners_y), cv.CV_CALIB_CB_ADAPTIVE_THRESH)
-
-        if found:
-            board_corners = self.get_board_corners(corners, corners_x, corners_y)
-            
-            #find the perimeter of the checkerboard
-            perimeter = 0.0
-            for i in range(len(board_corners)):
-                next = (i + 1) % 4
-                xdiff = board_corners[i][0] - board_corners[next][0]
-                ydiff = board_corners[i][1] - board_corners[next][1]
-                perimeter += math.sqrt(xdiff * xdiff + ydiff * ydiff)
-
-            #estimate the square size in pixels
-            square_size = perimeter / ((corners_x - 1 + corners_y - 1) * 2)
-            radius = int(square_size * 0.5 + 0.5)
-
-            #corners = cv.FindCornerSubPix(image_scaled, corners, (radius, radius), (-1, -1), (cv.CV_TERMCRIT_EPS + cv.CV_TERMCRIT_ITER, 30, 0.1))
-
-            #uncomment to debug chessboard detection
-            print 'Chessboard found'
-            #cv.DrawChessboardCorners(image_scaled, (corners_x, corners_y), corners, 1)
-            #cv.NamedWindow("image_scaled")
-            #cv.ShowImage("image_scaled", image_scaled)
-            #cv.WaitKey(600)
-
-            object_points = None
-
-            #we'll also generate the object points if the user has specified spacing
-            if spacing_x != None and spacing_y != None:
-                object_points = cv.CreateMat(3, corners_x * corners_y, cv.CV_32FC1)
-
-                for y in range(corners_y):
-                    for x in range(corners_x):
-                        cv.SetReal2D(object_points, 0, y*corners_x + x, x * spacing_x)
-                        cv.SetReal2D(object_points, 1, y*corners_x + x, y * spacing_y)
-                        cv.SetReal2D(object_points, 2, y*corners_x + x, 0.0)
-
-            #not sure why opencv functions return non opencv compatible datatypes... but they do so we'll convert
-            corners_cv = cv.CreateMat(2, corners_x * corners_y, cv.CV_32FC1)
-            for i in range(corners_x * corners_y):
-                cv.SetReal2D(corners_cv, 0, i, corners[i][0])
-                cv.SetReal2D(corners_cv, 1, i, corners[i][1])
-
-            return (corners, corners_cv,object_points)
-
-        else:
-            #cv.NamedWindow("image_scaled")
-            #cv.ShowImage("image_scaled", image_scaled)
-            #cv.WaitKey(600)
-            rospy.logwarn("Didn't find checkerboard")
-            return (None, None)
 
 def point_array(length):
     lst = []

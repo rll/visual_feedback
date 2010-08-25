@@ -15,7 +15,7 @@
         <param name="input" value="input_towels" />
         <param name="output" value="output_towel_corners" />
         <param name="threshold" value="90" />
-        <param name="left_to_right" value="false" />
+        <param name="left_to_right" value="true" />
         <param name="model" value="$(find passive_shape)/towel_model.pickle" />
     </node>
 </launch>
