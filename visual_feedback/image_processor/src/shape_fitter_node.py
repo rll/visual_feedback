@@ -35,7 +35,7 @@ class ShapeFitter(ImageProcessor):
         self.threshold = rospy.get_param("~threshold",95)
         self.load_model(corrected_modelpath)
         
-    def process(self,cv_image,info):
+    def process(self,cv_image,info,image2=None):
         image_raw = cv_image
         image_gray = cv.CreateImage(cv.GetSize(image_raw),8,1)        
         cv.CvtColor(image_raw,image_gray,cv.CV_RGB2GRAY)
@@ -60,9 +60,12 @@ class ShapeFitter(ImageProcessor):
         self.image4 = cv.CloneImage( self.image_gray)
         self.image2 = cv.CloneImage( self.image_raw )
         cv.Threshold( self.image, self.image1, self.threshold, 255, cv.CV_THRESH_BINARY )
-        cv.Threshold( self.image_gray, self.image3, self.threshold, 255, cv.CV_THRESH_BINARY_INV )
+        cv.Threshold( self.image, self.image3, self.threshold, 255, cv.CV_THRESH_BINARY_INV )
         cv.Threshold( self.image_gray, self.image4, self.threshold, 255, cv.CV_THRESH_BINARY )
-
+        for i in range(15):
+            for j in range(self.image3.height):
+                self.image3[j,i] = 0.0
+                self.image3[j,self.image3.width-i-1] = 0.0
         contour_reg = cv.FindContours   ( self.image1, storage,
                                     cv.CV_RETR_LIST, cv.CV_CHAIN_APPROX_NONE, (0,0))
         contour_inv = cv.FindContours   ( self.image3, storage,
@@ -151,15 +154,21 @@ class ShapeFitter(ImageProcessor):
         
         params = {}
         if self.mode == "triangles":
-            return_pts = [pts[1],pts[4]]
+            return_pts = [pts[1],pts[4],pts[2],pts[3]]
+            self.highlight_pt(pts[1],cv.CV_RGB(255,0,0))
+            font = cv.InitFont(cv.CV_FONT_HERSHEY_COMPLEX,1.0,1.0)
+            cv.PutText(self.image2,"(l)eft",(pts[1][0]-20,pts[1][1]-15),font,cv.CV_RGB(255,0,0))
+            self.highlight_pt(pts[4],cv.CV_RGB(0,0,255))
+            cv.PutText(self.image2,"(r)ight",(pts[4][0]-20,pts[4][1]-15),font,cv.CV_RGB(0,0,255))
             params = {"tilt":0.0}
         elif self.mode == "towel":
             return_pts = pts
         else:
             return_pts = pts
             params = {}
-        for pt in return_pts:
-            self.highlight_pt(pt,cv.CV_RGB(255,255,255))
+        if self.mode != "triangles":
+            for pt in return_pts:
+                self.highlight_pt(pt,cv.CV_RGB(255,255,255))
         return (return_pts,params,self.image2)
         
     def energy_fxn(self,model,contour):

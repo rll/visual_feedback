@@ -29,7 +29,7 @@ class FurthestCornerFinder(ImageProcessor):
         self.threshold = rospy.get_param("~threshold",95)
         self.left_to_right = rospy.get_param("~left_to_right",True)
         
-    def process(self,cv_image,info):
+    def process(self,cv_image,info,image2=None):
         image_raw = cv_image
         image_gray = cv.CreateImage(cv.GetSize(image_raw),8,1)        
         cv.CvtColor(image_raw,image_gray,cv.CV_RGB2GRAY)
@@ -44,8 +44,15 @@ class FurthestCornerFinder(ImageProcessor):
         sat = cv.CreateImage(cv.GetSize(image_hsv),8,1)
         val = cv.CreateImage(cv.GetSize(image_hsv),8,1)
         trash = cv.CreateImage(cv.GetSize(image_hsv),8,1)
-        cv.Split(image_hsv,hue,None,None,None)
+        cv.Split(image_hsv,hue,sat,val,None)
+        r = cv.CreateImage(cv.GetSize(image_raw),8,1)
+        g = cv.CreateImage(cv.GetSize(image_raw),8,1)
+        b = cv.CreateImage(cv.GetSize(image_raw),8,1)
+        cv.Split(image_raw,r,g,b,None)
         self.image = hue
+        self.image_sat = sat
+        self.image_val = val
+        self.image_g = g
         #Do the actual computation
         storage = cv.CreateMemStorage(0)
         
@@ -54,8 +61,16 @@ class FurthestCornerFinder(ImageProcessor):
         self.image4 = cv.CloneImage( self.image_gray)
         self.image2 = cv.CloneImage( self.image_raw )
         cv.Threshold( self.image, self.image1, self.threshold, 255, cv.CV_THRESH_BINARY )
-        cv.Threshold( self.image_gray, self.image3, self.threshold, 255, cv.CV_THRESH_BINARY_INV )
-        cv.Threshold( self.image_gray, self.image4, self.threshold, 255, cv.CV_THRESH_BINARY )
+        cv.Threshold( self.image, self.image3, self.threshold, 255, cv.CV_THRESH_BINARY_INV )        
+        #and_img = cv.CloneImage( self.image_gray)
+        #nand_img = cv.CloneImage( self.image_gray)
+        #cv.And(self.image3,self.image4,and_img)
+        #cv.Not(and_img,nand_img)
+
+        for i in range(15):
+            for j in range(self.image3.height):
+                self.image3[j,i] = 0.0
+                self.image3[j,self.image3.width-i-1] = 0.0
 
         contour_reg = cv.FindContours   ( self.image1, storage,
                                     cv.CV_RETR_LIST, cv.CV_CHAIN_APPROX_NONE, (0,0))
@@ -64,12 +79,14 @@ class FurthestCornerFinder(ImageProcessor):
         contour_gray = cv.FindContours   ( self.image4, storage,
                                     cv.CV_RETR_LIST, cv.CV_CHAIN_APPROX_NONE, (0,0))
         
+
+        
         max_length = 0
         max_contour = None
         if INV_CONTOUR:
             contours = [contour_inv]
         else:
-            contours = [contour_reg,contour_gray]
+            contours = [contour_gray]
         for contour in contours:
             while contour != None:
                 length = area(contour)   
@@ -90,8 +107,10 @@ class FurthestCornerFinder(ImageProcessor):
         if not self.left_to_right:
             multiplier = -1
         pt = max(shape_contour,key=lambda pt: pt[0]*multiplier)
+        pt_opp = min(shape_contour,key=lambda pt: pt[0]*multiplier)
         self.highlight_pt(pt,cv.CV_RGB(255,255,255))
-        pts = [pt]
+        self.highlight_pt(pt_opp,cv.CV_RGB(0,0,0))
+        pts = [pt,pt_opp]
         return (pts,{"tilt":multiplier*-pi/2},self.image2)
 
     def image_edge(self,contour):

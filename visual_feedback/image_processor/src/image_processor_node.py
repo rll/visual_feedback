@@ -34,6 +34,7 @@ class ImageProcessor:
     def init_extended(self):
         #Do nothing
         return
+        
     
     def process_mono(self,req):
         image_topic = "/%s/image_rect_color"%req.camera
@@ -81,7 +82,7 @@ class ImageProcessor:
         except CvBridgeError, e:
             print "CVERROR converting from ImageMessage to cv IplImage"
         cv_image = cv.CreateImage(cv.GetSize(cv_image_mat),8,3)
-        cv.Copy(cv_image_mat,cv_image)
+        cv.Copy(cv_image_mat,cv_image)   
         (pts2d,params_dict,cv_image_annotated) = self.process(cv_image,info)
         #Convert annotation to Image.msg
         try:
@@ -94,7 +95,7 @@ class ImageProcessor:
         param_names = params_dict.keys()
         return (click_points,params,param_names,image_annotated)
         
-    def process(self,cv_image,info):
+    def process(self,cv_image,info,image2=None):
         abstract
         return (pts2d,params_dict,cv_image_annotated)
         

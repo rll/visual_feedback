@@ -23,7 +23,7 @@ ASYMM = 0
 SYMM = 1
 SKEL = 2
 
-TYPE = ASYMM
+TYPE = SKEL
 
 class ModelMaker(ShapeWindow):
     
