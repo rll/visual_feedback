@@ -49,8 +49,8 @@ class BirdseyeFilter(SnapshotFilter):
         cv.FindCornerSubPix(gray_image, corners,    
               (11,11),(-1,-1),   
               ( cv.CV_TERMCRIT_EPS+cv.CV_TERMCRIT_ITER, 30, 0.1 ))
-        #Pull out the Object Points (3d location of the checkerboard corners, in the camera frame)
-        #and the Image Points (2d location of the corners in the actual image) 
+        #Pull out the Image Points (3d location of the checkerboard corners, in the camera frame)
+        #and the Object Points (2d location of the corners on the checkerboard object) 
         objPts = point_array(4)
         imgPts = point_array(4)
         objPts[0] = (0,0)
