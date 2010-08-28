@@ -28,7 +28,7 @@ rosbuild_gensrv()
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 
-rosbuild_add_executable(cpp_node include/cpp_node.cpp)
+#rosbuild_add_executable(cpp_node include/cpp_node.cpp)
 #rosbuild_add_compile_flags(cpp_node "-lsocks -L/home/stephen_sandbox/visual_feedback/image_processor/lib")
 #rosbuild_add_library(${PROJECT_NAME} include/SocksDemo/GripPointDetector.cpp)
 #rosbuild_add_library(${PROJECT_NAME} include/SocksDemo/SockStateDetector.cpp)
