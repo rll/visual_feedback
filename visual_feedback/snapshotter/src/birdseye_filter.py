@@ -29,10 +29,9 @@ class BirdseyeFilter(SnapshotFilter):
         #Area of the board = "board_n"
         board_n  = board_w * board_h
         board_sz = (board_w,board_h)
-        #Pulls the intrinsic matrix, in cvMat form, from the CameraInfo message received by the camera.
-        intrinsic = self.intrinsic_matrix_from_info(info)
         image = cv_image
-        #This needs to be fed with a "height", so it knows how high up the perspective transform should be
+        #This needs to be fed with a "height", so it knows how high up the perspective transform should be. 
+	#I've found for the wide_stereo cameras, a value of -15 works well. For the prosilica, -40. Don't ask me why
         init_height = self.height
         #Only works on a grayscale image
         gray_image = cv.CreateImage(cv.GetSize(image),8,1)
@@ -74,15 +73,6 @@ class BirdseyeFilter(SnapshotFilter):
         #Note: If you need to undo the transformation, you can simply invert H and call cv.WarpPerspective again.
         return birds_image
         
-    def intrinsic_matrix_from_info(self, cam_info):
-       intrinsic_matrix = cv.CreateMat(3, 3, cv.CV_32FC1)
-
-       #Because we only want the upper 3x3 (normal) portion of the rectified intrinsic matrix
-       for i in range(0, 3):
-         for j in range(0, 3):
-           intrinsic_matrix[i, j] = cam_info.P[4*i+j]
-       return intrinsic_matrix
-       
 
 
 def point_array(length):
