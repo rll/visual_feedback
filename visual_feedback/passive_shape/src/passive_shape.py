@@ -63,6 +63,7 @@ class PassiveShapeMaker:
         cv.Threshold( self.image, self.image1, thresh, 255, cv.CV_THRESH_BINARY )
         cv.Threshold( self.image, self.image3, thresh, 255, cv.CV_THRESH_BINARY_INV )
         cv.Threshold( self.image_gray, self.image4, thresh, 255, cv.CV_THRESH_BINARY )
+        cv.Threshold( self.image_gray, self.image4, thresh, 255, cv.CV_THRESH_BINARY_INV )
         #self.image2 = cv.CloneImage( self.image1 )
         #cv.Canny(self.image,self.image1,thresh*0.1,thresh*1.5)
         contour_reg = cv.FindContours   ( self.image1, storage,
@@ -201,13 +202,13 @@ class PassiveShapeMaker:
         width = self.image.width
         height = self.image.height
         for (x,y) in contour:
-            if x < 30:
+            if x < 5:
                 return True
-            if x > width - 30:
+            if x > width - 5:
                 return True
-            if y < 30:
+            if y < 5:
                 return True
-            if y > height - 30:
+            if y > height - 5:
                 return True
         return False
         
