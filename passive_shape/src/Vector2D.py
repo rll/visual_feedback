@@ -29,8 +29,8 @@ def vect_length(vect):
     
 def make_ln_from_pts(pt1,pt2):
     vect = pt_diff(pt2,pt1)
-    if pt_y(vect) < 0:
-        vect = pt_scale(vect,-1)
+    #if pt_y(vect) < 0:
+    #    vect = pt_scale(vect,-1)
     offset = pt1
     return make_ln(offset=offset,vect=vect)
     
@@ -73,7 +73,46 @@ def intercept(ln1,ln2):
         x = (b2 - b1) / (m1 - m2)
         y = m1*x + b1
         return make_pt(x,y)
+
+        
+def make_seg(pt1,pt2):
+    ln = make_ln_from_pts(pt1,pt2)
+    return (ln[0],ln[1],pt1,pt2)
+
+def end_points(seg):
+    return (seg[2],seg[3])
+
+def pt_eq(pt1,pt2):
+    (x1,y1) = pt1
+    (x2,y2) = pt2
+    return feq(x1,x2) and feq(y1,y2)
     
+def feq(a,b):
+    return abs(a-b) <= 0.001
+
+def seg_contains(seg,pt):
+
+    if pt_eq(pt,seg[2]) or pt_eq(pt,seg[3]):
+        return False
+    pt = pt_diff(pt,line_offset(seg))
+    t = dot_prod(pt,line_vector(seg))
+    t1 = dot_prod(pt_diff(seg[2],line_offset(seg)),line_vector(seg))
+    t2 = dot_prod(pt_diff(seg[3],line_offset(seg)),line_vector(seg))
+    t_min = min(t1,t2)
+    t_max = max(t1,t2)
+    if not t_min<t<t_max:
+        return False
+    return True
+
+def seg_intercept(seg1,seg2):
+    inter = intercept(seg1,seg2)
+    if not inter:
+        return None
+    else:
+        if not seg_contains(seg1,inter) or not seg_contains(seg2,inter):
+            return None
+    return inter
+
 def slope_intercept(ln):
     (xo,yo) = line_offset(ln)
     (xv,yv) = line_vector(ln)
@@ -92,65 +131,7 @@ def mirror_pt(pt,ln):
     
     return pt_sum(pt_r,offset)
     
-class Model:
-    def __init__(self,vertices):
-        self.vertices = list(vertices)
-    
-    def vertices_full(self):
-        abstract
-        
-    def vertices_dense(self,density=10,length=10,constant_length=False):
-        vertices = self.vertices_full()
-        output = []
-        for i,vert in enumerate(vertices):
-            output.append(vert)
-            next_vert = vertices[(i+1)%len(vertices)]
-            displ = pt_diff(next_vert,vert)
-            side_length = vect_length(displ)
-            if not constant_length:
-                dt = 1/float(density+1)
-                num_pts = density
-            else:
-                num_pts = int(side_length / length) - 1
-                dt = 1.0 / (num_pts+1)
-            for j in range(num_pts):
-                new_pt = pt_sum(vert,pt_scale(displ,dt*(j+1)))
-                output.append(new_pt)
-        return output
-        
-    def translate(self,trans):
-        self.vertices = translate_pts(self.vertices,trans)
-        
-    def rotate(self,angle,origin=(0,0)):
-        self.vertices = rotate_pts(self.vertices,angle,origin)
-        
-    def scale(self,amt,origin=(0,0)):
-        self.vertices = scale_pts(self.vertices,amt,origin)
-    
-    def params(self):
-        abstract
-        
-    def from_params(self,params):
-        abstract
-        
-    def draw_to_image(self,img,color):
-        cv.PolyLine(img,[self.vertices_full()],1,color,2)
-        
-    def draw_point(self,img,pt,color):
-        cv.Circle(img,pt,5,color,-1)
-        
-    def draw_line(self,img,pt1,pt2,color):
-        cv.Line(img,pt1,pt2,color)
-        
-
-    def make_asymm(self):
-        return self
-
-    def illegal(self):
-        return False
-
-        
-        
+"""    
 class Model_Symm(Model):
     def __init__(self,vertices,symmline):
         Model.__init__(self,vertices)
@@ -219,7 +200,151 @@ class Model_Asymm(Model):
                 y = p
                 pts.append((x,y))
         return Model_Asymm(pts)
+
+class Model_Pants_Skel(Model):
+    def __init__(self,mid_center,top_center,mid_left,left_leg_center,left_leg_left):
+        self.vertices = [mid_center,top_center,mid_left,left_leg_center,left_leg_left]
         
+    def mid_center(self):
+        return self.vertices[0]
+    
+    def top_center(self):
+        return self.vertices[1]
+        
+    def crotch(self):
+        ln = perpendicular(make_ln_from_pts(self.top_center(),self.mid_center()),self.mid_center())
+        return mirror_pt(self.top_center(),ln)
+        
+    def mid_left(self):
+        return self.vertices[2]
+        
+    def mid_right(self):
+        return mirror_pt(self.mid_left(),self.axis_of_symm())
+        
+    def left_leg_center(self):
+        return self.vertices[3]
+        
+    def right_leg_center(self):
+        return mirror_pt(self.left_leg_center(),self.axis_of_symm())
+        
+    def left_leg_left(self):
+        return self.vertices[4]
+        
+    def left_leg_right(self):
+        ln = perpendicular(make_ln_from_pts(self.left_leg_left(),self.left_leg_center()),self.left_leg_center())
+        return mirror_pt(self.left_leg_left(),ln)
+        
+    def right_leg_right(self):
+        return mirror_pt(self.left_leg_left(),self.axis_of_symm())
+        
+    def right_leg_left(self):
+        ln = perpendicular(make_ln_from_pts(self.right_leg_right(),self.right_leg_center()),self.right_leg_center())
+        return mirror_pt(self.right_leg_right(),ln)
+        
+    def top_left(self):
+        displ = pt_sum( pt_diff(self.top_center(),self.mid_center()), pt_diff(self.left_leg_left(),self.left_leg_center()))
+        return translate_pt(self.mid_left(),displ)
+        
+    def top_right(self):
+        displ = pt_sum( pt_diff(self.top_center(),self.mid_center()), pt_diff(self.right_leg_right(),self.right_leg_center()))
+        return translate_pt(self.mid_right(),displ)
+        
+    def axis_of_symm(self):
+        return make_ln_from_pts(self.mid_center(),self.top_center())
+        
+    def left_leg_axis(self):
+        return make_ln_from_pts(self.mid_left(),self.left_leg_center())
+        
+    def right_leg_axis(self):
+        return make_ln_from_pts(self.mid_right(),self.right_leg_center())
+        
+    def vertices_full(self):
+        return [self.left_leg_right(),self.left_leg_left(),self.top_left(),self.top_right(),self.right_leg_right(),self.right_leg_left(),self.crotch()]
+    
+    def variable_pts(self):
+        return  [self.mid_center(),self.top_center(),self.mid_left(),self.left_leg_center(),self.left_leg_left()]
+               
+    def params(self):
+        output = []
+        for (x,y) in self.variable_pts():
+            output.append(x)
+            output.append(y)
+        return output
+        
+    def from_params(self,params):
+        pts = []
+        x = None
+        for i,v in enumerate(params):
+            if i%2==0:
+                x = v
+            else:
+                y = v
+                pts.append((x,y))
+        return Model_Pants_Skel(*pts)
+        
+    def draw_to_image(self,img,color):
+        Model.draw_to_image(self,img,color)
+        
+        #Draw skeletal frame
+        self.draw_point(img,self.crotch(),color)
+        self.draw_point(img,self.top_center(),color)
+        self.draw_line(img,self.crotch(),self.top_center(),color)
+        self.draw_point(img,self.mid_left(),color)
+        self.draw_point(img,self.mid_right(),color)
+        self.draw_line(img,self.mid_left(),self.mid_right(),color)
+        self.draw_point(img,self.left_leg_center(),color)
+        self.draw_point(img,self.right_leg_center(),color)
+        self.draw_line(img,self.mid_left(),self.left_leg_center(),color)
+        self.draw_line(img,self.mid_right(),self.right_leg_center(),color)
+
+        
+    def make_asymm(self):
+        my_vertices = self.variable_pts()
+        additional_vertices = [self.mid_right(),self.right_leg_center(),self.right_leg_right()]
+        full = my_vertices + additional_vertices
+        return Model_Pants_Skel_Asymm(*full)
+        
+    def illegal(self):
+        return False
+        
+class Model_Pants_Skel_Asymm(Model_Pants_Skel):
+    def __init__(self,mid_center,top_center,mid_left,left_leg_center,left_leg_left,mid_right,right_leg_center,right_leg_right):
+        Model_Pants_Skel.__init__(self,mid_center,top_center,mid_left,left_leg_center,left_leg_left)
+        self.vertices.append(mid_right)
+        self.vertices.append(right_leg_center)
+        self.vertices.append(right_leg_right)
+        
+    def mid_right(self):
+        return self.child_vertices()[0]
+        
+    def right_leg_center(self):
+        return self.child_vertices()[1]
+       
+    def right_leg_right(self):
+        return self.child_vertices()[2]
+        
+    def child_vertices(self):
+        start_i = len(Model_Pants_Skel.variable_pts(self))
+        return self.vertices[start_i:]
+        
+    def variable_pts(self):
+        pts = Model_Pants_Skel.variable_pts(self)
+        pts.append(self.mid_right())
+        pts.append(self.right_leg_center())
+        pts.append(self.right_leg_right())
+        return pts
+        
+    def from_params(self,params):
+        pts = []
+        x = None
+        for i,v in enumerate(params):
+            if i%2==0:
+                x = v
+            else:
+                y = v
+                pts.append((x,y))
+        return Model_Pants_Skel_Asymm(*pts)        
+       
 class Model_Skel(Model):
     def __init__(self,spine_bottom,spine_top,collar,shoulder_joint,shoulder_top,sleeve_center,sleeve_top):
         self.vertices = [spine_bottom,spine_top,collar,shoulder_joint,shoulder_top,sleeve_center,sleeve_top]
@@ -242,6 +367,9 @@ class Model_Skel(Model):
         
     def right_shoulder_joint(self):
         return self.left_to_right(self.left_shoulder_joint())
+        
+    def shoulder_spine_junction(self):
+        return intercept(make_ln_from_pts(self.left_shoulder_joint(),self.right_shoulder_joint()),make_ln_from_pts(self.spine_bottom(),self.spine_top()))
         
     def left_shoulder_top(self):
         return self.vertices[4]
@@ -347,6 +475,57 @@ class Model_Skel(Model):
         return Model_Skel_Asymm(*full)
         
     def illegal(self):
+        if Model.illegal(self):
+            return True
+        spine_axis = pt_diff(self.spine_top(),self.spine_bottom())
+        horiz_axis = pt_diff(self.right_shoulder_joint(),self.left_shoulder_joint())
+        l_shoulder_axis = pt_diff(self.left_shoulder_top(),self.left_armpit())
+        r_shoulder_axis = pt_diff(self.right_shoulder_top(),self.right_armpit())
+        l_side_axis = pt_diff(self.left_armpit(),self.bottom_left())
+        r_side_axis = pt_diff(self.right_armpit(),self.bottom_right())
+        l_sleeve_axis = pt_diff(self.left_shoulder_joint(),self.left_sleeve_center())
+        r_sleeve_axis = pt_diff(self.right_shoulder_joint(),self.right_sleeve_center())
+        if angle_between(l_side_axis,l_shoulder_axis) > pi/8:
+            print "Left side is too skewed"
+            return True
+        if angle_between(r_side_axis,r_shoulder_axis) > pi/8:
+            print "Right side is too skewed"
+            return True
+        if angle_between(spine_axis,horiz_axis) < pi/4:
+            print "Too skewed"
+            return True
+        if angle_between(l_shoulder_axis,spine_axis) > pi/4 or angle_between (l_shoulder_axis,l_sleeve_axis) < pi/8:
+            print "Left shoulder too skewed"
+            return True
+        if angle_between(r_shoulder_axis,spine_axis) > pi/4 or angle_between (r_shoulder_axis,r_sleeve_axis) < pi/8:
+            print "Right shoulder too skewed"
+            return True
+        if vect_length(l_shoulder_axis) / vect_length(horiz_axis) < 0.2:
+            print "Left shoulder too small"
+            return True
+        if vect_length(r_shoulder_axis) / vect_length(horiz_axis) < 0.2:
+            print "Right shoulder too small"
+            return True
+        if dot_prod(self.shoulder_spine_junction(),spine_axis) >= dot_prod(self.spine_top(),spine_axis):
+            print "Spine junction is above spine top"
+            return True
+        if dot_prod(self.left_shoulder_joint(),horiz_axis) >= dot_prod(self.right_shoulder_joint(),horiz_axis):
+            print "Left shoulder is right of the right shoulder"
+            return True
+        if dot_prod(self.left_sleeve_bottom(),spine_axis) >= dot_prod (self.left_sleeve_top(),spine_axis):
+            print "Left sleeve is flipped"
+            return True
+        if dot_prod(self.right_sleeve_bottom(),spine_axis) >= dot_prod (self.right_sleeve_top(),spine_axis):
+            print "Right sleeve is flipped"
+            return True            
+        if dot_prod(self.right_armpit(),spine_axis) >= dot_prod(self.right_shoulder_joint(),spine_axis):
+            print "Right armpit is flipped"
+            return True
+        if dot_prod(self.left_armpit(),spine_axis) >= dot_prod(self.left_shoulder_joint(),spine_axis):
+            print "Left armpit is flipped"
+            return True
+        if dot_prod(self.bottom_left(),horiz_axis) >= dot_prod(self.bottom_right(),horiz_axis):
+            print "Bottom left and right are flipped"
         return False
         
 class Model_Skel_Asymm(Model_Skel):
@@ -398,7 +577,7 @@ class Model_Skel_Asymm(Model_Skel):
                 y = v
                 pts.append((x,y))
         return Model_Skel_Asymm(*pts)
-            
+"""            
             
 def translate_pt(pt,trans):
     (x,y) = pt
@@ -450,4 +629,14 @@ def scale_ln(ln,amt,origin=(0.0)):
     end = extrapolate(ln,1)
     (new_start,new_end) = scale_pts((start,end),amt,origin)
     return make_ln_from_pts(new_start,new_end)
+    
+def angle(pt1,pt2,pt3):
+    vect1 = pt_diff(pt1,pt2)
+    vect2 = pt_diff(pt3,pt2)
+    l1 = vect_length(vect1)
+    l2 = vect_length(vect2)
+    return arccos(dot_prod(vect1,vect2) / float(l1*l2))
+    
+def angle_between(v1,v2):
+    return arccos(dot_prod(v1,v2) / float(vect_length(v1) * vect_length(v2)))
         

@@ -17,12 +17,13 @@ import ShapeWindowUtils
 import Geometry2D
 import pickle
 import Vector2D
+import Models
 
 
 ASYMM = 0
 SYMM = 1
 SKEL = 2
-
+PANTS_SKEL = 3
 TYPE = SKEL
 
 class ModelMaker(ShapeWindow):
@@ -54,6 +55,13 @@ class ModelMaker(ShapeWindow):
             self.shoulder_top = None
             self.sleeve_node = None
             self.sleeve_top = None
+        if TYPE == PANTS_SKEL:
+            self.mode = 0
+            self.mid_center = None
+            self.top_center = None
+            self.mid_left = None
+            self.left_leg_bottom = None
+            self.lefT_leg_left = None
         clearShapesButton = CVButton(text="CLEAR",bottomLeft=Geometry2D.Point(50,100), onClick=self.clearAll)
         self.addOverlay(clearShapesButton)
         saveModelButton = CVButton(text="SAVE MODEL",bottomLeft=Geometry2D.Point(150,100), onClick = self.saveModel)
@@ -74,8 +82,10 @@ class ModelMaker(ShapeWindow):
                 return self.symmPolyDrawer(event,x,y,flags,param)
         elif TYPE==ASYMM:
             return self.polyDrawer(event,x,y,flags,param)
-        else:
+        elif TYPE==SKEL:
             return self.skelDrawer(event,x,y,flags,param)
+        elif TYPE==PANTS_SKEL:
+            return self.pantsSkelDrawer(event,x,y,flags,param)
             
     def skelDrawer(self,event,x,y,flags,param):
         if self.mode==0:
@@ -222,6 +232,98 @@ class ModelMaker(ShapeWindow):
                 self.highlightSegment(Geometry2D.LineSegment(sleeve_bottom,sleeve_top))
                 self.highlightSegment(Geometry2D.LineSegment(virtual_sleeve_bottom,virtual_sleeve_top))    
             
+    def pantsSkelDrawer(self,event,x,y,flags,param):
+        if self.mode==0:
+            new_pt = Geometry2D.Point(x,y)
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.mid_center = new_pt
+                self.permanentHighlightPt(self.mid_center)
+                self.mode += 1
+        elif self.mode==1:
+            new_pt = Geometry2D.Point(x,y)
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.top_center = new_pt
+                self.crotch = Geometry2D.LineSegment(self.mid_center,self.top_center).extrapolate(-1)
+                self.permanentHighlightPt(self.top_center)
+                self.permanentHighlightPt(self.crotch)
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.crotch,self.top_center))
+                self.mode += 1
+            else:
+                top_center = new_pt
+                crotch = Geometry2D.LineSegment(self.mid_center,top_center).extrapolate(-1)
+                self.highlightPt(top_center)
+                self.highlightPt(crotch)
+                self.highlightSegment(Geometry2D.LineSegment(crotch,top_center))
+        elif self.mode==2:
+            new_pt = Geometry2D.Point(x,y)
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.mid_left = new_pt
+                self.mid_right = Geometry2D.mirrorPt(self.mid_left,Geometry2D.LineSegment(self.mid_center,self.top_center))
+                self.permanentHighlightPt(self.mid_left)
+                self.permanentHighlightPt(self.mid_right)
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.mid_left,self.mid_right))
+                self.mode += 1
+            else:
+                mid_left = new_pt
+                mid_right = Geometry2D.mirrorPt(mid_left,Geometry2D.LineSegment(self.mid_center,self.top_center))
+                self.highlightPt(mid_left)
+                self.highlightPt(mid_right)
+                self.highlightSegment(Geometry2D.LineSegment(mid_left,mid_right))
+        elif self.mode==3:
+            new_pt = Geometry2D.Point(x,y)
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.left_leg_center = new_pt
+                self.right_leg_center = Geometry2D.mirrorPt(self.left_leg_center,Geometry2D.LineSegment(self.mid_center,self.top_center))
+                self.permanentHighlightPt(self.left_leg_center)
+                self.permanentHighlightPt(self.right_leg_center)
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.left_leg_center,self.mid_left))
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.right_leg_center,self.mid_right))
+                self.mode += 1
+            else:
+                left_leg_center = new_pt
+                right_leg_center = Geometry2D.mirrorPt(left_leg_center,Geometry2D.LineSegment(self.mid_center,self.top_center))
+                self.highlightPt(left_leg_center)
+                self.highlightPt(right_leg_center)
+                self.highlightSegment(Geometry2D.LineSegment(left_leg_center,self.mid_left))
+                self.highlightSegment(Geometry2D.LineSegment(right_leg_center,self.mid_right))
+        elif self.mode==4:
+            new_pt = Geometry2D.Point(x,y)
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.left_leg_left = new_pt
+                self.left_leg_right = Geometry2D.LineSegment(self.left_leg_center,self.left_leg_left).extrapolate(-1)
+                self.right_leg_left = Geometry2D.mirrorPt(self.left_leg_right,Geometry2D.LineSegment(self.mid_center,self.top_center))
+                self.right_leg_right = Geometry2D.mirrorPt(self.left_leg_left,Geometry2D.LineSegment(self.mid_center,self.top_center))
+                self.permanentHighlightPt(self.left_leg_left)
+                self.permanentHighlightPt(self.left_leg_right)
+                self.permanentHighlightPt(self.right_leg_left)
+                self.permanentHighlightPt(self.right_leg_right)
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.left_leg_left,self.left_leg_right))
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.right_leg_left,self.right_leg_right))
+                top_displ = Geometry2D.ptDiff(self.top_center,self.mid_center)
+                left_displ = Geometry2D.ptDiff(self.left_leg_left,self.left_leg_center)
+                self.top_left = Geometry2D.ptSum(Geometry2D.ptSum(self.mid_left,top_displ),left_displ)
+                self.top_right = Geometry2D.mirrorPt(self.top_left,Geometry2D.LineSegment(self.mid_center,self.top_center))
+                self.permanentHighlightPt(self.top_left)
+                self.permanentHighlightPt(self.top_right)
+                self.mode += 1
+            else:
+                left_leg_left = new_pt
+                left_leg_right = Geometry2D.LineSegment(self.left_leg_center,left_leg_left).extrapolate(-1)
+                right_leg_left = Geometry2D.mirrorPt(left_leg_right,Geometry2D.LineSegment(self.mid_center,self.top_center))
+                right_leg_right = Geometry2D.mirrorPt(left_leg_left,Geometry2D.LineSegment(self.mid_center,self.top_center))
+                self.highlightPt(left_leg_left)
+                self.highlightPt(left_leg_right)
+                self.highlightPt(right_leg_left)
+                self.highlightPt(right_leg_right)
+                self.highlightSegment(Geometry2D.LineSegment(left_leg_left,left_leg_right))
+                self.highlightSegment(Geometry2D.LineSegment(right_leg_left,right_leg_right))
+                top_displ = Geometry2D.ptDiff(self.top_center,self.mid_center)
+                left_displ = Geometry2D.ptDiff(left_leg_left,self.left_leg_center)
+                top_left = Geometry2D.ptSum(Geometry2D.ptSum(self.mid_left,top_displ),left_displ)
+                top_right = Geometry2D.mirrorPt(top_left,Geometry2D.LineSegment(self.mid_center,self.top_center))
+                self.highlightPt(top_left)
+                self.highlightPt(top_right)
+    
     def permanentHighlightPt(self,pt):
         self.addCVShape(CVCircle(cv.CV_RGB(0,0,0),self.front(),Geometry2D.Circle(pt,3)))    
     
@@ -288,14 +390,20 @@ class ModelMaker(ShapeWindow):
             model = self.getModelSymm()
         elif TYPE==SKEL:
             model = self.getModelSkel()
-        pickle.dump(model,file)
+        elif TYPE==PANTS_SKEL:
+            model = self.getModelPantsSkel()
+        if model.illegal():
+            print "Model is illegal!"
+            self.clearAll()
+        else:
+            pickle.dump(model,file)
         
     def getModelAsymm(self):
         poly = self.getPolys()[0].getShape()
         #Due to symmetry, we only need half the points)
         vertices = poly.vertices()
         tuple_vertices = [v.toTuple() for v in vertices]
-        model = Vector2D.Model_Asymm(tuple_vertices)
+        model = Models.Point_Model_Contour_Only_Asymm(*tuple_vertices)
         return model
     
     def getModelSymm(self):
@@ -303,17 +411,33 @@ class ModelMaker(ShapeWindow):
         #Due to symmetry, we only need half the points)
         vertices = poly.vertices()[0:len(poly.vertices())/2]
         tuple_vertices = [v.toTuple() for v in vertices]
-        model = Vector2D.Model_Symm(tuple_vertices,self.symmline)
+        model = Models.Model_Symm(tuple_vertices,self.symmline)
         return model
         
     def getModelSkel(self):
         #Parameters: spine_bottom,spine_top,collar,shoulder_joint,shoulder_top,sleeve_center,sleeve_top
-        return Vector2D.Model_Skel(
-            spine_bottom=self.spine_bottom.toTuple(), spine_top=self.spine_top.toTuple(),
-            collar=self.collar.toTuple(), shoulder_joint=self.shoulder_joint.toTuple(),
-            shoulder_top=self.shoulder_top.toTuple(), sleeve_center=self.sleeve_node.toTuple(),sleeve_top=self.sleeve_top.toTuple()
+        """
+        return Models.Model_Shirt_Skel_New(True,
+            self.spine_bottom.toTuple(), self.spine_top.toTuple(),
+            self.collar.toTuple(), self.shoulder_joint.toTuple(),
+            self.shoulder_top.toTuple(), self.sleeve_node.toTuple(),self.sleeve_top.toTuple(),self.bottom_left.toTuple()
             )
-    
+        """
+        left_sleeve_angle = pi/5
+        left_sleeve_length = Geometry2D.distance(self.sleeve_node,self.shoulder_joint)
+        left_sleeve_width = Geometry2D.distance(self.sleeve_top,self.sleeve_node)*2
+        return Models.Model_Shirt_Skel_Restricted(True,
+            self.spine_bottom.toTuple(), self.spine_top.toTuple(),
+            self.collar.toTuple(), self.shoulder_joint.toTuple(),
+            self.shoulder_top.toTuple(),self.bottom_left.toTuple(),
+            left_sleeve_length,left_sleeve_width,left_sleeve_angle
+            )
+    def getModelPantsSkel(self):
+        #Parameters: mid_center,top_center,mid_left,left_leg_center,left_leg_left
+        return Models.Model_Pants_Skel(True,
+            self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
+            self.left_leg_center.toTuple(), self.left_leg_left.toTuple()
+        )
 
     
 def main(args):

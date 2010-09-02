@@ -16,23 +16,30 @@ import os.path
 import pickle
 import Geometry2D
 import Vector2D
+import Models
 
 SHOW_CONTOURS = True
 SHOW_UNSCALED_MODEL = False
 SHOW_SCALED_MODEL = True
 SHOW_POINTS = False
 SHOW_ITER = True
+SHOW_SYMM_MODEL = True
+
+SAVE = True
 
 INV_CONTOUR = True
 CONTOURS_ONLY = False
 NEAREST_EDGE = 0.0
 
+AMAZON_THRESH = 250
+TABLE_THRESH = 105
 
 class PassiveShapeMaker:
     def __init__(self,corrected_filepath,corrected_modelpath):
-        self.slider_pos = 95
+        self.slider_pos = AMAZON_THRESH
         self.load_model(corrected_modelpath)
         image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
+        self.model.set_image(image_raw)
         self.image_gray = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_GRAYSCALE)
         self.image_raw = image_raw
         image_hsv = cv.CloneImage(image_raw)
@@ -50,6 +57,10 @@ class PassiveShapeMaker:
         cv.ShowImage("Source",image_raw)
         cv.CreateTrackbar( "Threshold", "Result", self.slider_pos, 255, self.process_image )
         self.process_image(self.slider_pos)
+        if SAVE:
+            savepath = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.png"
+            cv.SaveImage(savepath,self.image2)
+            return
         cv.WaitKey(0)
     
         cv.DestroyWindow("Source")
@@ -57,6 +68,9 @@ class PassiveShapeMaker:
         
     def load_model(self,filepath):
         self.model = pickle.load(open(filepath))
+        if self.model.illegal():
+            print "MODEL IS ILLEGAL"
+            return
         #self.model = modelClass.vertices_full()
         
     def get_model_contour(self):
@@ -117,6 +131,8 @@ class PassiveShapeMaker:
         #self.model = translate_poly(rotate_poly(shape_contour,-0.2,real_center),(500,500)) ##FIXME
         if SHOW_UNSCALED_MODEL:
             self.model.draw_to_image(self.image2,cv.CV_RGB(0,0,255))
+            cv.ShowImage("Result",self.image2)
+            return
         (model_center,model_top,model_theta,model_scale) = self.get_principle_info(self.get_model_contour())
         displ = displacement(model_center,real_center)
         if SHOW_POINTS:
@@ -156,13 +172,17 @@ class PassiveShapeMaker:
             
         #Optimize
         new_model_symm = black_box_opt(model=self.model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 100,delta=25.0)
-        #new_model_symm.draw_to_image(img=self.image2,color=cv.CV_RGB(0,255,0))
+        if SHOW_SYMM_MODEL:
+            new_model_symm.draw_to_image(img=self.image2,color=cv.CV_RGB(0,255,0))
 
-        new_model_asymm = black_box_opt(model=new_model_symm.make_asymm(),contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=25.0,exploration_factor=1.9)  
+        new_model_asymm = black_box_opt(model=new_model_symm.make_asymm(),contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=35.0,exploration_factor=3.0,fine_tune=True)  
+        
         new_model_asymm.draw_to_image(img=self.image2,color=cv.CV_RGB(255,0,255))
         for vert in new_model_asymm.vertices_full():
             nearest_pt = min(shape_contour,key=lambda pt: distance(pt,vert))
             self.highlight_pt(nearest_pt,cv.CV_RGB(255,255,255))
+        if SAVE:
+            return
         cv.ShowImage("Result",self.image2)
         return
         
@@ -170,9 +190,9 @@ class PassiveShapeMaker:
         model_dist_param = 0.5
         contour_dist_param = 0.5
         sparse_contour = self.make_sparse(contour,1000)
-        extra_sparse_contour = self.make_sparse(contour,500)
+        num_model_pts = 30*len(model.sides())
+        extra_sparse_contour = self.make_sparse(contour,num_model_pts)
         model_contour = model.vertices_dense(constant_length=False,density=30)
-        
         nn_model = self.nearest_neighbors_fast(model_contour,sparse_contour)
         model_dist_energy = sum([self.dist_fxn(dist) for dist in nn_model]) / float(len(nn_model))
         #Normalize
@@ -188,7 +208,11 @@ class PassiveShapeMaker:
         
         #if model.illegal():
         #    energy = 1.0
-            
+        penalty = model.structural_penalty()
+        #print "Penalty is %f"%penalty
+        
+        energy += penalty
+        
         return energy
         
 
@@ -253,6 +277,14 @@ class PassiveShapeMaker:
         angle = theta
         scale = 0
         print "ANGLE = %s"%angle
+        #If initially outside, go twice
+        if(cv.PointPolygonTest(shape,pt,0) <= 0):
+            while(cv.PointPolygonTest(shape,pt,0) <= 0):
+                (x,y) = pt
+                new_x = x + EPSILON*sin(angle)
+                new_y = y - EPSILON*cos(angle)
+                pt = (new_x,new_y)
+                scale += EPSILON
         while(cv.PointPolygonTest(shape,pt,0) > 0):
             (x,y) = pt
             new_x = x + EPSILON*sin(angle)
@@ -269,7 +301,7 @@ class PassiveShapeMaker:
                 sparse_contour.append(pt)
         return sparse_contour
 
-def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5):
+def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5,fine_tune=False,num_fine_tunes=0):
     #epsilon = delta / 100.0
     epsilon = 0.001
     score = -1 * energy_fxn(model,contour)
@@ -301,6 +333,9 @@ def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilo
         if max([abs(d) for d in deltas]) < epsilon:
             print "BREAKING"
             break
+    #if fine_tune
+    #    print "FINE_TUNING"0/
+    #    return black_box_opt(model.from_params(params),contour,energy_fxn,delta,num_iters,epsilon*10,exploration_factor*2,fine_tune=False)
     return model.from_params(params)
         
 def l2_norm(val):
