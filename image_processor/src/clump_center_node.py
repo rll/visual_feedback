@@ -4,15 +4,18 @@ import sys
 roslib.load_manifest("image_processor")
 import rospy
 from numpy import *
-import pyflann
+
 import math
 import cv
 import os.path
 import pickle
 import Geometry2D
 import Vector2D
+import tf
+from geometry_msgs.msg import PointStamped
 from image_processor_node import ImageProcessor
 from shape_fitting_utils import *
+import image_geometry
 
 SHOW_CONTOURS = True
 SHOW_UNSCALED_MODEL = False
@@ -38,7 +41,6 @@ class ClumpCenterFinder(ImageProcessor):
         cv.Copy(image_raw,self.image_raw)
         image_hsv = cv.CreateImage(cv.GetSize(image_raw),8,3)
         cv.CvtColor(image_raw,image_hsv,cv.CV_RGB2HSV)
-        self.flann = pyflann.FLANN()
         self.dist_fxn = l2_norm
         hue = cv.CreateImage(cv.GetSize(image_hsv),8,1)
         sat = cv.CreateImage(cv.GetSize(image_hsv),8,1)
@@ -49,6 +51,20 @@ class ClumpCenterFinder(ImageProcessor):
         g = cv.CreateImage(cv.GetSize(image_raw),8,1)
         b = cv.CreateImage(cv.GetSize(image_raw),8,1)
         cv.Split(image_raw,r,g,b,None)
+        """
+        cv.NamedWindow("Raw")
+        cv.NamedWindow("Red")
+        cv.NamedWindow("Green")
+        cv.NamedWindow("Blue")
+        cv.ShowImage("Raw",image_raw)
+        cv.ShowImage("Red",r)
+        cv.ShowImage("Green",g)
+        cv.ShowImage("Blue",b)
+        
+        cv.WaitKey()
+        
+        rorb = cv.CreateImage(cv.GetSize(image_raw),8,1)
+        """
         self.image = hue
         self.image_sat = sat
         self.image_val = val
@@ -60,13 +76,17 @@ class ClumpCenterFinder(ImageProcessor):
         self.image3 = cv.CloneImage( self.image )
         self.image4 = cv.CloneImage( self.image_gray)
         self.image2 = cv.CloneImage( self.image_raw )
-        cv.Threshold( self.image, self.image1, self.threshold, 255, cv.CV_THRESH_BINARY )
-        cv.Threshold( self.image, self.image3, self.threshold, 255, cv.CV_THRESH_BINARY_INV )        
+        cv.Threshold( self.image, self.image1, 75, 255, cv.CV_THRESH_BINARY )
+        cv.Threshold( self.image, self.image3, 140, 255, cv.CV_THRESH_BINARY_INV )  
+        cv.Not(self.image3,self.image3)
+        cv.Or(self.image1,self.image3,self.image3)
+        
         #and_img = cv.CloneImage( self.image_gray)
         #nand_img = cv.CloneImage( self.image_gray)
         #cv.And(self.image3,self.image4,and_img)
         #cv.Not(and_img,nand_img)
 
+        
         for i in range(15):
             for j in range(self.image3.height):
                 self.image3[j,i] = 0.0
