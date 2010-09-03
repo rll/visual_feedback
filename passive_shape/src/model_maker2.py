@@ -215,9 +215,9 @@ class ModelMaker(ShapeWindow):
                 self.permanentHighlightSegment(Geometry2D.LineSegment(self.sleeve_bottom,self.sleeve_top))
                 self.permanentHighlightSegment(Geometry2D.LineSegment(self.virtual_sleeve_bottom,self.virtual_sleeve_top))
 
-                self.addCVShape(CVPolygon(cv.CV_RGB(0,0,0),self.front(),
-                                Geometry2D.Polygon( self.bottom_left,self.armpit,self.sleeve_bottom,self.sleeve_top,self.shoulder_top,self.collar,
-                                                    self.virtual_collar,self.virtual_shoulder_top,self.virtual_sleeve_top,self.virtual_sleeve_bottom,self.virtual_armpit,self.bottom_right)))
+                #self.addCVShape(CVPolygon(cv.CV_RGB(0,0,0),self.front(),
+                #                Geometry2D.Polygon( self.bottom_left,self.armpit,self.sleeve_bottom,self.sleeve_top,self.shoulder_top,self.collar,
+                #                                    self.virtual_collar,self.virtual_shoulder_top,self.virtual_sleeve_top,self.virtual_sleeve_bottom,self.virtual_armpit,self.bottom_right)))
                 self.mode+=1
             else:
                 sleeve_top = new_pt
@@ -392,7 +392,8 @@ class ModelMaker(ShapeWindow):
             model = self.getModelSkel()
         elif TYPE==PANTS_SKEL:
             model = self.getModelPantsSkel()
-        if model.illegal():
+        model.draw_to_image(self.background,cv.RGB(255,0,0))
+        if model.illegal() or model.structural_penalty() >= 1.0:
             print "Model is illegal!"
             self.clearAll()
         else:
@@ -423,14 +424,24 @@ class ModelMaker(ShapeWindow):
             self.shoulder_top.toTuple(), self.sleeve_node.toTuple(),self.sleeve_top.toTuple(),self.bottom_left.toTuple()
             )
         """
-        left_sleeve_angle = pi/5
-        left_sleeve_length = Geometry2D.distance(self.sleeve_node,self.shoulder_joint)
+        #More
+        
+        #left_sleeve_angle = pi/4
+        #left_sleeve_length = Geometry2D.distance(self.sleeve_node,self.shoulder_joint)
+        #left_sleeve_width = Geometry2D.distance(self.sleeve_top,self.sleeve_node)*2
+        #return Models.Model_Shirt_Skel_Restricted(True,
+        #    self.spine_bottom.toTuple(), self.spine_top.toTuple(),
+        #    self.collar.toTuple(), self.shoulder_joint.toTuple(),
+        #    self.shoulder_top.toTuple(),self.bottom_left.toTuple(),
+        #    left_sleeve_length,left_sleeve_width,left_sleeve_angle
+        #    )
+        
         left_sleeve_width = Geometry2D.distance(self.sleeve_top,self.sleeve_node)*2
-        return Models.Model_Shirt_Skel_Restricted(True,
+        return Models.Model_Shirt_Skel_Less_Restricted(True,
             self.spine_bottom.toTuple(), self.spine_top.toTuple(),
             self.collar.toTuple(), self.shoulder_joint.toTuple(),
-            self.shoulder_top.toTuple(),self.bottom_left.toTuple(),
-            left_sleeve_length,left_sleeve_width,left_sleeve_angle
+            self.shoulder_top.toTuple(),self.sleeve_node.toTuple(),self.bottom_left.toTuple(),
+            left_sleeve_width
             )
     def getModelPantsSkel(self):
         #Parameters: mid_center,top_center,mid_left,left_leg_center,left_leg_left

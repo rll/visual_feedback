@@ -24,7 +24,7 @@ SHOW_SCALED_MODEL = True
 SHOW_POINTS = False
 SHOW_ITER = True
 SHOW_SYMM_MODEL = True
-
+SHOW_OPT = True
 SAVE = True
 
 INV_CONTOUR = True
@@ -145,6 +145,7 @@ class PassiveShapeMaker:
         print real_theta
         angle = model_theta - real_theta
         print angle
+        #angle = 0 #FIXME
         scale = real_scale/float(model_scale)
         model_trans = translate_poly(self.get_model_contour(),displ)
         model_rot = rotate_poly(model_trans,-1*angle,real_center)
@@ -175,10 +176,12 @@ class PassiveShapeMaker:
         if SHOW_SYMM_MODEL:
             new_model_symm.draw_to_image(img=self.image2,color=cv.CV_RGB(0,255,0))
 
-        new_model_asymm = black_box_opt(model=new_model_symm.make_asymm(),contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=35.0,exploration_factor=3.0,fine_tune=True)  
-        
-        new_model_asymm.draw_to_image(img=self.image2,color=cv.CV_RGB(255,0,255))
-        for vert in new_model_asymm.vertices_full():
+        new_model_asymm = black_box_opt(model=new_model_symm.make_asymm(),contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=35.0,exploration_factor=3.0,fine_tune=True)
+        final_model = new_model_asymm
+        #new_model_free = black_box_opt(model=new_model_asymm.free(),contour=shape_contour,energy_fxn = self.energy_fxn,num_iters=50,delta=5.0,exploration_factor=1.5)  
+        #final_model = new_model_free
+        final_model.draw_to_image(img=self.image2,color=cv.CV_RGB(255,0,255))
+        for vert in final_model.vertices_full():
             nearest_pt = min(shape_contour,key=lambda pt: distance(pt,vert))
             self.highlight_pt(nearest_pt,cv.CV_RGB(255,255,255))
         if SAVE:
@@ -247,7 +250,7 @@ class PassiveShapeMaker:
     def highlight_pt(self,pt,color=None):
         if color == None:
             color = cv.CV_RGB(128,128,128)
-        cv.Circle(self.image2,pt,5,color,-1)
+        cv.Circle(self.image2,pt,5,color,3)
     
     
     def get_principle_info(self,shape):
@@ -307,6 +310,8 @@ def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilo
     score = -1 * energy_fxn(model,contour)
     params = model.params()
     deltas = [delta for p in params]
+    if(SHOW_OPT):
+        cv.NamedWindow("Optimizing")
     for it in range(num_iters):
         print "Starting iteration number %d"%it
         for i in range(len(params)):
@@ -330,12 +335,17 @@ def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilo
                 else:
                     deltas[i] *= 0.5
         print "Current best score is %f"%score
+        if(SHOW_OPT):
+            img = cv.CloneImage(model.image)
+            model.from_params(params).draw_to_image(img,cv.CV_RGB(255,0,0))
+            cv.ShowImage("Optimizing",img)
+            cv.WaitKey(50)
         if max([abs(d) for d in deltas]) < epsilon:
             print "BREAKING"
             break
-    #if fine_tune
-    #    print "FINE_TUNING"0/
-    #    return black_box_opt(model.from_params(params),contour,energy_fxn,delta,num_iters,epsilon*10,exploration_factor*2,fine_tune=False)
+    if fine_tune:
+        print "FINE_TUNING"
+        return black_box_opt(model.from_params(params),contour,energy_fxn,delta,num_iters,epsilon*10,exploration_factor*2,fine_tune=False)
     return model.from_params(params)
         
 def l2_norm(val):
