@@ -21,6 +21,7 @@ from snapshotter.msg import *
 import time
 import os.path
 from pickle_utils import *
+import TopicUtils
 
 ## Snapshotter documentation
 #
@@ -42,8 +43,6 @@ class Snapshotter:
         self.output_pub = rospy.Publisher(self.output_topic,Snapshot)
         self.cameraTopic = "%s/image_rect_color"%cameraName
         self.cameraInfoTopic = "%s/camera_info"%cameraName
-        self.camera_sub = rospy.Subscriber(self.cameraTopic,Image,self.update_image)
-        self.camera_info_sub = rospy.Subscriber(self.cameraInfoTopic,CameraInfo,self.update_camera_info)
         self.get_snapshot_serv = rospy.Service("%s/get_snapshot"%self.name,GetSnapshot,self.get_snapshot)
         self.take_snapshot_serv = rospy.Service("%s/take_snapshot"%self.name,TakeSnapshot,self.take_snapshot)
         self.load_snapshot_serv = rospy.Service("%s/load_snapshot"%self.name,LoadSnapshot,self.load_snapshot)
@@ -62,10 +61,7 @@ class Snapshotter:
         self.image_lock.release()
     
     def get_image(self):
-        image = None
-        self.image_lock.acquire()
-        image = self.latest_image
-        self.image_lock.release()
+        image = TopicUtils.get_next_message(self.cameraTopic,Image)
         return image
         
     def set_info(self,info):
@@ -74,10 +70,7 @@ class Snapshotter:
         self.info_lock.release()
     
     def get_info(self):
-        info = None
-        self.info_lock.acquire()
-        info = self.latest_info
-        self.info_lock.release()
+        info = TopicUtils.get_next_message(self.cameraInfoTopic,CameraInfo)
         return info
         
     def get_snapshot(self,req):
