@@ -11,8 +11,11 @@ import os.path
 import pickle
 import Geometry2D
 import Vector2D
+import tf
+from geometry_msgs.msg import PointStamped
 from image_processor_node import ImageProcessor
 from shape_fitting_utils import *
+import image_geometry
 
 SHOW_CONTOURS = False
 SHOW_UNSCALED_MODEL = False
@@ -44,14 +47,34 @@ class ShapeFitter(ImageProcessor):
         cv.Copy(image_raw,self.image_raw)
         image_hsv = cv.CreateImage(cv.GetSize(image_raw),8,3)
         cv.CvtColor(image_raw,image_hsv,cv.CV_RGB2HSV)
-        self.flann = pyflann.FLANN()
         self.dist_fxn = l2_norm
         hue = cv.CreateImage(cv.GetSize(image_hsv),8,1)
         sat = cv.CreateImage(cv.GetSize(image_hsv),8,1)
         val = cv.CreateImage(cv.GetSize(image_hsv),8,1)
         trash = cv.CreateImage(cv.GetSize(image_hsv),8,1)
-        cv.Split(image_hsv,hue,None,None,None)
+        cv.Split(image_hsv,hue,sat,val,None)
+        r = cv.CreateImage(cv.GetSize(image_raw),8,1)
+        g = cv.CreateImage(cv.GetSize(image_raw),8,1)
+        b = cv.CreateImage(cv.GetSize(image_raw),8,1)
+        cv.Split(image_raw,r,g,b,None)
+        """
+        cv.NamedWindow("Raw")
+        cv.NamedWindow("Red")
+        cv.NamedWindow("Green")
+        cv.NamedWindow("Blue")
+        cv.ShowImage("Raw",image_raw)
+        cv.ShowImage("Red",r)
+        cv.ShowImage("Green",g)
+        cv.ShowImage("Blue",b)
+        
+        cv.WaitKey()
+        
+        rorb = cv.CreateImage(cv.GetSize(image_raw),8,1)
+        """
         self.image = hue
+        self.image_sat = sat
+        self.image_val = val
+        self.image_g = g
         #Do the actual computation
         storage = cv.CreateMemStorage(0)
         
@@ -59,9 +82,37 @@ class ShapeFitter(ImageProcessor):
         self.image3 = cv.CloneImage( self.image )
         self.image4 = cv.CloneImage( self.image_gray)
         self.image2 = cv.CloneImage( self.image_raw )
-        cv.Threshold( self.image, self.image1, self.threshold, 255, cv.CV_THRESH_BINARY )
-        cv.Threshold( self.image, self.image3, self.threshold, 255, cv.CV_THRESH_BINARY_INV )
-        cv.Threshold( self.image_gray, self.image4, self.threshold, 255, cv.CV_THRESH_BINARY )
+        cv.Threshold( self.image, self.image1, 75, 255, cv.CV_THRESH_BINARY )
+        cv.Threshold( self.image, self.image3, 140, 255, cv.CV_THRESH_BINARY_INV )  
+        cv.Not(self.image3,self.image3)
+        cv.Or(self.image1,self.image3,self.image3)
+        
+        #and_img = cv.CloneImage( self.image_gray)
+        #nand_img = cv.CloneImage( self.image_gray)
+        #cv.And(self.image3,self.image4,and_img)
+        #cv.Not(and_img,nand_img)
+
+         #Filter out grippers
+        cam_frame = info.header.frame_id
+        now = rospy.Time.now()
+        for link in ("l_gripper_l_finger_tip_link","r_gripper_l_finger_tip_link"):
+            self.listener.waitForTransform(cam_frame,link,now,rospy.Duration(10.0))
+            l_grip_origin = PointStamped()
+            l_grip_origin.header.frame_id = link
+            l_grip_in_camera = self.listener.transformPoint(cam_frame,l_grip_origin)
+            camera_model = image_geometry.PinholeCameraModel()
+            camera_model.fromCameraInfo(info)
+            (u,v) = camera_model.project3dToPixel((l_grip_in_camera.point.x,l_grip_in_camera.point.y,l_grip_in_camera.point.z))
+            if link[0] == "l":
+                x_range = range(0,u)
+            else:
+                x_range = range(u,self.image3.width)
+            if 0 < u < self.image3.width and 0 < v < self.image3.height:
+                for x in x_range:
+                    for y in range(0,self.image3.height):
+                        self.image3[y,x] = 0.0
+        #Filter out edges
+        
         for i in range(15):
             for j in range(self.image3.height):
                 self.image3[j,i] = 0.0
