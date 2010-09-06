@@ -17,15 +17,17 @@ import pickle
 import Geometry2D
 import Vector2D
 import Models
+import annotator
 
 SHOW_CONTOURS = True
 SHOW_UNSCALED_MODEL = False
-SHOW_SCALED_MODEL = True
+SHOW_SCALED_MODEL = False
 SHOW_POINTS = False
 SHOW_ITER = True
-SHOW_SYMM_MODEL = True
+SHOW_SYMM_MODEL = False
 SHOW_OPT = True
 SAVE = True
+FINE_TUNE = False
 
 INV_CONTOUR = True
 CONTOURS_ONLY = False
@@ -33,6 +35,8 @@ NEAREST_EDGE = 0.0
 
 AMAZON_THRESH = 250
 TABLE_THRESH = 105
+
+ANNOTATE = True
 
 class PassiveShapeMaker:
     def __init__(self,corrected_filepath,corrected_modelpath):
@@ -56,11 +60,14 @@ class PassiveShapeMaker:
         cv.NamedWindow("Result",1)
         cv.ShowImage("Source",image_raw)
         cv.CreateTrackbar( "Threshold", "Result", self.slider_pos, 255, self.process_image )
+        if ANNOTATE:
+            self.anno_path = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.anno"
         self.process_image(self.slider_pos)
         if SAVE:
             savepath = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.png"
             cv.SaveImage(savepath,self.image2)
             return
+        
         cv.WaitKey(0)
     
         cv.DestroyWindow("Source")
@@ -172,18 +179,23 @@ class PassiveShapeMaker:
         sparse_shape_contour = self.make_sparse(shape_contour,1000)
             
         #Optimize
-        new_model_symm = black_box_opt(model=self.model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 100,delta=25.0)
+        new_model_symm = self.model
+        #new_model_symm = black_box_opt(model=self.model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 100,delta=25.0,epsilon = 0.01) 
         if SHOW_SYMM_MODEL:
             new_model_symm.draw_to_image(img=self.image2,color=cv.CV_RGB(0,255,0))
 
-        new_model_asymm = black_box_opt(model=new_model_symm.make_asymm(),contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=35.0,exploration_factor=3.0,fine_tune=True)
+        new_model_asymm = black_box_opt(model=new_model_symm.make_asymm(),contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=35.0,exploration_factor=3.0,fine_tune=False)
         final_model = new_model_asymm
         #new_model_free = black_box_opt(model=new_model_asymm.free(),contour=shape_contour,energy_fxn = self.energy_fxn,num_iters=50,delta=5.0,exploration_factor=1.5)  
         #final_model = new_model_free
         final_model.draw_to_image(img=self.image2,color=cv.CV_RGB(255,0,255))
+        nearest_pts = []
         for vert in final_model.vertices_full():
             nearest_pt = min(shape_contour,key=lambda pt: distance(pt,vert))
             self.highlight_pt(nearest_pt,cv.CV_RGB(255,255,255))
+            nearest_pts.append(nearest_pt)
+        if ANNOTATE:
+            annotator.write_anno(nearest_pts,self.anno_path)
         if SAVE:
             return
         cv.ShowImage("Result",self.image2)
@@ -345,7 +357,7 @@ def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilo
             break
     if fine_tune:
         print "FINE_TUNING"
-        return black_box_opt(model.from_params(params),contour,energy_fxn,delta,num_iters,epsilon*10,exploration_factor*2,fine_tune=False)
+        return black_box_opt(model.from_params(params),contour,energy_fxn,delta,num_iters,epsilon*10,exploration_factor*2,fine_tune=FINE_TUNE)
     return model.from_params(params)
         
 def l2_norm(val):

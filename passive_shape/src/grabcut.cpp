@@ -231,6 +231,7 @@ int main( int argc, char** argv )
             break;
         case 's':
             saveImage(image, mask, bgdPxls, fgdPxls,savefile);
+            goto exit_main;
             break;
         }
     }
