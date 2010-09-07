@@ -1,16 +1,34 @@
 <launch>
-	<node pkg="snapshotter" type="snapshotter.py" name="snapshotter" output="screen">
+	<node pkg="snapshotter" type="snapshotter.py" name="snapshotter_wide" output="screen">
 		<param name="camera" value="wide_stereo/left" />
-		<param name="output" value="snapshot_output" />
+		<param name="output" value="snapshot_wide_output" />
 	</node>
-	<node pkg="snapshotter" type="birdseye_filter.py" name="birdseye" output="screen">
-	    <param name="input" value="snapshot_output" />
+	
+	<node pkg="snapshotter" type="snapshotter.py" name="snapshotter_pros" output="screen">
+		<param name="camera" value="prosilica" />
+		<param name="output" value="snapshot_pros_output" />
+	</node>
+	
+	<node pkg="snapshotter" type="birdseye_filter.py" name="birdseye_wide" output="screen">
+	    <param name="input" value="snapshot_wide_output" />
 	    <param name="output" value="birdseye_output" />
 
 	    <param name="cols" value="5" />
 	    <param name="rows" value="4" />
         <!-- height: -15 good for wide, -25 good for narrow, -40 good for prosilica -->
-	    <param name="init_height" value="-12" />
+	    <param name="init_height" value="-10" />
+        <param name="mode" value="load_h" />
+        <param name="matrix_location" value="/home/stephen/snapshots/H.yaml" />
+	</node>
+	
+	<node pkg="snapshotter" type="birdseye_filter.py" name="birdseye_pros" output="screen">
+	    <param name="input" value="snapshot_pros_output" />
+	    <param name="output" value="birdseye_output" />
+
+	    <param name="cols" value="5" />
+	    <param name="rows" value="4" />
+        <!-- height: -15 good for wide, -25 good for narrow, -40 good for prosilica -->
+	    <param name="init_height" value="-38" />
 	</node>
 	
 
@@ -20,8 +38,14 @@
 	    <param name="streaming" value="true" />
 	</node>
 	
-	<node pkg="snapshotter" type="snapshot_saver.py" name="raw_saver" output="screen">
-	    <param name="input" value="snapshot_output" />
+	<node pkg="snapshotter" type="snapshot_saver.py" name="raw_wide_saver" output="screen">
+	    <param name="input" value="snapshot_wide_output" />
+	    <param name="default_filepath" value="~/snapshots" />
+	    <param name="streaming" value="true" />
+	</node>
+	
+	<node pkg="snapshotter" type="snapshot_saver.py" name="raw_pros_saver" output="screen">
+	    <param name="input" value="snapshot_pros_output" />
 	    <param name="default_filepath" value="~/snapshots" />
 	    <param name="streaming" value="true" />
 	</node>
