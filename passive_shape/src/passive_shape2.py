@@ -24,10 +24,15 @@ SHOW_UNSCALED_MODEL = False
 SHOW_SCALED_MODEL = False
 SHOW_POINTS = False
 SHOW_ITER = True
+SYMM_OPT = False
 SHOW_SYMM_MODEL = False
 SHOW_OPT = True
+SAVE_ITERS = True
 SAVE = True
+SAVE_MODEL = True
 FINE_TUNE = False
+SHOW_FITTED = False
+
 
 INV_CONTOUR = True
 CONTOURS_ONLY = False
@@ -62,6 +67,8 @@ class PassiveShapeMaker:
         cv.CreateTrackbar( "Threshold", "Result", self.slider_pos, 255, self.process_image )
         if ANNOTATE:
             self.anno_path = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.anno"
+        if SAVE_MODEL:
+            self.save_model_path = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.pickle"
         self.process_image(self.slider_pos)
         if SAVE:
             savepath = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.png"
@@ -79,6 +86,11 @@ class PassiveShapeMaker:
             print "MODEL IS ILLEGAL"
             return
         #self.model = modelClass.vertices_full()
+        
+    def save_model(self,model):
+        model_dest = open(self.save_model_path,'w')
+        pickle.dump(model,model_dest)
+        model_dest.close()
         
     def get_model_contour(self):
         return self.model.vertices_full()
@@ -172,6 +184,9 @@ class PassiveShapeMaker:
  
         if SHOW_SCALED_MODEL:
             self.model.draw_to_image(self.image2,cv.CV_RGB(0,0,255))
+            print "With penalty of: %f"%self.model.structural_penalty()
+            cv.ShowImage("Result",self.image2)
+            cv.WaitKey()
   
         #Energy calculation
         print "Energy is: %f"%self.energy_fxn(self.model,shape_contour)
@@ -179,12 +194,15 @@ class PassiveShapeMaker:
         sparse_shape_contour = self.make_sparse(shape_contour,1000)
             
         #Optimize
-        new_model_symm = self.model
-        #new_model_symm = black_box_opt(model=self.model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 100,delta=25.0,epsilon = 0.01) 
+        
+        if SYMM_OPT:
+            new_model_symm = black_box_opt(model=self.model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 3,delta=25.0,epsilon = 0.01) 
+        else:
+            new_model_symm = self.model    
         if SHOW_SYMM_MODEL:
             new_model_symm.draw_to_image(img=self.image2,color=cv.CV_RGB(0,255,0))
-
-        new_model_asymm = black_box_opt(model=new_model_symm.make_asymm(),contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=35.0,exploration_factor=3.0,fine_tune=False)
+        model=new_model_symm.make_asymm()
+        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=model.preferred_delta(),exploration_factor=1.5,fine_tune=False)
         final_model = new_model_asymm
         #new_model_free = black_box_opt(model=new_model_asymm.free(),contour=shape_contour,energy_fxn = self.energy_fxn,num_iters=50,delta=5.0,exploration_factor=1.5)  
         #final_model = new_model_free
@@ -194,8 +212,17 @@ class PassiveShapeMaker:
             nearest_pt = min(shape_contour,key=lambda pt: distance(pt,vert))
             self.highlight_pt(nearest_pt,cv.CV_RGB(255,255,255))
             nearest_pts.append(nearest_pt)
+        if SHOW_FITTED:
+            fitted_model = Models.Point_Model_Contour_Only_Asymm(*nearest_pts)
+            fitted_model.draw_to_image(img=self.image2,color=cv.CV_RGB(0,255,255))
         if ANNOTATE:
             annotator.write_anno(nearest_pts,self.anno_path)
+        if SAVE_MODEL:
+            if SHOW_FITTED:
+                self.save_model(fitted_model)
+            else:
+                final_model.set_image(None)
+                self.save_model(final_model)
         if SAVE:
             return
         cv.ShowImage("Result",self.image2)
@@ -320,6 +347,7 @@ def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilo
     #epsilon = delta / 100.0
     epsilon = 0.001
     score = -1 * energy_fxn(model,contour)
+    print "Initial score was %f"%score
     params = model.params()
     deltas = [delta for p in params]
     if(SHOW_OPT):
@@ -350,6 +378,8 @@ def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilo
         if(SHOW_OPT):
             img = cv.CloneImage(model.image)
             model.from_params(params).draw_to_image(img,cv.CV_RGB(255,0,0))
+            if SAVE_ITERS:
+                cv.SaveImage("iter_%d.png"%it,img)
             cv.ShowImage("Optimizing",img)
             cv.WaitKey(50)
         if max([abs(d) for d in deltas]) < epsilon:
