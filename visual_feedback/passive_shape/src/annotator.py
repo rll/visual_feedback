@@ -27,7 +27,7 @@ class Annotator:
         self.background = self.normalize_image(img)
         self.clearImage()
         cv.NamedWindow("Annotator",1)
-        self.thresh = 150
+        self.thresh = 250
         cv.CreateTrackbar( "Threshold", "Annotator", self.thresh, 255, self.get_contours )
         self.showImage()
         

@@ -18,6 +18,9 @@ def pt_sum(pt1,pt2):
 def pt_diff(pt1,pt2):
     return (pt1[0]-pt2[0],pt1[1]-pt2[1])
     
+def pt_distance(pt1,pt2):
+    return vect_length(pt_diff(pt1,pt2))
+    
 def pt_scale(pt,scale):
     return (pt[0]*scale,pt[1]*scale)
     
@@ -91,7 +94,8 @@ def feq(a,b):
     return abs(a-b) <= 0.001
 
 def seg_contains(seg,pt):
-
+    if len(seg) == 2:
+        return True
     if pt_eq(pt,seg[2]) or pt_eq(pt,seg[3]):
         return False
     pt = pt_diff(pt,line_offset(seg))

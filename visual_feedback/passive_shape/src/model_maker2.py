@@ -61,7 +61,7 @@ class ModelMaker(ShapeWindow):
             self.top_center = None
             self.mid_left = None
             self.left_leg_bottom = None
-            self.lefT_leg_left = None
+            self.left_leg_left = None
         clearShapesButton = CVButton(text="CLEAR",bottomLeft=Geometry2D.Point(50,100), onClick=self.clearAll)
         self.addOverlay(clearShapesButton)
         saveModelButton = CVButton(text="SAVE MODEL",bottomLeft=Geometry2D.Point(150,100), onClick = self.saveModel)
