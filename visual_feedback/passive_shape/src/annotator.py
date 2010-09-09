@@ -67,8 +67,7 @@ class Annotator:
         return abs(cv.ContourArea(contour))
     
     def handleEvents(self,event,x,y,flags,param):
-        if event==cv.CV_EVENT_LBUTTONUP or event==cv.CV_EVENT_RBUTTONUP or event==cv.CV_EVENT_MBUTTONUP:
-            (x,y) = self.snap((x,y))
+        (x,y) = self.snap((x,y))
         if event==cv.CV_EVENT_LBUTTONUP:
             self.pts.append((x,y))
             self.t.append(True)
@@ -97,6 +96,8 @@ class Annotator:
                 self.writeAnno()
                 cv.DestroyWindow("Annotator")
                 self.open = False
+        else:
+            self.temp_highlight((x,y),False)
     
     def snap(self,pt):
         return min(self.contour, key = lambda c_pt: self.distance(pt,c_pt))
@@ -112,6 +113,12 @@ class Annotator:
         else:
             color = cv.CV_RGB(0,255,255)
         cv.Circle(self.img,pt,2,color,-1)
+        
+    def temp_highlight(self,pt,landmark=True):
+        color = cv.CV_RGB(0,255,255)
+        newimg = cv.CloneImage(self.img)
+        cv.Circle(newimg,pt,2,color,-1)
+        cv.ShowImage("Annotator",newimg)
             
     def showImage(self):
         cv.ShowImage("Annotator",self.img)

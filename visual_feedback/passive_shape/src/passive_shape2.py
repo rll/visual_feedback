@@ -23,11 +23,11 @@ SHOW_CONTOURS = True
 SHOW_UNSCALED_MODEL = False
 SHOW_SCALED_MODEL = False
 SHOW_POINTS = False
-SHOW_ITER = True
-SYMM_OPT = False
+SHOW_ITER = False
+SYMM_OPT = True
 SHOW_SYMM_MODEL = False
-SHOW_OPT = True
-SAVE_ITERS = True
+SHOW_OPT = False
+SAVE_ITERS = False
 SAVE = True
 SAVE_MODEL = True
 FINE_TUNE = False
@@ -202,7 +202,7 @@ class PassiveShapeMaker:
         if SHOW_SYMM_MODEL:
             new_model_symm.draw_to_image(img=self.image2,color=cv.CV_RGB(0,255,0))
         model=new_model_symm.make_asymm()
-        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=model.preferred_delta(),exploration_factor=1.5,fine_tune=False)
+        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=model.preferred_delta(),exploration_factor=1.5,fine_tune=FINE_TUNE)
         final_model = new_model_asymm
         #new_model_free = black_box_opt(model=new_model_asymm.free(),contour=shape_contour,energy_fxn = self.energy_fxn,num_iters=50,delta=5.0,exploration_factor=1.5)  
         #final_model = new_model_free
@@ -387,7 +387,7 @@ def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilo
             break
     if fine_tune:
         print "FINE_TUNING"
-        return black_box_opt(model.from_params(params),contour,energy_fxn,delta,num_iters,epsilon*10,exploration_factor*2,fine_tune=FINE_TUNE)
+        return black_box_opt(model.from_params(params),contour,energy_fxn,delta,num_iters,epsilon*10,exploration_factor*2,fine_tune=False)
     return model.from_params(params)
         
 def l2_norm(val):
