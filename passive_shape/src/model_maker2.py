@@ -24,7 +24,7 @@ ASYMM = 0
 SYMM = 1
 SKEL = 2
 PANTS_SKEL = 3
-TYPE = SKEL
+TYPE = PANTS_SKEL
 
 class ModelMaker(ShapeWindow):
     
@@ -445,10 +445,17 @@ class ModelMaker(ShapeWindow):
             )
     def getModelPantsSkel(self):
         #Parameters: mid_center,top_center,mid_left,left_leg_center,left_leg_left
+        
         return Models.Model_Pants_Skel(True,
             self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
             self.left_leg_center.toTuple(), self.left_leg_left.toTuple()
         )
+        """
+        return Models.Model_Pants_Skel_Extended(True,
+            self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
+            self.left_leg_center.toTuple(), self.left_leg_left.toTuple(),self.top_left.toTuple()
+        )
+        """
 
     
 def main(args):
