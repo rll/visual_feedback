@@ -9,6 +9,8 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/visual_feedback_utils</url>
   <depend package="rospy"/>
+  <depend package="opencv2"/>
+  <depend package="roscpp"/>
   
 </package>
 
