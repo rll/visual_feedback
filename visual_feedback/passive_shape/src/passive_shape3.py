@@ -65,12 +65,12 @@ class PassiveShapeMaker:
         cv.NamedWindow("Source",1)
         cv.NamedWindow("Result",1)
         cv.ShowImage("Source",image_raw)
-        cv.CreateTrackbar( "Threshold", "Result", self.slider_pos, 255, self.process_image )
+        cv.CreateTrackbar( "Threshold", "Result", self.slider_pos, 255, lambda n: n )
         if ANNOTATE:
             self.anno_path = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.anno"
         if SAVE_MODEL:
             self.save_model_path = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.pickle"
-        self.process_image(self.slider_pos)
+        self.process_image()
         if SAVE:
             savepath = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.png"
             cv.SaveImage(savepath,self.image_out)
@@ -99,12 +99,10 @@ class PassiveShapeMaker:
     def get_dense_model_contour(self):
         return self.model.vertices_dense(constant_length=False,density=20)
         
-    def process_image(self,thresh):
-        storage = cv.CreateMemStorage(0)
-        
+    def process_image(self):
         self.image_out = cv.CloneImage( self.image_raw )
-        
         shape_contour = thresholding.get_contour(self.image_raw,bg_mode=thresholding.WHITE_BG)
+        
         if SHOW_CONTOURS:
             cv.DrawContours(self.image_out,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,1,8,(0,0))
         if CONTOURS_ONLY:
