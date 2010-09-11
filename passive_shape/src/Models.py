@@ -90,14 +90,23 @@ class Model:
             contour = contour.h_next()
         
         return make_sparse(max_contour,num_pts)
+
+    def center(self):
+        xs = [x for (x,y) in self.vertices_full()]
+        ys = [y for (x,y) in self.vertices_full()]
+        min_x = min(xs)
+        min_y = min(ys)
+        max_x = max(xs)
+        max_y = max(ys)
+        return (0.5*(min_x + max_x),0.5*(min_y + max_y))
         
     def translate(self,trans):
         abstract
         
-    def rotate(self,angle,origin=(0,0)):
+    def rotate(self,angle,origin=None):
         abstract
         
-    def scale(self,amt,origin=(0,0)):
+    def scale(self,amt,origin=None):
         abstract
     
     def params(self):
@@ -144,8 +153,13 @@ class Model:
     #Introduces a penalty given structural constraints
     def structural_penalty(self):
         abstract
+        
+    #
+    def make_tunable(self):
+        return self
             
-                
+    def final(self):
+        return self   
 
     def illegal(self):
         return False
@@ -153,7 +167,12 @@ class Model:
 #Abstract class for a model which is fully defined by its points (i.e., has no other parameters like symmline)
 class Point_Model(Model):
     def __init__(self,*vertices_and_params):
-        assert len(vertices_and_params) == len(self.variable_pt_names()) + len(self.variable_param_names())
+        
+        try:
+            assert len(vertices_and_params) == len(self.variable_pt_names()) + len(self.variable_param_names())
+        except Exception,e:
+            print "Only given %d params for %d variable_pts and %d variable_params"%(len(vertices_and_params),len(self.variable_pt_names()),len(self.variable_param_names()))
+            assert False
         vertices = vertices_and_params[:len(self.variable_pt_names())]
         params = vertices_and_params[len(self.variable_pt_names()):]
         self.vertices = list(vertices)
@@ -167,7 +186,8 @@ class Point_Model(Model):
         return {}
     
     def variable_param_names(self):
-        return []    
+        return []
+        
     
     
     def __getattr__(self,attr):
@@ -182,14 +202,20 @@ class Point_Model(Model):
         #print "Couldn't find attr %s"%attr
         #return Model.__getattr__(self,attr)
         raise AttributeError, attr
+        
+
                 
     def translate(self,trans):
         self.vertices = translate_pts(self.vertices,trans)
         
-    def rotate(self,angle,origin=(0,0)):
+    def rotate(self,angle,origin=None):
+        if not origin:
+            origin = self.center()
         self.vertices = rotate_pts(self.vertices,angle,origin)
         
-    def scale(self,amt,origin=(0,0)):
+    def scale(self,amt,origin=None):
+        if not origin:
+            origin = self.center()
         self.vertices = scale_pts(self.vertices,amt,origin)
     
     #Parameters are all of my vertices plus all of my other parameters
@@ -274,7 +300,8 @@ class Point_Model_Contour_Only_Asymm(Point_Model):
         Point_Model.__init__(self,*vertices_and_params)
         
     def variable_pt_names(self):
-        return ["pt_%d"%i for i in range(self.num_variable_pts)]
+        #return ["pt_%d"%i for i in range(self.num_variable_pts)]
+        return ["pt_%d"%i for i in range(13)]
         
     def vertices_full(self):
         return self.vertices
@@ -351,6 +378,72 @@ class Point_Model_Folded(Point_Model):
         myclone = self.__class__(self.initial_model,*init_args[0])
         myclone.set_image(self.image)
         return myclone
+"""
+
+class Orient_Model(Point_Model):
+    def __init__(self,initial_model,*params):
+        self.initial_model = initial_model
+        self.image = initial_model.image
+        Point_Model.__init__(self,*params)
+        
+    def vertices_full(self):
+        return self.transformed_model().vertices_full()
+    
+    def displacement(self):
+        return (self.x_displacement(),self.y_displacement())
+    
+    def variable_param_names(self):
+        return["angle"]
+        #return ["x_displacement","y_displacement","angle","scale_amt"]
+    
+    def structural_penalty(self):
+        if abs(self.angle()-pi/2) > pi/4:
+            return 1
+        else:
+            return 0
+    
+    def x_displacement(self):
+        return 0
+    
+    def y_displacement(self):
+        return 0
+    
+    def scale_amt(self):
+        return 1
+        
+    def preferred_delta(self):
+        return 0.1
+        
+    def transformed_model(self):
+        model_new = self.initial_model.from_params(self.initial_model.params())
+        model_new.translate(self.displacement())
+        model_new.rotate(self.angle()-pi/2,model_new.center())
+        model_new.scale(self.scale_amt())
+        return model_new
+        
+    def clone(self,init_args):
+        myclone = self.__class__(self.initial_model,*init_args)
+        myclone.set_image(self.image)
+        return myclone
+"""        
+class Fine_Tune_Model(Point_Model):
+    def __init__(self,initial_model,tunable_indices,*params):
+        self.initial_model = initial_model
+        self.image = initial_model.image
+        self.initial_vertices_full = initial_model.vertices_full()
+        self.tunable_indices = tunable_indices
+        Point_Model.__init__(self,*params)
+        
+    def vertices_full(self):
+        init_value = self.initial_vertices_full
+        for i in self.tunable_indices:
+            init_value[i] = self.__getattr__("pt_%d"%i)
+        
+    def variable_pt_names(self):
+        return ["pt_%d"%i for i in self.tunable_indices]
+     
+    def structural_penalty(self):
+        return self.in
 """
 # A model which is defined by fixed points and one foldline  
 class Point_Model_Folded(Point_Model):
@@ -546,6 +639,18 @@ class Point_Model_Variable_Symm(Point_Model):
 # Defining some models
 ###
 
+class Model_Towel(Point_Model_Variable_Symm):
+    def vertices_full(self):
+        return [self.bottom_left(),self.top_left(),self.top_right(),self.bottom_right()]
+        
+    def symmetric_variable_pt_names(self):
+        return ["bottom_left","top_left","top_right","bottom_right"]
+        
+    def axis_of_symmetry(self):
+        return make_ln_from_pts(pt_scale(pt_sum(self.bottom_left(),self.bottom_right()),0.5),pt_scale(pt_sum(self.top_left(),self.top_right()),0.5))
+
+
+
 class Model_Pants_Skel(Point_Model_Variable_Symm):
 
         
@@ -585,7 +690,19 @@ class Model_Pants_Skel(Point_Model_Variable_Symm):
         return translate_pt(self.mid_right(),displ)
         
     def allow_intersections(self):
-        return True
+        return False
+        
+    def structural_penalty(self):
+        penalty = Point_Model_Variable_Symm.structural_penalty(self)
+        """
+        penalty += self.constrain(pt_distance(self.mid_left(),self.mid_right()),pt_distance(self.top_left(),self.top_right()),UPPER,0.0)
+        if seg_intercept(make_seg(self.top_left(),self.left_leg_left()),make_seg(self.mid_left(),self.mid_right())):
+            penalty += 1
+        if seg_intercept(make_seg(self.top_right(),self.right_leg_right()),make_seg(self.mid_left(),self.mid_right())):
+            penalty += 1
+        """
+        return penalty
+        
         
     def draw_to_image(self,img,color):
         Point_Model_Variable_Symm.draw_to_image(self,img,color)
@@ -602,6 +719,12 @@ class Model_Pants_Skel(Point_Model_Variable_Symm):
         self.draw_line(img,self.mid_left(),self.left_leg_center(),color)
         self.draw_line(img,self.mid_right(),self.right_leg_center(),color)
         
+      
+class Model_Pants_Contour_Only(Point_Model_Contour_Only_Asymm):
+
+    def variable_pt_names(self):
+        #return ["pt_%d"%i for i in range(self.num_variable_pts)]
+        return ["pt_%d"%i for i in range(7)]
 
         
 class Model_Pants_Skel_Extended(Model_Pants_Skel):
@@ -630,6 +753,9 @@ class Model_Pants_Skel_Extended(Model_Pants_Skel):
         penalty = Model_Pants_Skel.structural_penalty(self)
         #penalty += self.constrain( pt_distance(pt_scale(pt_sum(self.top_left(),self.top_right()),0.5),self.top_center()),pt_distance(self.top_center(),self.top_left())*0.15,UPPER,0.0)    
         return penalty
+        
+
+
 
 #Generic class which makes no assertions about what the variable points are
 class Model_Shirt_Generic(Point_Model_Variable_Symm):
@@ -709,10 +835,90 @@ class Model_Shirt_Generic(Point_Model_Variable_Symm):
         self.draw_line(img,self.right_shoulder_top(),self.right_armpit(),color)
         self.draw_line(img,self.left_shoulder_top(),self.left_armpit(),color)
         
-    
+        
+    def illegal(self):
+        return Point_Model_Variable_Symm.illegal(self)
+
+class Model_Tee_Generic(Model_Shirt_Generic):
     def structural_penalty(self):
         penalty = 0
-        penalty += Point_Model_Variable_Symm.structural_penalty(self)
+        penalty += Model_Shirt_Generic.structural_penalty(self)
+        
+        #Compute a few useful values
+        spine_axis = pt_diff(self.spine_top(),self.spine_bottom())
+        horiz_axis = pt_diff(self.right_shoulder_joint(),self.left_shoulder_joint())
+        l_shoulder_axis = pt_diff(self.left_shoulder_top(),self.left_armpit())
+        r_shoulder_axis = pt_diff(self.right_shoulder_top(),self.right_armpit())
+        l_side_axis = pt_diff(self.left_armpit(),self.bottom_left())
+        r_side_axis = pt_diff(self.right_armpit(),self.bottom_right())
+        l_sleeve_axis = pt_diff(self.left_shoulder_joint(),self.left_sleeve_center())
+        r_sleeve_axis = pt_diff(self.right_shoulder_joint(),self.right_sleeve_center())
+        l_sleeve_side = pt_diff(self.left_sleeve_top(),self.left_sleeve_bottom())
+        r_sleeve_side = pt_diff(self.right_sleeve_top(),self.right_sleeve_bottom())
+        bottom_axis = pt_diff(self.bottom_left(),self.bottom_right())
+        l_collar_side = pt_diff(self.left_collar(),self.spine_top())
+        r_collar_side = pt_diff(self.right_collar(),self.spine_top())
+        ANGULAR_SIGMA = 0.0
+        DOT_PROD_SIGMA = 0.0
+        PROPORTIONAL_SIGMA = 0.0
+        penalty += self.constrain(angle_between(l_side_axis,l_shoulder_axis),pi/8,UPPER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(r_side_axis,r_shoulder_axis),pi/8,UPPER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(spine_axis,horiz_axis),3*pi/8,LOWER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(spine_axis,horiz_axis),5*pi/8,UPPER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(l_shoulder_axis,spine_axis),pi/15,UPPER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(r_shoulder_axis,spine_axis),pi/15,UPPER,ANGULAR_SIGMA)
+        penalty += self.constrain(vect_length(l_shoulder_axis)/vect_length(horiz_axis),0.1,LOWER,PROPORTIONAL_SIGMA)
+        penalty += self.constrain(vect_length(r_shoulder_axis)/vect_length(horiz_axis),0.1,LOWER,PROPORTIONAL_SIGMA)
+        penalty += self.constrain(dot_prod(self.shoulder_spine_junction(),spine_axis),dot_prod(self.spine_top(),spine_axis),UPPER,DOT_PROD_SIGMA)
+        penalty += self.constrain(dot_prod(self.left_shoulder_joint(),horiz_axis),dot_prod(self.right_shoulder_joint(),horiz_axis),UPPER,DOT_PROD_SIGMA)
+        penalty += self.constrain(dot_prod(self.right_armpit(),spine_axis),dot_prod(self.right_shoulder_joint(),spine_axis),UPPER,DOT_PROD_SIGMA)
+        penalty += self.constrain(dot_prod(self.left_armpit(),spine_axis),dot_prod(self.left_shoulder_joint(),spine_axis),UPPER,DOT_PROD_SIGMA)
+        penalty += self.constrain(dot_prod(self.bottom_left(),horiz_axis),dot_prod(self.bottom_right(),horiz_axis),UPPER,DOT_PROD_SIGMA)
+        #Make sleeve widths proportional
+        penalty += self.constrain(vect_length(l_sleeve_side)/vect_length(r_sleeve_side),0.8,LOWER,PROPORTIONAL_SIGMA)
+        penalty += self.constrain(vect_length(l_sleeve_side)/vect_length(r_sleeve_side),1.2,UPPER,PROPORTIONAL_SIGMA)
+        
+        #Sleeve width can't be more than half its length for sweaters
+        #penalty += self.constrain(vect_length(l_sleeve_side)/vect_length(l_sleeve_axis),0.75,UPPER,PROPORTIONAL_SIGMA)
+        #penalty += self.constrain(vect_length(r_sleeve_side)/vect_length(r_sleeve_axis),0.75,UPPER,PROPORTIONAL_SIGMA)
+        
+        #Make collar go upwards
+        penalty += self.constrain(dot_prod(self.left_collar(),spine_axis),dot_prod(self.spine_top(),spine_axis),LOWER,DOT_PROD_SIGMA)
+        penalty += self.constrain(dot_prod(self.right_collar(),spine_axis),dot_prod(self.spine_top(),spine_axis),LOWER,DOT_PROD_SIGMA)
+        penalty += self.constrain(dot_prod(self.left_collar(),horiz_axis),dot_prod(self.right_collar(),horiz_axis),UPPER,DOT_PROD_SIGMA)
+
+        #Constrain bottom corners to be roughly 90 degrees
+        penalty += self.constrain(angle_between(l_side_axis,bottom_axis),3*pi/8,LOWER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(l_side_axis,bottom_axis),5*pi/8,UPPER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(r_side_axis,bottom_axis),3*pi/8,LOWER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(r_side_axis,bottom_axis),5*pi/8,UPPER,ANGULAR_SIGMA)
+        #Sleeve angles should be close to 90 degrees
+        penalty += self.constrain(angle_between(l_sleeve_axis,l_sleeve_side),2*pi/8,LOWER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(l_sleeve_axis,l_sleeve_side),6*pi/8,UPPER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(r_sleeve_axis,r_sleeve_side),2*pi/8,LOWER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(r_sleeve_axis,r_sleeve_side),6*pi/8,UPPER,ANGULAR_SIGMA)
+        #Don't let the sleeve collapse
+        penalty += self.constrain(angle_between(l_sleeve_axis,l_side_axis),pi/8,LOWER,ANGULAR_SIGMA)
+        penalty += self.constrain(angle_between(r_sleeve_axis,r_side_axis),pi/8,LOWER,ANGULAR_SIGMA)
+        #Make sleeve angles similar
+        #penalty += self.constrain(angle_between(l_sleeve_axis,l_sleeve_side),angle_between(r_sleeve_axis,r_sleeve_side)+pi/12,UPPER,ANGULAR_SIGMA)
+        #penalty += self.constrain(angle_between(l_sleeve_axis,l_sleeve_side),angle_between(r_sleeve_axis,r_sleeve_side)-pi/12,LOWER,ANGULAR_SIGMA)
+        #Make shoulder always below collar
+        penalty += self.constrain(dot_prod(self.left_shoulder_top(),spine_axis),dot_prod(self.left_collar(),spine_axis),UPPER,PROPORTIONAL_SIGMA)
+        penalty += self.constrain(dot_prod(self.right_shoulder_top(),spine_axis),dot_prod(self.right_collar(),spine_axis),UPPER,PROPORTIONAL_SIGMA)
+        #Make distance from armpit to shoulder at least as great as sleeve width
+        penalty += self.constrain(vect_length(l_shoulder_axis),0.75*vect_length(l_sleeve_side),LOWER,DOT_PROD_SIGMA)
+        penalty += self.constrain(vect_length(r_shoulder_axis),0.75*vect_length(r_sleeve_side),LOWER,DOT_PROD_SIGMA)
+
+        #Make the center be roughtly...well...centered
+        penalty += self.constrain(pt_distance(self.left_shoulder_top(),self.spine_top()) / pt_distance(self.right_shoulder_top(),self.spine_top()),0.5,LOWER,PROPORTIONAL_SIGMA)
+        penalty += self.constrain(pt_distance(self.left_shoulder_top(),self.spine_top()) / pt_distance(self.right_shoulder_top(),self.spine_top()),1.5,UPPER,PROPORTIONAL_SIGMA)
+        return penalty
+
+class Model_Long_Shirt_Generic(Model_Shirt_Generic):
+    def structural_penalty(self):
+        penalty = 0
+        penalty += Model_Shirt_Generic.structural_penalty(self)
         
         #Compute a few useful values
         spine_axis = pt_diff(self.spine_top(),self.spine_bottom())
@@ -788,14 +994,154 @@ class Model_Shirt_Generic(Point_Model_Variable_Symm):
         #Make the center be roughtly...well...centered
         penalty += self.constrain(pt_distance(self.left_shoulder_top(),self.spine_top()) / pt_distance(self.right_shoulder_top(),self.spine_top()),0.5,LOWER,PROPORTIONAL_SIGMA)
         penalty += self.constrain(pt_distance(self.left_shoulder_top(),self.spine_top()) / pt_distance(self.right_shoulder_top(),self.spine_top()),1.5,UPPER,PROPORTIONAL_SIGMA)
+        #Make sure the sleeve doesn't collapse
+        penalty += self.constrain(pt_distance(self.left_sleeve_top(),self.left_shoulder_top())/pt_distance(self_left_sleeve_bottom(),self.left_armpit()),0.66,LOWER,PROPORTIONAL_SIGMA)
+        penalty += self.constrain(pt_distance(self.left_sleeve_top(),self.left_shoulder_top())/pt_distance(self_left_sleeve_bottom(),self.left_armpit()),1.5,UPPER,PROPORTIONAL_SIGMA)
         return penalty
 
+class Model_Tee_Skel(Model_Tee_Generic):
+     
+    def symmetric_variable_pt_names(self):
+        return ["spine_bottom","spine_top","left_collar","left_shoulder_joint","left_shoulder_top","left_sleeve_center","left_sleeve_top","bottom_left"]
         
-    def illegal(self):
-        return Point_Model_Variable_Symm.illegal(self)
+    def mirrored_pts(self):
+        return {"left_shoulder_joint":"right_shoulder_joint","left_shoulder_top":"right_shoulder_top","left_sleeve_center":"right_sleeve_center","left_sleeve_top":"right_sleeve_top","left_collar":"right_collar"}
 
-class Model_Shirt_Skel(Model_Shirt_Generic):
+    def relative_pts(self):
+        return {"left_collar":"spine_top","left_shoulder_top":"left_shoulder_joint","right_shoulder_top":"right_shoulder_joint",
+        "left_sleeve_top":"left_sleeve_center","right_sleeve_top":"right_sleeve_center","bottom_left":"spine_bottom","bottom_right":"spine_bottom"}
+
+    def allow_intersections(self):
+        return False
+        
+    def left_sleeve_bottom(self):
+        #(dx,dy) = pt_diff(self.left_sleeve_center(),self.left_sleeve_top())
+        #return pt_sum(self.left_sleeve_center(),(dx,dy))
+        ln = perpendicular(make_ln_from_pts(self.left_sleeve_top(),self.left_sleeve_center()),self.left_sleeve_center())
+        return mirror_pt(self.left_sleeve_top(),ln)
+           
+    def right_sleeve_bottom(self):
+        #(dx,dy) = pt_diff(self.right_sleeve_center(),self.right_sleeve_top())
+        #return pt_sum(self.right_sleeve_center(),(dx,dy))
+        ln = perpendicular(make_ln_from_pts(self.right_sleeve_top(),self.right_sleeve_center()),self.right_sleeve_center())
+        return mirror_pt(self.right_sleeve_top(),ln)
+        
+    #def bottom_left(self):
+    #    return pt_sum(self.spine_bottom(),pt_diff(self.left_shoulder_joint(),self.shoulder_spine_junction()))
+        
+    def preferred_delta(self):
+        return 10.0
+        
+class Model_Tee_Skel_No_Skew(Model_Tee_Skel):
+    def symmetric_variable_pt_names(self):
+        return ["spine_bottom","spine_top","left_collar","left_shoulder_joint","left_shoulder_top","left_sleeve_center","bottom_left"]
     
+    def symmetric_variable_param_names(self):
+        return ["left_sleeve_width"]
+    
+    def mirrored_pts(self):
+        return {"left_shoulder_joint":"right_shoulder_joint","left_shoulder_top":"right_shoulder_top","left_sleeve_center":"right_sleeve_center","left_collar":"right_collar"}
+        
+    def mirrored_params(self):
+        return {"left_sleeve_width":"right_sleeve_width"}
+        
+    def left_sleeve_axis(self):
+        angle = self.left_sleeve_angle()
+        
+        horiz_axis = make_ln_from_pts(self.left_shoulder_joint(),self.shoulder_spine_junction())
+        straight_pt = extrapolate(horiz_axis,-1)
+        new_pt = rotate_pt(straight_pt,-1*angle,self.left_shoulder_joint())
+        return make_ln_from_pts(self.left_shoulder_joint(),new_pt)
+        
+    def right_sleeve_axis(self):
+        angle = self.right_sleeve_angle()
+        
+        horiz_axis = make_ln_from_pts(self.right_shoulder_joint(),self.shoulder_spine_junction())
+        straight_pt = extrapolate(horiz_axis,-1)
+        new_pt = rotate_pt(straight_pt,angle,self.right_shoulder_joint())
+        return make_ln_from_pts(self.right_shoulder_joint(),new_pt)
+    """
+    def left_sleeve_center(self):
+        return extrapolate(self.left_sleeve_axis(),abs(self.left_sleeve_length()))
+    
+    def right_sleeve_center(self):
+        return extrapolate(self.right_sleeve_axis(),abs(self.right_sleeve_length()))
+    """    
+    def left_sleeve_top(self):
+        straight_pt = extrapolate(self.left_sleeve_axis(),abs(self.left_sleeve_length()) + abs(self.left_sleeve_width())/2.0)
+        return rotate_pt(straight_pt,pi/2,self.left_sleeve_center())
+        
+    def right_sleeve_top(self):
+        straight_pt = extrapolate(self.right_sleeve_axis(),abs(self.right_sleeve_length()) + abs(self.right_sleeve_width())/2.0)
+        return rotate_pt(straight_pt,-pi/2,self.right_sleeve_center())   
+        
+    def left_sleeve_angle(self):
+        return angle_between(pt_diff(self.left_shoulder_joint(),self.shoulder_spine_junction()),pt_diff(self.left_sleeve_center(),self.left_shoulder_joint()))
+        
+    def right_sleeve_angle(self):
+        return angle_between(pt_diff(self.right_shoulder_joint(),self.shoulder_spine_junction()),pt_diff(self.right_sleeve_center(),self.right_shoulder_joint()))
+        
+    def left_sleeve_length(self):
+        return pt_distance(self.left_sleeve_center(),self.left_shoulder_joint())
+    def right_sleeve_length(self):
+        return pt_distance(self.right_sleeve_center(),self.right_shoulder_joint())
+        
+    def make_tunable(self):
+        init_model = self
+        return Model_Tee_Tunable(init_model,self.left_armpit(),self.left_sleeve_bottom(),self.left_sleeve_top(),self.right_armpit(),self.right_sleeve_bottom(),self.right_sleeve_top())
+
+class Model_Tee_Tunable(Model_Tee_Generic):
+    def __init__(self,init_model,*pts):
+        self.initial_model = init_model
+        self.image = init_model.image
+        Model_Tee_Generic.__init__(self,False,*pts)
+        
+    def symmetric_variable_pt_names(self):
+        return ["left_armpit","left_sleeve_bottom","left_sleeve_top","right_armpit","right_sleeve_bottom","right_sleeve_top"]
+        
+    def vertices_full(self):
+        return Model_Tee_Generic.vertices_full(self)
+        
+    def symmetric_variable_param_names(self):
+        return []
+        
+    def left_sleeve_bottom(self):
+        return self.__getattr__("left_sleeve_bottom")()
+    def right_sleeve_bottom(self):
+        return self.__getattr__("right_sleeve_bottom")()
+        
+    def left_armpit(self):
+        return self.__getattr__("left_armpit")()
+    def right_armpit(self):
+        return self.__getattr__("right_armpit")()
+    
+    def left_sleeve_center(self):
+        return pt_scale(pt_sum(self.left_sleeve_top(),self.left_sleeve_bottom()),0.5)
+    def right_sleeve_center(self):
+        return pt_scale(pt_sum(self.right_sleeve_top(),self.right_sleeve_bottom()),0.5)
+        
+    def final(self):
+        self.initial_model.image = None
+        self.image = None
+        return self
+        
+    def __getattr__(self,attr):
+        try:
+            val = Model_Tee_Generic.__getattr__(self,attr)
+            return val
+        except Exception,e:
+            #print "Getting attr %s from the initial_model"%attr
+            val = self.initial_model.__getattr__(attr)
+            return val
+            
+    def clone(self,init_args):
+        
+        myclone = self.__class__(self.initial_model,*init_args)
+        myclone.set_image(self.image)
+        return myclone
+
+
+class Model_Shirt_Skel(Model_Long_Shirt_Generic):
      
     def symmetric_variable_pt_names(self):
         return ["spine_bottom","spine_top","left_collar","left_shoulder_joint","left_shoulder_top","left_sleeve_center","left_sleeve_top"]
@@ -811,7 +1157,7 @@ class Model_Shirt_Skel(Model_Shirt_Generic):
         return False
     
         
-class Model_Shirt_Skel_New(Model_Shirt_Generic):
+class Model_Shirt_Skel_New(Model_Long_Shirt_Generic):
                
     def symmetric_variable_pt_names(self):
         return ["spine_bottom","spine_top","left_collar","left_shoulder_joint","left_shoulder_top","left_sleeve_center","left_sleeve_top","bottom_left"]
@@ -932,7 +1278,7 @@ class Model_Shirt_Skel_New(Model_Shirt_Generic):
         return real_model
         
     
-class Model_Shirt_Skel_Restricted(Model_Shirt_Generic):
+class Model_Shirt_Skel_Restricted(Model_Long_Shirt_Generic):
     def symmetric_variable_pt_names(self):
         return ["spine_bottom","spine_top","left_collar","left_shoulder_joint","left_shoulder_top","bottom_left"]
         
@@ -996,7 +1342,7 @@ class Model_Shirt_Skel_Restricted(Model_Shirt_Generic):
                 
         return False
 
-class Model_Shirt_Skel_Less_Restricted(Model_Shirt_Generic):
+class Model_Shirt_Skel_Less_Restricted(Model_Long_Shirt_Generic):
 
     
     def symmetric_variable_pt_names(self):

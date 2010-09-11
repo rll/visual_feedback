@@ -24,7 +24,8 @@ ASYMM = 0
 SYMM = 1
 SKEL = 2
 PANTS_SKEL = 3
-TYPE = PANTS_SKEL
+TEE_SKEL = 4
+TYPE = ASYMM
 
 class ModelMaker(ShapeWindow):
     
@@ -45,7 +46,7 @@ class ModelMaker(ShapeWindow):
             self.has_symmline = False
             self.symmline = None
             self.symmpts = []
-        if TYPE == SKEL:
+        if TYPE == SKEL or TYPE == TEE_SKEL:
             self.mode = 0
             self.spine_bottom = None
             self.spine_top = None
@@ -82,7 +83,7 @@ class ModelMaker(ShapeWindow):
                 return self.symmPolyDrawer(event,x,y,flags,param)
         elif TYPE==ASYMM:
             return self.polyDrawer(event,x,y,flags,param)
-        elif TYPE==SKEL:
+        elif TYPE==SKEL or TYPE==TEE_SKEL:
             return self.skelDrawer(event,x,y,flags,param)
         elif TYPE==PANTS_SKEL:
             return self.pantsSkelDrawer(event,x,y,flags,param)
@@ -390,21 +391,25 @@ class ModelMaker(ShapeWindow):
             model = self.getModelSymm()
         elif TYPE==SKEL:
             model = self.getModelSkel()
+        elif TYPE==TEE_SKEL:
+            model = self.getModelTee()
         elif TYPE==PANTS_SKEL:
             model = self.getModelPantsSkel()
         model.draw_to_image(self.background,cv.RGB(255,0,0))
         if model.illegal() or model.structural_penalty() >= 1.0:
-            print "Model is illegal!"
+            print "Model is illegal, with penalty %f!"%model.structural_penalty()
             self.clearAll()
         else:
             pickle.dump(model,file)
         
     def getModelAsymm(self):
         poly = self.getPolys()[0].getShape()
-        #Due to symmetry, we only need half the points)
         vertices = poly.vertices()
-        tuple_vertices = [v.toTuple() for v in vertices]
-        model = Models.Point_Model_Contour_Only_Asymm(*tuple_vertices)
+        tuple_vertices = tuple([v.toTuple() for v in vertices])
+        #model = Models.Point_Model_Contour_Only_Asymm(*tuple_vertices)
+        model = Models.Model_Pants_Contour_Only(*tuple_vertices)
+        #print len(tuple_vertices)
+        #model = Models.Model_Towel(True,*tuple_vertices)
         return model
     
     def getModelSymm(self):
@@ -443,9 +448,24 @@ class ModelMaker(ShapeWindow):
             self.shoulder_top.toTuple(),self.sleeve_node.toTuple(),self.bottom_left.toTuple(),
             left_sleeve_width
             )
+            
+    def getModelTee(self):
+        left_sleeve_width = Geometry2D.distance(self.sleeve_top,self.sleeve_node)*2
+        return Models.Model_Tee_Skel_No_Skew(True,
+            self.spine_bottom.toTuple(), self.spine_top.toTuple(),
+            self.collar.toTuple(), self.shoulder_joint.toTuple(),
+            self.shoulder_top.toTuple(), self.sleeve_node.toTuple(),self.bottom_left.toTuple(),left_sleeve_width
+            )
+        """    
+        return Models.Model_Tee_Skel(True,
+            self.spine_bottom.toTuple(), self.spine_top.toTuple(),
+            self.collar.toTuple(), self.shoulder_joint.toTuple(),
+            self.shoulder_top.toTuple(), self.sleeve_node.toTuple(),self.sleeve_top.toTuple(),self.bottom_left.toTuple()
+            )
+        """ 
     def getModelPantsSkel(self):
         #Parameters: mid_center,top_center,mid_left,left_leg_center,left_leg_left
-        
+        """
         return Models.Model_Pants_Skel(True,
             self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
             self.left_leg_center.toTuple(), self.left_leg_left.toTuple()
@@ -455,7 +475,7 @@ class ModelMaker(ShapeWindow):
             self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
             self.left_leg_center.toTuple(), self.left_leg_left.toTuple(),self.top_left.toTuple()
         )
-        """
+        
 
     
 def main(args):
