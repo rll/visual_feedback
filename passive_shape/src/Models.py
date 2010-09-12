@@ -470,20 +470,27 @@ class Point_Model_Folded(Point_Model):
 
         init_vertices_full = self.initial_model.vertices_full()
         foldline = self.foldline()
+        foldseg = self.foldseg()
         perp = perpendicular(foldline,line_offset(foldline))
         pts = []
         
         for pt in init_vertices_full:
             if dot_prod(pt,line_vector(perp)) < dot_prod(line_offset(perp),line_vector(perp)):
-                pts.append(mirror_pt(pt,foldline))
+                #Check if I'm within the bounds
+                dot_prods = [dot_prod(p,line_vector(foldline)) for p in (self.fold_top(),self.fold_bottom())]
+                if min(dot_prods) <= dot_prod(pt,line_vector(foldline)) <= max(dot_prods):
+                    pts.append(mirror_pt(pt,foldline))
+                else:
+                    pts.append(pt)
                 #pts.append(pt)
             else:
                 pts.append(pt)
         last_inter = None
         offset = 0
+        dot_prods = [dot_prod(p,line_vector(foldline)) for p in (self.fold_top(),self.fold_bottom())]
         for i,seg in enumerate(self.initial_model.sides()):
-            inter = seg_intercept(seg,foldline)
-            if inter != None:
+            inter = seg_intercept(seg,foldseg)
+            if inter != None and min(dot_prods) <= dot_prod(inter,line_vector(foldline)) <= max(dot_prods):
                 pts.insert(i+offset,inter)
 
                 if last_inter != None:
@@ -505,6 +512,16 @@ class Point_Model_Folded(Point_Model):
       
     def foldline(self):
         return make_ln_from_pts(self.fold_bottom(),self.fold_top())
+        #return make_seg(self.fold_bottom(),self.fold_top())
+    def foldseg(self):
+        return make_ln_from_pts(self.fold_bottom(),self.fold_top())
+           
+    def structural_penalty(self):
+        if cv.PointPolygonTest(self.initial_model.vertices_dense(),self.fold_bottom(),0) >= 0:
+            return 1
+        if cv.PointPolygonTest(self.initial_model.vertices_dense(),self.fold_top(),0) >= 0:
+            return 1
+        return 0
         
     def allow_intersections(self):
         return True
@@ -512,6 +529,8 @@ class Point_Model_Folded(Point_Model):
     def draw_to_image(self,img,color):
         self.draw_line(img,intercept(self.foldline(),horiz_ln(y=0.0)),intercept(self.foldline(),horiz_ln(y=img.height)),color)
         val = [self.draw_point(img,pt,color) for pt in self.vertices_full()]
+        self.draw_point(img,self.fold_bottom(),cv.CV_RGB(0,255,0))
+        self.draw_point(img,self.fold_top(),cv.CV_RGB(0,0,255))
         Point_Model.draw_to_image(self,img,color)
         
     def clone(self,init_args):

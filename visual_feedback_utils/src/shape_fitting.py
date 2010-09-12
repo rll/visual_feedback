@@ -20,7 +20,6 @@ import Models
 import annotator
 import thresholding
 import shape_fitting_utils
-import mlpy
 import random
 
 SHOW_CONTOURS = False
@@ -28,7 +27,7 @@ SHOW_UNSCALED_MODEL = False
 SHOW_SCALED_MODEL = False
 SHOW_ITER = False
 SHOW_SYMM_MODEL = False
-SHOW_OPT = False
+SHOW_OPT = True
 SAVE_ITERS = False
 SHOW_FITTED = False
 
@@ -124,7 +123,7 @@ class ShapeFitter:
         if SHOW_SYMM_MODEL:
            new_model_symm.draw_to_image(img=img_annotated,color=cv.CV_RGB(0,255,0))
         model=new_model_symm.make_asymm()
-        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=model.preferred_delta(),exploration_factor=1.5,fine_tune=False)
+        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=8,delta=model.preferred_delta(),exploration_factor=1.5,fine_tune=False)#FIXME
         
         if self.FINE_TUNE:
             #tunable_model = model_oriented.make_tunable()

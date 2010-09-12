@@ -18,6 +18,7 @@ from shape_fitting_utils import *
 import image_geometry
 import thresholding
 import shape_fitting
+import pickle
 
 SHOW_CONTOURS = False
 SHOW_UNSCALED_MODEL = False
@@ -30,24 +31,41 @@ INV_CONTOUR = True
 CONTOURS_ONLY = False
 NEAREST_EDGE = 3.0
 
-class ShapeFitter(ImageProcessor):
+class ShapeFitterNode(ImageProcessor):
     
     def init_extended(self):
         self.config_dir = "%s/config"%os.path.dirname(os.path.dirname( os.path.realpath( __file__ ) ) )
+        self.load_dir = rospy.get_param("~load_dir",self.config_dir)
+        self.save_dir = rospy.get_param("~save_dir",self.config_dir)
         modelname = rospy.get_param("~model","model")
         self.mode = rospy.get_param("~mode","default")
-        corrected_modelpath = "%s/%s_model.pickle"%(self.config_dir,modelname)
-        self.load_model(corrected_modelpath)
+        self.transform = rospy.get_param("~transform",False)
+        self.matrix_location = "%s/H.yaml"%self.config_dir
+        self.modelpath = "%s/%s"%(self.load_dir,modelname)
+        
         
     def process(self,cv_image,info,image2=None):
-    
+        self.load_model(self.modelpath)
+        if self.transform:
+            H = cv.Load(self.matrix_location)
+            input_image = cv.CloneImage(cv_image)
+            cv.WarpPerspective(input_image,cv_image,H,
+                    cv.CV_INTER_LINEAR+cv.CV_WARP_INVERSE_MAP+cv.CV_WARP_FILL_OUTLIERS)
         #Use the thresholding module to get the contour out
-        shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.WHITE_BG,filter_pr2=True,crop_rect=None)
+        shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True,crop_rect=(93,2,457,290))
         #Use the shape_fitting module to fit the model to the contour
-        fitter = shape_fitting.ShapeFitter()
+        if self.mode=="tee":
+            #fitter = shape_fitting.ShapeFitter(SYMM_OPT=True,ORIENT_OPT=False,FINE_TUNE=False)
+            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False)
+        else:
+            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False)
         image_anno = cv.CloneImage(cv_image)
-        (nearest_pts, final_model, fitted_model) = fitter.fit(model,shape_contour,image_anno)  
-        
+        """
+        if self.mode == "folded":
+            self.model.draw_to_image(image_anno,cv.CV_RGB(255,0,0))
+            return ([self.model.fold_bottom(),self.model.fold_top()],{},image_anno)
+        """
+        (nearest_pts, final_model, fitted_model) = fitter.fit(self.model,shape_contour,image_anno)
         pts = nearest_pts
         
         params = {}
@@ -61,26 +79,56 @@ class ShapeFitter(ImageProcessor):
             params = {"tilt":0.0}
         elif self.mode == "towel":
             return_pts = pts
+        elif self.mode == "tee" or self.mode == "sweater":
+            return_pts = pts[0:5]+pts[8:]
+            params = {}
+        elif self.mode == "folded":
+            return_pts = [final_model.fold_bottom(),final_model.fold_top()]
         else:
             return_pts = pts
             params = {}
+        """    
         if self.mode != "triangles":
             for pt in return_pts:
                 self.highlight_pt(pt,cv.CV_RGB(255,255,255),image_anno)
+        """
+        if self.transform:
+            H_inv = cv.CloneMat(H)
+            cv.Invert(H,H_inv)
+            anno_unchanged = cv.CloneImage(image_anno)
+            cv.WarpPerspective(anno_unchanged,image_anno,H_inv,
+                    cv.CV_INTER_LINEAR+cv.CV_WARP_INVERSE_MAP+cv.CV_WARP_FILL_OUTLIERS)
+            new_return_pts = self.transform_pts(return_pts,H_inv)
+            for i,pt in enumerate(new_return_pts):
+                return_pts[i] = pt
+        if self.mode != "triangles":
+            for pt in return_pts:
+                self.highlight_pt(pt,cv.CV_RGB(255,0,0),image_anno)
+        final_model.set_image(None)
+        pickle.dump(final_model,open("%s/last_model.pickle"%self.save_dir,'w'))
         return (return_pts,params,image_anno)
         
-
+    def transform_pts(self,pts,M): 
+        ptMat = cv.CreateMat(len(pts),1,cv.CV_32FC2)
+        for i,pt in enumerate(pts):
+            ptMat[i,0] = (pt[0],pt[1])
+        returnPtMat = cv.CloneMat(ptMat)
+        cv.PerspectiveTransform(ptMat,returnPtMat,M)
+        return_pts = []
+        for i in range(len(pts)):
+            return_pts.append(returnPtMat[i,0][:2])
+        return return_pts
     def load_model(self,filepath):
         self.model = pickle.load(open(filepath))
         
-    def highlight_pt(self,pt,color=None,image):
+    def highlight_pt(self,pt,color,image):
         if color == None:
             color = cv.CV_RGB(128,128,128)
-        cv.Circle(self.image,pt,5,color,3)
+        cv.Circle(image,pt,5,color,3)
 
 def main(args):
     rospy.init_node("shape_fitter_node")
-    sfn = ShapeFitter()
+    sfn = ShapeFitterNode()
     rospy.spin()
     
 if __name__ == '__main__':
