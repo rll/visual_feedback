@@ -30,6 +30,7 @@ class FoldMaker(ShapeWindow):
         self.input_modelpath = input_modelpath
         self.output_modelpath = output_modelpath
         self.initial_model = pickle.load(open(input_modelpath))
+        self.initial_model.set_image(bgd)
         size = (bgd.width,bgd.height)
         ShapeWindow.__init__(self,name="Model Maker",size=size)
         self.shapesLock.acquire()
@@ -98,6 +99,7 @@ class FoldMaker(ShapeWindow):
             print "Model is illegal!"
             self.clearAll()
         else:
+            model.set_image(None)
             pickle.dump(model,file)
         
 
