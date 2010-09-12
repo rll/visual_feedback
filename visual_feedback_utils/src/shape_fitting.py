@@ -27,14 +27,14 @@ SHOW_UNSCALED_MODEL = False
 SHOW_SCALED_MODEL = False
 SHOW_ITER = False
 SHOW_SYMM_MODEL = False
-SHOW_OPT = True
+SHOW_OPT = False
 SAVE_ITERS = False
 SHOW_FITTED = False
 
 
 
 class ShapeFitter:
-    def __init__(self,DIST_FXN="l2",SYMM_OPT=False,FINE_TUNE=False,ORIENT_OPT=True):
+    def __init__(self,DIST_FXN="l2",SYMM_OPT=False,FINE_TUNE=False,ORIENT_OPT=True,INITIALIZE=True):
         if DIST_FXN == "l1":
             self.dist_fxn = l1_norm
         elif DIST_FXN == "l2":
@@ -44,7 +44,8 @@ class ShapeFitter:
             
         self.SYMM_OPT = SYMM_OPT
         self.ORIENT_OPT = ORIENT_OPT
-        self.FINE_TUNE = FINE_TUNE       
+        self.FINE_TUNE = FINE_TUNE   
+        self.INITIALIZE=INITIALIZE    
         self.flann = pyflann.FLANN()
         
     
@@ -69,36 +70,39 @@ class ShapeFitter:
         
         if SHOW_CONTOURS:
                 cv.DrawContours(img_annotated,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,1,8,(0,0))
+        if self.INITIALIZE:
+            (real_center,real_top,real_theta,real_scale) = get_principle_info(shape_contour)
+            if SHOW_UNSCALED_MODEL:
+                model.draw_to_image(img_annotated,cv.CV_RGB(0,0,255))
+            (model_center,model_top,model_theta,model_scale) = get_principle_info(model.vertices_full())
+            displ = displacement(model_center,real_center)
+                
+            print model_theta
+            print real_theta
+            angle = model_theta - real_theta
+            print angle
+            if self.ORIENT_OPT:
+                angle = 0
+            scale = real_scale/float(model_scale)
+            if scale < 0.25 or scale > 4.0:
+                scale = 1
     
-        (real_center,real_top,real_theta,real_scale) = get_principle_info(shape_contour)
-        if SHOW_UNSCALED_MODEL:
-            model.draw_to_image(img_annotated,cv.CV_RGB(0,0,255))
-        (model_center,model_top,model_theta,model_scale) = get_principle_info(model.vertices_full())
-        displ = displacement(model_center,real_center)
-            
-        print model_theta
-        print real_theta
-        angle = model_theta - real_theta
-        print angle
-        if self.ORIENT_OPT:
-            angle = 0
-        scale = real_scale/float(model_scale)
-        model_trans = translate_poly(model.vertices_full(),displ)
-        model_rot = rotate_poly(model_trans,-1*angle,real_center)
-        #scale = 1 #FIXME
-        model_scaled = scale_poly(model_rot,scale,real_center)
-           
-        (model_center,model_top,model_theta,model_scale) = get_principle_info(model_scaled)
-    
-            
-            #Do the same to the actual model
-        model.translate(displ)
-        model.rotate(-1*angle,real_center)
-        model.scale(scale,real_center)
-            
-    
-        if SHOW_SCALED_MODEL:
-            model.draw_to_image(img_annotated,cv.CV_RGB(0,0,255))
+            model_trans = translate_poly(model.vertices_full(),displ)
+            model_rot = rotate_poly(model_trans,-1*angle,real_center)
+            #scale = 1 #FIXME
+            model_scaled = scale_poly(model_rot,scale,real_center)
+               
+            #(model_center,model_top,model_theta,model_scale) = get_principle_info(model_scaled)
+        
+                
+                #Do the same to the actual model
+            model.translate(displ)
+            model.rotate(-1*angle,real_center)
+            model.scale(scale,real_center)
+                
+        
+            if SHOW_SCALED_MODEL:
+                model.draw_to_image(img_annotated,cv.CV_RGB(0,0,255))
     
             #Energy calculation
         print "Energy is: %f"%self.energy_fxn(model,shape_contour)
@@ -123,7 +127,7 @@ class ShapeFitter:
         if SHOW_SYMM_MODEL:
            new_model_symm.draw_to_image(img=img_annotated,color=cv.CV_RGB(0,255,0))
         model=new_model_symm.make_asymm()
-        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=8,delta=model.preferred_delta(),exploration_factor=1.5,fine_tune=False)#FIXME
+        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=model.preferred_delta(),exploration_factor=1.5,fine_tune=False)#FIXME
         
         if self.FINE_TUNE:
             #tunable_model = model_oriented.make_tunable()
