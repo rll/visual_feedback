@@ -455,7 +455,11 @@ class Point_Model_Folded(Point_Model):
         
    # def variable_param_names(self):
    #     return ["fold_angle","fold_displ"]
-        
+    
+    def set_image(self,img):
+        self.image = img
+        self.initial_model.set_image(img)
+    
     def variable_pt_names(self):
         return ["fold_bottom","fold_top"]
         
@@ -668,26 +672,13 @@ class Model_Towel(Point_Model_Variable_Symm):
     def axis_of_symmetry(self):
         return make_ln_from_pts(pt_scale(pt_sum(self.bottom_left(),self.bottom_right()),0.5),pt_scale(pt_sum(self.top_left(),self.top_right()),0.5))
 
-
-
-class Model_Pants_Skel(Point_Model_Variable_Symm):
-
-        
+class Model_Pants_Generic(Point_Model_Variable_Symm):
     def vertices_full(self):
         return [self.left_leg_right(),self.left_leg_left(),self.top_left(),self.top_right(),self.right_leg_right(),self.right_leg_left(),self.crotch()]
-        
-    def symmetric_variable_pt_names(self):
-        return ["mid_center","top_center","mid_left","left_leg_center","left_leg_left"]
-        
-    def mirrored_pts(self):
-        return {"mid_left":"mid_right", "left_leg_center":"right_leg_center","left_leg_left":"right_leg_right"}
-        
+
     def axis_of_symmetry(self):
         return make_ln_from_pts(self.mid_center(),self.top_center())
-    
-    """
-    Defining other points
-    """    
+
     def crotch(self):
         ln = perpendicular(make_ln_from_pts(self.top_center(),self.mid_center()),self.mid_center())
         return mirror_pt(self.top_center(),ln)
@@ -699,29 +690,10 @@ class Model_Pants_Skel(Point_Model_Variable_Symm):
     def right_leg_left(self):
         ln = perpendicular(make_ln_from_pts(self.right_leg_right(),self.right_leg_center()),self.right_leg_center())
         return mirror_pt(self.right_leg_right(),ln)   
-    
-    def top_left(self):
-        displ = pt_sum( pt_diff(self.top_center(),self.mid_center()), pt_diff(self.left_leg_left(),self.left_leg_center()))
-        return translate_pt(self.mid_left(),displ)
         
     def top_right(self):
         displ = pt_sum( pt_diff(self.top_center(),self.mid_center()), pt_diff(self.right_leg_right(),self.right_leg_center()))
         return translate_pt(self.mid_right(),displ)
-        
-    def allow_intersections(self):
-        return False
-        
-    def structural_penalty(self):
-        penalty = Point_Model_Variable_Symm.structural_penalty(self)
-        """
-        penalty += self.constrain(pt_distance(self.mid_left(),self.mid_right()),pt_distance(self.top_left(),self.top_right()),UPPER,0.0)
-        if seg_intercept(make_seg(self.top_left(),self.left_leg_left()),make_seg(self.mid_left(),self.mid_right())):
-            penalty += 1
-        if seg_intercept(make_seg(self.top_right(),self.right_leg_right()),make_seg(self.mid_left(),self.mid_right())):
-            penalty += 1
-        """
-        return penalty
-        
         
     def draw_to_image(self,img,color):
         Point_Model_Variable_Symm.draw_to_image(self,img,color)
@@ -737,6 +709,45 @@ class Model_Pants_Skel(Point_Model_Variable_Symm):
         self.draw_point(img,self.right_leg_center(),color)
         self.draw_line(img,self.mid_left(),self.left_leg_center(),color)
         self.draw_line(img,self.mid_right(),self.right_leg_center(),color)
+
+class Model_Pants_Skel(Model_Pants_Generic):
+
+        
+    
+        
+    def symmetric_variable_pt_names(self):
+        return ["mid_center","top_center","mid_left","left_leg_center","left_leg_left"]
+        
+    def mirrored_pts(self):
+        return {"mid_left":"mid_right", "left_leg_center":"right_leg_center","left_leg_left":"right_leg_right"}
+        
+    
+    """
+    Defining other points
+    """    
+        
+    
+    
+    def top_left(self):
+        displ = pt_sum( pt_diff(self.top_center(),self.mid_center()), pt_diff(self.left_leg_left(),self.left_leg_center()))
+        return translate_pt(self.mid_left(),displ)
+        
+    
+        
+        
+    def structural_penalty(self):
+        penalty = Point_Model_Variable_Symm.structural_penalty(self)
+        """
+        penalty += self.constrain(pt_distance(self.mid_left(),self.mid_right()),pt_distance(self.top_left(),self.top_right()),UPPER,0.0)
+        if seg_intercept(make_seg(self.top_left(),self.left_leg_left()),make_seg(self.mid_left(),self.mid_right())):
+            penalty += 1
+        if seg_intercept(make_seg(self.top_right(),self.right_leg_right()),make_seg(self.mid_left(),self.mid_right())):
+            penalty += 1
+        """
+        return penalty
+        
+        
+
         
       
 class Model_Pants_Contour_Only(Point_Model_Contour_Only_Asymm):
@@ -773,8 +784,68 @@ class Model_Pants_Skel_Extended(Model_Pants_Skel):
         #penalty += self.constrain( pt_distance(pt_scale(pt_sum(self.top_left(),self.top_right()),0.5),self.top_center()),pt_distance(self.top_center(),self.top_left())*0.15,UPPER,0.0)    
         return penalty
         
+class Model_Pants_Skel_New(Model_Pants_Generic):
+    
+    def symmetric_variable_pt_names(self):
+        return ["mid_center","top_center","mid_left","left_leg_center","top_left"]
+        
+    def symmetric_variable_param_names(self):
+        return ["left_leg_width"]
+        
+    def mirrored_pts(self):
+        return {"mid_left":"mid_right","left_leg_center":"right_leg_center"}
+        
+    def mirrored_params(self):
+        return {"left_leg_width":"right_leg_width"}
+    
+    def left_leg_axis(self):
+        return make_ln_from_pts(self.mid_left(),self.left_leg_center())
+        
+    def right_leg_axis(self):
+        return make_ln_from_pts(self.mid_right(),self.right_leg_center())
+        
+    def left_leg_length(self):
+        return pt_distance(self.mid_left(),self.left_leg_center())
+        
+    def right_leg_length(self):
+        return pt_distance(self.mid_right(),self.right_leg_center())
+    
+    def left_leg_left(self):
+        straight_pt = extrapolate(self.left_leg_axis(),abs(self.left_leg_length()) + abs(self.left_leg_width())/2.0)
+        return rotate_pt(straight_pt,pi/2,self.left_leg_center())
+        
+    def right_leg_right(self):
+        straight_pt = extrapolate(self.right_leg_axis(),abs(self.right_leg_length()) + abs(self.right_leg_width())/2.0)
+        return rotate_pt(straight_pt,-pi/2,self.right_leg_center())
+        
+    def top_right(self):
+        #displ = pt_sum( pt_diff(self.top_center(),self.mid_center()), pt_diff(self.right_leg_right(),self.right_leg_center()))
+        #return translate_pt(self.mid_right(),displ)
+        return pt_sum( pt_diff(self.top_center(),self.top_left()), self.top_center())
+        
+    def crotch(self):
+        ln = make_ln_from_pts(self.mid_left(),self.mid_right())
+        return mirror_pt(self.top_center(),ln)
 
-
+    def structural_penalty(self):
+        penalty = Model_Pants_Generic.structural_penalty(self)
+        #penalty += self.constrain(pt_distance(self.mid_left(),self.mid_right()),pt_distance(self.top_left(),self.top_right()),UPPER,0.0)  
+        skel_sides = [make_seg(self.mid_left(),self.mid_right())]
+        """
+        for s in skel_sides:
+            for side in self.sides():
+                if seg_intercept(s,side):
+                    penalty += 1
+        #penalty += self.constrain(
+        #    abs(angle_between(pt_diff(self.mid_left(),self.mid_right()),pt_diff(self.top_center(),self.crotch())) - pi/2), pi/5, UPPER,0.0)
+        penalty += self.constrain(pt_distance(self.top_center(),self.crotch())/pt_distance(self.top_left(),self.top_right()),0.25,LOWER,0.0)
+        
+        if seg_intercept(make_seg(self.mid_left(),self.mid_right()),make_seg(self.top_left(),self.left_leg_left())):
+            penalty += 1
+        if seg_intercept(make_seg(self.mid_left(),self.mid_right()),make_seg(self.top_right(),self.right_leg_right())):
+            penalty += 1
+        """
+        return penalty
 
 #Generic class which makes no assertions about what the variable points are
 class Model_Shirt_Generic(Point_Model_Variable_Symm):

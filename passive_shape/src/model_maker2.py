@@ -25,7 +25,7 @@ SYMM = 1
 SKEL = 2
 PANTS_SKEL = 3
 TEE_SKEL = 4
-TYPE = ASYMM
+TYPE = TEE_SKEL
 
 class ModelMaker(ShapeWindow):
     
@@ -470,12 +470,17 @@ class ModelMaker(ShapeWindow):
             self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
             self.left_leg_center.toTuple(), self.left_leg_left.toTuple()
         )
-        """
+        
         return Models.Model_Pants_Skel_Extended(True,
             self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
             self.left_leg_center.toTuple(), self.left_leg_left.toTuple(),self.top_left.toTuple()
         )
-        
+        """
+        width = Geometry2D.distance(self.left_leg_left,self.left_leg_right)
+        return Models.Model_Pants_Skel_New(True,
+            self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
+            self.left_leg_center.toTuple(),self.top_left.toTuple(),width
+        )
 
     
 def main(args):
