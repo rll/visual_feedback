@@ -16,7 +16,7 @@
 	    <param name="cols" value="5" />
 	    <param name="rows" value="4" />
         <!-- height: -15 good for wide, -25 good for narrow, -40 good for prosilica -->
-	    <param name="init_height" value="-10" />
+	    <param name="init_height" value="-12" />
         <param name="mode" value="load_h" />
         <param name="matrix_location" value="/home/stephen/snapshots/H.yaml" />
 	</node>
