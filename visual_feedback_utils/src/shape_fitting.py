@@ -22,12 +22,12 @@ import thresholding
 import shape_fitting_utils
 import random
 
-SHOW_CONTOURS = False
+SHOW_CONTOURS = True
 SHOW_UNSCALED_MODEL = False
 SHOW_SCALED_MODEL = False
 SHOW_ITER = False
 SHOW_SYMM_MODEL = False
-SHOW_OPT = False
+SHOW_OPT = True
 SAVE_ITERS = False
 SHOW_FITTED = False
 
@@ -127,7 +127,7 @@ class ShapeFitter:
         if SHOW_SYMM_MODEL:
            new_model_symm.draw_to_image(img=img_annotated,color=cv.CV_RGB(0,255,0))
         model=new_model_symm.make_asymm()
-        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=model.preferred_delta(),exploration_factor=1.5,fine_tune=False)#FIXME
+        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=10,delta=model.preferred_delta(),exploration_factor=1.5,fine_tune=False)#FIXME
         
         if self.FINE_TUNE:
             #tunable_model = model_oriented.make_tunable()
@@ -143,8 +143,8 @@ class ShapeFitter:
             cv.Circle(img_annotated,nearest_pt,5,cv.CV_RGB(255,255,255),3)
             nearest_pts.append(nearest_pt)
                 
-        #fitted_model = Models.Point_Model_Contour_Only_Asymm(*nearest_pts)
-        fitted_model = final_model
+        fitted_model = Models.Point_Model_Contour_Only_Asymm(*nearest_pts)
+        #fitted_model = final_model
         if SHOW_FITTED:
             fitted_model.draw_to_image(img=img_annotated,color=cv.CV_RGB(0,255,255))       
         return (nearest_pts,final_model,fitted_model)

@@ -72,10 +72,19 @@ def intercept(ln1,ln2):
     (m2,b2) = slope_intercept(ln2)
     if m1 == m2:
         return None
+    if (m1 == None and b1 == None):
+        if (m2 == None and b2 == None):
+            return None
+        else:
+            x = line_offset(ln1)[0]
+            y = m2*x + b2
+    elif (m2 == None and b1 == None):
+        x = line_offset(ln2)[0]
+        y = m1*x + b1
     else:
         x = (b2 - b1) / (m1 - m2)
         y = m1*x + b1
-        return make_pt(x,y)
+    return make_pt(x,y)
 
         
 def make_seg(pt1,pt2):

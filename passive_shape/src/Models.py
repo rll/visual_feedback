@@ -300,11 +300,17 @@ class Point_Model_Contour_Only_Asymm(Point_Model):
         Point_Model.__init__(self,*vertices_and_params)
         
     def variable_pt_names(self):
-        #return ["pt_%d"%i for i in range(self.num_variable_pts)]
-        return ["pt_%d"%i for i in range(13)]
+        return ["pt_%d"%i for i in range(self.num_variable_pts)]
+        #return ["pt_%d"%i for i in range(13)]
         
     def vertices_full(self):
         return self.vertices
+        
+    def __getattr__(self,attr):
+        if attr == "num_variable_pts":
+            return self.__dict__["num_variable_pts"]
+        else:
+            return Point_Model.get_attr(self,attr)
 """
 # A model which is defined by fixed points and one foldline  
 class Point_Model_Folded(Point_Model):
@@ -469,7 +475,7 @@ class Point_Model_Folded(Point_Model):
     def set_image(self,image):
         self.initial_model.set_image(image)
         Point_Model.set_image(self,image)
-        
+    
     def vertices_full(self):
 
         init_vertices_full = self.initial_model.vertices_full()
@@ -477,24 +483,31 @@ class Point_Model_Folded(Point_Model):
         foldseg = self.foldseg()
         perp = perpendicular(foldline,line_offset(foldline))
         pts = []
+
+        dot_prods = [dot_prod(p,line_vector(foldline)) for p in (self.fold_top(),self.fold_bottom())]
+        epsilon = 0.25 * (max(dot_prods) - min(dot_prods))
         
-        for pt in init_vertices_full:
+        for i,pt in enumerate(init_vertices_full):
             if dot_prod(pt,line_vector(perp)) < dot_prod(line_offset(perp),line_vector(perp)):
                 #Check if I'm within the bounds
-                dot_prods = [dot_prod(p,line_vector(foldline)) for p in (self.fold_top(),self.fold_bottom())]
-                if min(dot_prods) <= dot_prod(pt,line_vector(foldline)) <= max(dot_prods):
+
+                if min(dot_prods)-epsilon <= dot_prod(pt,line_vector(foldline)) <= max(dot_prods)+epsilon:
                     pts.append(mirror_pt(pt,foldline))
                 else:
-                    pts.append(pt)
+                    touching_sides = [make_seg(init_vertices_full[i-1],pt),make_seg(pt,init_vertices_full[(i+1)%len(init_vertices_full)])]
+                    if len([seg for seg in touching_sides if seg_intercept(seg,foldseg)]) > 0:
+                        pts.append(mirror_pt(pt,foldline))
+                    else:
+                        pts.append(pt)
                 #pts.append(pt)
             else:
                 pts.append(pt)
         last_inter = None
         offset = 0
-        dot_prods = [dot_prod(p,line_vector(foldline)) for p in (self.fold_top(),self.fold_bottom())]
+        #dot_prods = [dot_prod(p,line_vector(foldline)) for p in (self.fold_top(),self.fold_bottom())]
         for i,seg in enumerate(self.initial_model.sides()):
             inter = seg_intercept(seg,foldseg)
-            if inter != None and min(dot_prods) <= dot_prod(inter,line_vector(foldline)) <= max(dot_prods):
+            if inter != None and min(dot_prods)-epsilon <= dot_prod(inter,line_vector(foldline)) <= max(dot_prods)+epsilon:
                 pts.insert(i+offset,inter)
 
                 if last_inter != None:
@@ -507,7 +520,36 @@ class Point_Model_Folded(Point_Model):
                 offset += 1
 
         return list(pts)
-    
+    """
+    def vertices_full(self):
+        init_vertices_full = self.initial_model.vertices_full()
+        foldline = self.foldline()
+        foldseg = self.foldseg()
+        perp = perpendicular(foldline,line_offset(foldline))
+        pts = []
+        
+        for pt in init_vertices_full:
+            if dot_prod(pt,line_vector(perp)) < dot_prod(line_offset(perp),line_vector(perp)):
+                pts.append(mirror_pt(pt,foldline))
+            else:
+                pts.append(pt)
+        last_inter = None
+        offset = 0
+        dot_prods = [dot_prod(p,line_vector(foldline)) for p in (self.fold_top(),self.fold_bottom())]
+        for i,seg in enumerate(self.initial_model.sides()):
+            inter = seg_intercept(seg,foldline)
+            if inter != None:
+                pts.insert(i+offset,inter)
+                if last_inter != None:
+                    pts.insert(i+1+offset,last_inter)
+                    pts.insert(i+2+offset,inter)
+                    offset += 2
+                    last_iter = None
+                else:
+                    last_inter = inter
+                    offset += 1
+        return list(pts)
+    """  
     def contour_mode(self):
         return True
         
@@ -518,15 +560,16 @@ class Point_Model_Folded(Point_Model):
         return make_ln_from_pts(self.fold_bottom(),self.fold_top())
         #return make_seg(self.fold_bottom(),self.fold_top())
     def foldseg(self):
-        return make_ln_from_pts(self.fold_bottom(),self.fold_top())
-           
+        #return make_ln_from_pts(self.fold_bottom(),self.fold_top())
+        return make_seg(self.fold_bottom(),self.fold_top())
+         
     def structural_penalty(self):
         if cv.PointPolygonTest(self.initial_model.vertices_dense(),self.fold_bottom(),0) >= 0:
             return 1
         if cv.PointPolygonTest(self.initial_model.vertices_dense(),self.fold_top(),0) >= 0:
             return 1
         return 0
-        
+    
     def allow_intersections(self):
         return True
         
@@ -543,7 +586,7 @@ class Point_Model_Folded(Point_Model):
         return myclone
         
     def preferred_delta(self):
-        return 5.0
+        return 1.0
         
 class Point_Model_Folded_Robust(Point_Model_Folded):
 
@@ -1216,6 +1259,8 @@ class Model_Tee_Tunable(Model_Tee_Generic):
         return self
         
     def __getattr__(self,attr):
+        if attr == "symmetric":
+            return self.__dict__["symmetric"]
         try:
             val = Model_Tee_Generic.__getattr__(self,attr)
             return val

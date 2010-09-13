@@ -19,6 +19,7 @@ import image_geometry
 import thresholding
 import shape_fitting
 import pickle
+import Models
 
 SHOW_CONTOURS = False
 SHOW_UNSCALED_MODEL = False
@@ -52,13 +53,17 @@ class ShapeFitterNode(ImageProcessor):
             cv.WarpPerspective(input_image,cv_image,H,
                     cv.CV_INTER_LINEAR+cv.CV_WARP_INVERSE_MAP+cv.CV_WARP_FILL_OUTLIERS)
         #Use the thresholding module to get the contour out
-        shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True,crop_rect=(93,2,457,290))
+        shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True,crop_rect=(111,97,448,351))
         #Use the shape_fitting module to fit the model to the contour
         if self.mode=="tee":
             #fitter = shape_fitting.ShapeFitter(SYMM_OPT=True,ORIENT_OPT=False,FINE_TUNE=False)
+            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=True,FINE_TUNE=False)
+        elif self.mode=="sweater":
             fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False)
+        elif self.mode=="folded":
+            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,INITIALIZE=False)
         else:
-            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False)
+            fitter = shape_fitting.ShapeFitter(SYMM_OPT=True,ORIENT_OPT=False,FINE_TUNE=False)
         image_anno = cv.CloneImage(cv_image)
         """
         if self.mode == "folded":
@@ -104,8 +109,16 @@ class ShapeFitterNode(ImageProcessor):
         if self.mode != "triangles":
             for pt in return_pts:
                 self.highlight_pt(pt,cv.CV_RGB(255,0,0),image_anno)
-        final_model.set_image(None)
-        pickle.dump(final_model,open("%s/last_model.pickle"%self.save_dir,'w'))
+        if self.mode != "folded":
+            fitted_model.set_image(None)
+            pickle.dump(fitted_model,open("%s/last_model.pickle"%self.save_dir,'w'))
+        else:
+            model_pts = final_model.vertices_full()
+            new_model = Models.Point_Model_Contour_Only_Asymm(*model_pts)
+            pickle.dump(new_model,open("%s/last_model.pickle"%self.save_dir,'w'))
+        #Ignore nearest
+        #if self.mode == "tee" or self.mode == "sweater":
+        #    return_pts = final_model.vertices_full()[0:5] + final_model.vertices_full()[8:]
         return (return_pts,params,image_anno)
         
     def transform_pts(self,pts,M): 

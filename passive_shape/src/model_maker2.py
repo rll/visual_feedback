@@ -25,7 +25,7 @@ SYMM = 1
 SKEL = 2
 PANTS_SKEL = 3
 TEE_SKEL = 4
-TYPE = TEE_SKEL
+TYPE = ASYMM
 
 class ModelMaker(ShapeWindow):
     
@@ -406,8 +406,8 @@ class ModelMaker(ShapeWindow):
         poly = self.getPolys()[0].getShape()
         vertices = poly.vertices()
         tuple_vertices = tuple([v.toTuple() for v in vertices])
-        #model = Models.Point_Model_Contour_Only_Asymm(*tuple_vertices)
-        model = Models.Model_Pants_Contour_Only(*tuple_vertices)
+        model = Models.Point_Model_Contour_Only_Asymm(*tuple_vertices)
+        #model = Models.Model_Pants_Contour_Only(*tuple_vertices)
         #print len(tuple_vertices)
         #model = Models.Model_Towel(True,*tuple_vertices)
         return model
