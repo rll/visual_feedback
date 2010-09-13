@@ -30,7 +30,7 @@ def threshold(image,bg_mode,filter_pr2,crop_rect):
         upper_thresh = cv.CloneImage(image_hue)
         lower_thresh = cv.CloneImage(image_hue)
         black_thresh = cv.CloneImage(image_hue)
-        cv.Threshold( image_hue, upper_thresh, 75, 255, cv.CV_THRESH_BINARY)
+        cv.Threshold( image_hue, upper_thresh, 80, 255, cv.CV_THRESH_BINARY) #was 75
         cv.Threshold( image_hue, lower_thresh, 30, 255, cv.CV_THRESH_BINARY_INV)
         cv.Threshold( image_gray, black_thresh, 1, 255, cv.CV_THRESH_BINARY)
         #Filter out the green band of the hue
