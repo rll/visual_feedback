@@ -5,6 +5,7 @@ import pickle
 from sensor_msgs.msg import Image,CameraInfo
 import rospy
 from dynamic_reconfigure.client import Client as ReconfigureClient
+import sys
 
 def configure_prosilica():
     print "Configuring prosilica"
