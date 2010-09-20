@@ -14,11 +14,16 @@ import cv
 import Geometry2D
 import Vector2D
 import Models
+import tf
+from geometry_msgs.msg import PointStamped
+from image_processor_node import ImageProcessor
+from shape_fitting_utils import *
+import image_geometry
 
 (WHITE_BG,GREEN_BG) = range(2)
 MODE = WHITE_BG
 
-def threshold(image,bg_mode,filter_pr2,crop_rect):
+def threshold(image,bg_mode,filter_pr2,crop_rect,cam_info=None,listener=None):
     image_hsv = cv.CloneImage(image)
     cv.CvtColor(image,image_hsv,cv.CV_RGB2HSV)
     image_hue = cv.CreateImage(cv.GetSize(image_hsv),8,1)
@@ -53,6 +58,29 @@ def threshold(image,bg_mode,filter_pr2,crop_rect):
                 image_thresh[j,i] = 0
             for j in range(y+height,image_thresh.height):
                 image_thresh[j,i] = 0
+    
+    
+    if filter_pr2:
+        #Filter out grippers
+        cam_frame = cam_info.header.frame_id
+        now = rospy.Time.now()
+        for link in ("l_gripper_l_finger_tip_link","r_gripper_l_finger_tip_link"):
+            listener.waitForTransform(cam_frame,link,now,rospy.Duration(10.0))
+            l_grip_origin = PointStamped()
+            l_grip_origin.header.frame_id = link
+            l_grip_in_camera = listener.transformPoint(cam_frame,l_grip_origin)
+            camera_model = image_geometry.PinholeCameraModel()
+            camera_model.fromCameraInfo(cam_info)
+            (u,v) = camera_model.project3dToPixel((l_grip_in_camera.point.x,l_grip_in_camera.point.y,l_grip_in_camera.point.z))
+            if link[0] == "l":
+                x_range = range(0,u)
+            else:
+                x_range = range(u,image_thresh.width)
+            if 0 < u < image_thresh.width and 0 < v < image_thresh.height:
+                for x in x_range:
+                    for y in range(0,image_thresh.height):
+                        image_thresh[y,x] = 0.0
+                        
     return image_thresh
     
 def get_contour_from_thresh(image_thresh):
@@ -73,8 +101,8 @@ def get_contour_from_thresh(image_thresh):
     else:
         return max_contour
     
-def get_contour(image,bg_mode=WHITE_BG,filter_pr2=False,crop_rect=None):
-    image_thresh = threshold(image,bg_mode,filter_pr2,crop_rect)
+def get_contour(image,bg_mode=WHITE_BG,filter_pr2=False,crop_rect=None,cam_info=None,listener=None):
+    image_thresh = threshold(image,bg_mode,filter_pr2,crop_rect,cam_info,listener)
     return get_contour_from_thresh(image_thresh)
     
  #x = 4 w = 629 y = 144, h = 329
