@@ -25,12 +25,12 @@ SYMM = 1
 SKEL = 2
 PANTS_SKEL = 3
 TEE_SKEL = 4
-TYPE = ASYMM
+TYPE = SKEL
 
 class ModelMaker(ShapeWindow):
     
     def __init__(self,filepath,modelpath):
-        bgd = cv.LoadImage(filepath,cv.CV_LOAD_IMAGE_GRAYSCALE)
+        bgd = cv.LoadImage(filepath)
         
         self.modelpath = modelpath
         size = (bgd.width,bgd.height)

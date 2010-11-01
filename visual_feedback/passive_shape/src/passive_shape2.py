@@ -49,6 +49,12 @@ class PassiveShapeMaker:
         self.slider_pos = AMAZON_THRESH
         self.load_model(corrected_modelpath)
         image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
+        image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
+        image_white = cv.CloneImage(image_raw)
+        cv.Set(image_white,cv.CV_RGB(255,255,255))
+        self.model.draw_to_image(image_white,cv.CV_RGB(0,0,255))
+        cv.SaveImage("white_image.png",image_white)
+        return
         self.model.set_image(image_raw)
         self.image_gray = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_GRAYSCALE)
         self.image_raw = image_raw

@@ -13,7 +13,6 @@
   <depend package="roscpp"/>
   <depend package="polled_camera" />
   <depend package="dynamic_reconfigure" />
-  
 </package>
 
 

@@ -107,7 +107,7 @@ class Snapshotter:
 def main(args):
     rospy.init_node("snapshotter")
     cameraName = rospy.get_param("~camera","defaultSnapshotterCamera")
-    output_topic = rospy.get_param("~output","%s/output"%rospy.get_name())
+    output_topic = rospy.get_param("~output","%s/snapshot_output"%rospy.get_name())
     print output_topic
     snap = Snapshotter(cameraName=cameraName,output_topic=output_topic)
     rospy.spin()

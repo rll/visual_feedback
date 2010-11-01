@@ -9,9 +9,10 @@ import os
 import re
 import Vector2D
 import sys
+from numpy import *
 
 TOWEL,PANTS,TEE,SWEATER = range(4)
-MODE = TEE
+MODE = TOWEL
 
 def score(testfile,correctfile):
     test_pts = annotator.read_anno(testfile)
@@ -22,19 +23,25 @@ def score(testfile,correctfile):
         check_points = (0,1,2,3,4,8,9,10,11,12)
     else:
         check_points = range(len(test_pts))
+    errors = []
     for i in check_points:#(1,4,8,11):#range(len(test_pts)):
         test_pt = test_pts[i]
         correct_pt = correct_pts[i]
         error = Vector2D.pt_distance(test_pt,correct_pt)
-        #if error < 5:
-        #    error = 0
-        net_error += error
-        if max_error < error:
-            max_error = error
-    net_error /= float(len(check_points))
-    #print "File %s had a net error of %f and max_error of %f"%(testfile,net_error,max_error)
-    return net_error
+        errors.append(error)
+    #return lst_avg(errors)
+    return [lst_avg(errors)]
         
+def lst_avg(lst):
+    return sum(lst) / float(len(lst))
+    
+def lst_std(lst):
+    std = 0
+    avg = lst_avg(lst)
+    print avg
+    for el in lst:
+        std += abs(el - avg)**2
+    return sqrt(std / float(len(lst)))
 
 def main(args):
     test_directory = args[0]
@@ -48,15 +55,16 @@ def main(args):
         for f in [f for f in correct_files if not f in [g.replace("_classified","") for g in test_files]]:
             print "%s is not in the test files"%f
         return 1
-    net_score = 0.0
+    scores = []
     for test_file in test_files:
         if not test_file.replace("_classified","") in correct_files:
             print "Error: could not find the correct annotations for file %s"%test_file
             return 1
         else:
-            net_score += score("%s/%s"%(test_directory,test_file),"%s/%s"%(correct_directory,test_file.replace("_classified","")))
-    net_score /= float(len(test_files))
-    print "Average distance of %f pixels"%net_score
+            scores.extend(score("%s/%s"%(test_directory,test_file),"%s/%s"%(correct_directory,test_file.replace("_classified",""))))
+    net_score = lst_avg(scores)
+    std = lst_std(scores)
+    print "%s: %d files, average distance of %f +- %f pixels"%(test_directory,len(test_files),net_score,std)
     return
     
 if __name__ == '__main__':

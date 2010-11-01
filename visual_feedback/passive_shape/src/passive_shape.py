@@ -25,7 +25,15 @@ class PassiveShapeMaker:
     def __init__(self,corrected_filepath,corrected_modelpath):
         self.slider_pos = 90
         self.load_model(corrected_modelpath)
+        
         image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
+        image_white = cv.CloneImage(image_raw)
+        for i in range(image_white.width):
+            for j in range(image_white.height):
+                image_white[j][i] = cv.CV_RGB(255,255,255)
+        self.model.draw_to_image(image_white,cv.CV_RGB(0,0,255))
+        cv.SaveImage("white_image",image_white)
+        return
         self.image_gray = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_GRAYSCALE)
         self.image_raw = image_raw
         image_hsv = cv.CloneImage(image_raw)
