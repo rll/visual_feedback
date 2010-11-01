@@ -3,11 +3,21 @@ import roslib
 roslib.load_manifest("visual_feedback_utils")
 import rospy
 import time
+from polled_camera.srv import *
+import re
+
 
 def get_next_message(topic,message_type,timeout=None):
     responses = []
     sub = rospy.Subscriber(topic,message_type,lambda msg: responses.append(msg))
     start = rospy.Time.now()
+    if re.match("prosilica/.*",topic):
+        try:
+            poll = rospy.ServiceProxy("prosilica/request_image",GetPolledImage)
+            #resp = poll(response_namespace="prosilica")
+            resp = poll(response_namespace = "/prosilica")
+        except rospy.ServiceException,e:
+            rospy.loginfo("Service Call Failed: %s"%e)
     if timeout:
         finish = rospy.Time.now() + rospy.Duration(timeout)
     while len(responses) == 0:

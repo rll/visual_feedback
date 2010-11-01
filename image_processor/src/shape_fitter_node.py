@@ -42,7 +42,10 @@ class ShapeFitterNode(ImageProcessor):
         self.mode = rospy.get_param("~mode","default")
         self.transform = rospy.get_param("~transform",False)
         self.matrix_location = "%s/H.yaml"%self.config_dir
-        self.modelpath = "%s/%s"%(self.load_dir,modelname)
+        self.modelpath = "%s/%s.pickle"%(self.load_dir,modelname)
+        self.filter_pr2 = True
+        if self.filter_pr2:
+            self.listener = tf.TransformListener()
         
         
     def process(self,cv_image,info,image2=None):
@@ -53,7 +56,12 @@ class ShapeFitterNode(ImageProcessor):
             cv.WarpPerspective(input_image,cv_image,H,
                     cv.CV_INTER_LINEAR+cv.CV_WARP_INVERSE_MAP+cv.CV_WARP_FILL_OUTLIERS)
         #Use the thresholding module to get the contour out
-        shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True,crop_rect=(111,97,448,351))
+        if self.filter_pr2:
+            shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True
+                                                    ,crop_rect=(133,58,386,355),cam_info=info,listener=self.listener)
+        else:
+            shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=False
+                                                    ,crop_rect=(133,58,386,355),cam_info=info,listener=None)
         #Use the shape_fitting module to fit the model to the contour
         if self.mode=="tee":
             #fitter = shape_fitting.ShapeFitter(SYMM_OPT=True,ORIENT_OPT=False,FINE_TUNE=False)
@@ -74,18 +82,21 @@ class ShapeFitterNode(ImageProcessor):
         pts = nearest_pts
         
         params = {}
+        
         if self.mode == "triangles":
             return_pts = [pts[1],pts[4],pts[2],pts[3]]
             self.highlight_pt(pts[1],cv.CV_RGB(255,0,0),image_anno)
             font = cv.InitFont(cv.CV_FONT_HERSHEY_COMPLEX,1.0,1.0)
-            cv.PutText(self.image2,"(l)eft",(pts[1][0]-20,pts[1][1]-15),font,cv.CV_RGB(255,0,0))
+            cv.PutText(image_anno,"(l)eft",(pts[1][0]-20,pts[1][1]-15),font,cv.CV_RGB(255,0,0))
             self.highlight_pt(pts[4],cv.CV_RGB(0,0,255),image_anno)
-            cv.PutText(self.image2,"(r)ight",(pts[4][0]-20,pts[4][1]-15),font,cv.CV_RGB(0,0,255))
+            cv.PutText(image_anno,"(r)ight",(pts[4][0]-20,pts[4][1]-15),font,cv.CV_RGB(0,0,255))
             params = {"tilt":0.0}
         elif self.mode == "towel":
             return_pts = pts
         elif self.mode == "tee" or self.mode == "sweater":
             return_pts = pts[0:5]+pts[8:]
+            #return_pts[0] = (return_pts[0][0],return_pts[0][1]-10)
+            #return_pts[9] = (return_pts[9][0],return_pts[9][1]-10)
             params = {}
         elif self.mode == "folded":
             return_pts = [final_model.fold_bottom(),final_model.fold_top()]

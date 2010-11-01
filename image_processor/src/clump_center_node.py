@@ -16,6 +16,7 @@ from geometry_msgs.msg import PointStamped
 from image_processor_node import ImageProcessor
 from shape_fitting_utils import *
 import image_geometry
+import thresholding
 
 SHOW_CONTOURS = True
 SHOW_UNSCALED_MODEL = False
@@ -31,8 +32,11 @@ class ClumpCenterFinder(ImageProcessor):
     def init_extended(self):
         self.threshold = rospy.get_param("~threshold",95)
         self.left_to_right = rospy.get_param("~left_to_right",True)
+        self.listener = tf.TransformListener()
         
     def process(self,cv_image,info,image2=None):
+        self.image2 = cv.CloneImage( cv_image )
+        """
         image_raw = cv_image
         image_gray = cv.CreateImage(cv.GetSize(image_raw),8,1)        
         cv.CvtColor(image_raw,image_gray,cv.CV_RGB2GRAY)
@@ -51,20 +55,7 @@ class ClumpCenterFinder(ImageProcessor):
         g = cv.CreateImage(cv.GetSize(image_raw),8,1)
         b = cv.CreateImage(cv.GetSize(image_raw),8,1)
         cv.Split(image_raw,r,g,b,None)
-        """
-        cv.NamedWindow("Raw")
-        cv.NamedWindow("Red")
-        cv.NamedWindow("Green")
-        cv.NamedWindow("Blue")
-        cv.ShowImage("Raw",image_raw)
-        cv.ShowImage("Red",r)
-        cv.ShowImage("Green",g)
-        cv.ShowImage("Blue",b)
         
-        cv.WaitKey()
-        
-        rorb = cv.CreateImage(cv.GetSize(image_raw),8,1)
-        """
         self.image = hue
         self.image_sat = sat
         self.image_val = val
@@ -120,9 +111,9 @@ class ClumpCenterFinder(ImageProcessor):
             return ([],{},raw_image)
         else:
             print area(max_contour)
-        shape_contour = max_contour
-        if SHOW_CONTOURS:
-            cv.DrawContours(self.image2,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,1,8,(0,0))
+        """
+        shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True,crop_rect=(124,157,472,215),cam_info=info,listener=self.listener)
+
         moments = cv.Moments(shape_contour,0)
         pt = get_center(moments)
         self.highlight_pt(pt,cv.CV_RGB(255,255,255))

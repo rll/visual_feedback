@@ -1,18 +1,22 @@
 <launch>
-	<node pkg="snapshotter" type="snapshotter.py" name="snapshotter_forearm" output="screen">
+	<node pkg="snapshotter" type="snapshotter.py" name="snapshotter_wide" output="screen">
+		<param name="camera" value="wide_stereo/left" />
+		<param name="output" value="snapshot_output" />
+	</node>
+	
+	<node pkg="snapshotter" type="snapshotter.py" name="snapshotter_prosilica" output="screen">
 		<param name="camera" value="prosilica" />
 		<param name="output" value="snapshot_output" />
 	</node>
-	<node pkg="snapshotter" type="checker_filter.py" name="checker" output="screen">
-	    <param name="input" value="snapshot_output" />
-	    <param name="output" value="checker_output" />
-	    <param name="filled" value="True" />
-	</node>
 	
 	<node pkg="snapshotter" type="snapshot_saver.py" name="saver" output="screen">
-	    <param name="input" value="checker_output" />
-	    <param name="default_filepath" value="~/snapshots" />
+	    <param name="input" value="snapshot_output" />
+	    <param name="default_filepath" value="~/snapshots/triangles" />
 	    <param name="streaming" value="true" />
+	</node>
+	
+	<node pkg="image_view" type="image_view" name="wide_viewer" output="screen">
+	    <remap from="image" to="wide_stereo/left/image_rect_color" />
 	</node>
 
 </launch>

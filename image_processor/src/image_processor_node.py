@@ -23,6 +23,7 @@ class ImageProcessor:
         stereo_converter = rospy.get_param("~stereo_converter","convert_stereo_node") #Outbound
         self.convert_mono_service = "%s/convert"%mono_converter
         self.convert_stereo_service = "%s/convert"%stereo_converter
+        self.ignore_first_picture = rospy.get_param("~ignore_first_picture",False)
         self.bridge = CvBridge()
         self.anno_pub = rospy.Publisher(self.annotation_topic,Image)
         self.left_anno_pub = rospy.Publisher("%s_left"%self.annotation_topic,Image)
@@ -39,7 +40,10 @@ class ImageProcessor:
     def process_mono(self,req):
         image_topic = "/%s/image_rect_color"%req.camera
         info_topic = "/%s/camera_info"%req.camera
-        image = topic_utils.get_next_message(image_topic,Image)
+        if self.ignore_first_picture:
+            image = None
+        else:
+            image = topic_utils.get_next_message(image_topic,Image)
         info = topic_utils.get_next_message(info_topic,CameraInfo)
         (click_points,params,param_names,image_annotated) = self.unpack_and_process(image,info)
         #Publish annotated image stream
@@ -77,12 +81,15 @@ class ImageProcessor:
     
     
     def unpack_and_process(self,image,info):
-        try:
-            cv_image_mat = self.bridge.imgmsg_to_cv(image, "bgr8")
-        except CvBridgeError, e:
-            print "CVERROR converting from ImageMessage to cv IplImage"
-        cv_image = cv.CreateImage(cv.GetSize(cv_image_mat),8,3)
-        cv.Copy(cv_image_mat,cv_image)   
+        if self.ignore_first_picture:
+            cv_image = None
+        else:
+            try:
+                cv_image_mat = self.bridge.imgmsg_to_cv(image, "bgr8")
+            except CvBridgeError, e:
+                print "CVERROR converting from ImageMessage to cv IplImage"
+            cv_image = cv.CreateImage(cv.GetSize(cv_image_mat),8,3)
+            cv.Copy(cv_image_mat,cv_image)   
         (pts2d,params_dict,cv_image_annotated) = self.process(cv_image,info)
         #Convert annotation to Image.msg
         try:
