@@ -38,7 +38,7 @@ def main(args):
     #Use the thresholding module to get the contour out
     shape_contour = thresholding.get_contour(image_raw,bg_mode=thresholding.WHITE_BG,filter_pr2=False,crop_rect=None)
     #Use the shape_fitting module to fit the model to the contour
-    fitter = shape_fitting.ShapeFitter(SYMM_OPT=True,ORIENT_OPT=True,FINE_TUNE=True)
+    fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,INITIALIZE=False)
     (nearest_pts, final_model, fitted_model) = fitter.fit(model,shape_contour,image_out)    
     
     #Optionally save the nearest points in a .anno file, for comparison with my own annotations

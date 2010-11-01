@@ -16,14 +16,13 @@ import Vector2D
 import Models
 import tf
 from geometry_msgs.msg import PointStamped
-from image_processor_node import ImageProcessor
 from shape_fitting_utils import *
 import image_geometry
 
 (WHITE_BG,GREEN_BG) = range(2)
 MODE = WHITE_BG
 
-def threshold(image,bg_mode,filter_pr2,crop_rect,cam_info=None,listener=None):
+def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=None):
     image_hsv = cv.CloneImage(image)
     cv.CvtColor(image,image_hsv,cv.CV_RGB2HSV)
     image_hue = cv.CreateImage(cv.GetSize(image_hsv),8,1)
@@ -100,6 +99,7 @@ def get_contour_from_thresh(image_thresh):
         return None
     else:
         return max_contour
+        
     
 def get_contour(image,bg_mode=WHITE_BG,filter_pr2=False,crop_rect=None,cam_info=None,listener=None):
     image_thresh = threshold(image,bg_mode,filter_pr2,crop_rect,cam_info,listener)

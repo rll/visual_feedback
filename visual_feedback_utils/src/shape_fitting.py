@@ -34,7 +34,7 @@ SHOW_FITTED = False
 
 
 class ShapeFitter:
-    def __init__(self,DIST_FXN="l2",SYMM_OPT=False,FINE_TUNE=False,ORIENT_OPT=True,INITIALIZE=True):
+    def __init__(self,DIST_FXN="l2",SYMM_OPT=False,FINE_TUNE=False,ORIENT_OPT=True,INITIALIZE=True,HIGH_EXPLORATION=False):
         if DIST_FXN == "l1":
             self.dist_fxn = l1_norm
         elif DIST_FXN == "l2":
@@ -45,7 +45,8 @@ class ShapeFitter:
         self.SYMM_OPT = SYMM_OPT
         self.ORIENT_OPT = ORIENT_OPT
         self.FINE_TUNE = FINE_TUNE   
-        self.INITIALIZE=INITIALIZE    
+        self.INITIALIZE=INITIALIZE
+        self.HIGH_EXPLORATION = HIGH_EXPLORATION
         self.flann = pyflann.FLANN()
         
     
@@ -81,6 +82,7 @@ class ShapeFitter:
             print real_theta
             angle = model_theta - real_theta
             print angle
+            #angle = pi/8.0 #FIXME
             if self.ORIENT_OPT:
                 angle = 0
             scale = real_scale/float(model_scale)
@@ -96,10 +98,45 @@ class ShapeFitter:
         
                 
                 #Do the same to the actual model
+            img = cv.CloneImage(img_annotated)
+            model.draw_to_image(img,cv.CV_RGB(0,0,255))
+            
+            #cv.SaveImage("initial.png",img)
+            draw_pt(img,model_center)
+            draw_pt(img,real_center)
+            #cv.SaveImage("pre_translated.png",img)
             model.translate(displ)
+            model_center = Vector2D.translate_pt(model_center,displ)
+            model_top = Vector2D.translate_pt(model_top,displ)
+            img = cv.CloneImage(img_annotated)
+            model.draw_to_image(img,cv.CV_RGB(0,0,255))
+            draw_pt(img,real_center)
+            #cv.SaveImage("translated.png",img)
+            draw_line(img,model_center,model_top)
+            draw_line(img,real_center,real_top)
+            #cv.SaveImage("pre_rotated.png",img)
             model.rotate(-1*angle,real_center)
+            model_center = Vector2D.rotate_pt(model_center,-1*angle,real_center)
+            model_top = Vector2D.rotate_pt(model_top,-1*angle,real_center)
+            img = cv.CloneImage(img_annotated)
+            model.draw_to_image(img,cv.CV_RGB(0,0,255))
+            draw_line(img,real_center,real_top)
+            #cv.SaveImage("rotated.png",img)
+            draw_line(img,real_center,real_top)
+            draw_pt(img,real_top)
+            draw_pt(img,model_top)
+            #cv.SaveImage("pre_scaled.png",img)
             model.scale(scale,real_center)
-                
+            model_center = Vector2D.scale_pt(model_center,scale,real_center)
+            model_top = Vector2D.scale_pt(model_top,scale,real_center)
+            img = cv.CloneImage(img_annotated)
+            model.draw_to_image(img,cv.CV_RGB(0,0,255))
+            
+            draw_line(img,real_center,real_top)
+            draw_pt(img,real_top)
+            draw_pt(img,model_top)
+            #cv.SaveImage("scaled.png",img)
+            #return
         
             if SHOW_SCALED_MODEL:
                 model.draw_to_image(img_annotated,cv.CV_RGB(0,0,255))
@@ -112,7 +149,7 @@ class ShapeFitter:
         #Optimize
         if self.ORIENT_OPT:
             init_model = Models.Orient_Model(model,pi/2)
-            orient_model_finished = black_box_opt(model=init_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 100,delta=init_model.preferred_delta(),epsilon = 0.01) 
+            orient_model_finished = black_box_opt(model=init_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 100,delta=init_model.preferred_delta(),epsilon = 0.01,mode="orient") 
             model_oriented = orient_model_finished.transformed_model()
             #model_oriented.draw_to_image(img=img_annotated,color=cv.CV_RGB(0,0,255))
             #return (model_oriented.vertices_full(),model_oriented,model_oriented)
@@ -121,13 +158,17 @@ class ShapeFitter:
         
         if self.SYMM_OPT:
            print "SYMMETRIC OPTIMIZATION"
-           new_model_symm = black_box_opt(model=model_oriented,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 100,delta=model.preferred_delta(),epsilon = 0.01)
+           new_model_symm = black_box_opt(model=model_oriented,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 100,delta=model.preferred_delta(),epsilon = 0.01,mode="symm")
         else:
-            new_model_symm = model    
+            new_model_symm = model_oriented    
         if SHOW_SYMM_MODEL:
            new_model_symm.draw_to_image(img=img_annotated,color=cv.CV_RGB(0,255,0))
         model=new_model_symm.make_asymm()
-        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=10,delta=model.preferred_delta(),exploration_factor=1.5,fine_tune=False)#FIXME
+        if self.HIGH_EXPLORATION:
+            exp_factor = 3.0
+        else:
+            exp_factor = 1.5
+        new_model_asymm = black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=100,delta=model.preferred_delta(),exploration_factor=exp_factor,fine_tune=False,mode="asymm")#FIXME
         
         if self.FINE_TUNE:
             #tunable_model = model_oriented.make_tunable()
@@ -149,8 +190,6 @@ class ShapeFitter:
             fitted_model.draw_to_image(img=img_annotated,color=cv.CV_RGB(0,255,255))       
         return (nearest_pts,final_model,fitted_model)
     
-
-
 
     def energy_fxn(self,model,contour):
         
@@ -258,6 +297,15 @@ class ShapeFitter:
         score_y = dtw.compute(model_y,sparse_y)
         
         
+def draw_line(img,pt1,pt2):
+    line = Vector2D.make_ln_from_pts(pt1,pt2)
+    ln_start = Vector2D.intercept(line,Vector2D.horiz_ln(y=0))
+    ln_end = Vector2D.intercept(line,Vector2D.horiz_ln(y=img.height))
+    cv.Line(img,ln_start,ln_end,cv.CV_RGB(255,0,0),2)
+        
+def draw_pt(img,pt):
+    color = cv.CV_RGB(255,0,0)
+    cv.Circle(img,pt,5,color,-1)
 
 def make_sparse(contour,num_pts = 1000):
         sparsity = int(math.ceil(len(contour) / float(num_pts)))
@@ -299,7 +347,7 @@ def get_top(shape,center,theta):
             scale += EPSILON
         return (pt,scale)
     
-def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5,fine_tune=False,num_fine_tunes=0):
+def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5,fine_tune=False,num_fine_tunes=0,mode="asymm"):
     #epsilon = delta / 100.0
     epsilon = 0.001
     score = -1 * energy_fxn(model,contour)
@@ -335,7 +383,7 @@ def black_box_opt(model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilo
             img = cv.CloneImage(model.image)
             model.from_params(params).draw_to_image(img,cv.CV_RGB(255,0,0))
             if SAVE_ITERS:
-                cv.SaveImage("iter_%d.png"%it,img)
+                cv.SaveImage("%s_iter_%d.png"%(mode,it),img)
             cv.ShowImage("Optimizing",img)
             cv.WaitKey(50)
         if max([abs(d) for d in deltas]) < epsilon:
