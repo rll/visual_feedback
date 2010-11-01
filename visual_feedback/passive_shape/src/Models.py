@@ -44,7 +44,6 @@ class Model:
         if self.contour_mode():
             sil = self.get_silhouette(vertices,num_pts=density*len(self.sides()))
             return sil
-        
         output = []    
         for i,vert in enumerate(vertices):
             output.append(vert)

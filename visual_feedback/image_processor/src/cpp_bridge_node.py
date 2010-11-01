@@ -19,18 +19,20 @@ class CPPBridgeNode(ImageProcessor):
     def init_extended(self):
         self.cpp_process_service = rospy.get_param("~cpp_service","cpp_process")
         self.multi_exposure = rospy.get_param("~multi_exposure",False)
+        self.ignore_first_picture = True
         if self.multi_exposure:
             self.client = ReconfigureClient("prosilica_driver")
             self.client.update_configuration({'exposure':0.4})
         
     def get_second_image(self,image_topic):
         # Set exposure
-        print "Changing the exposure of camera"
-        self.client.update_configuration({'exposure':0.1})
-        rospy.sleep(5.0)
+        print "Changing the exposure of camera to 0.2"
+        self.client.update_configuration({'exposure':0.2})
+        rospy.sleep(0.1)
         image1 = topic_utils.get_next_message(image_topic,Image)
+        print "Changing the exposure of camera to 0.4"
         self.client.update_configuration({'exposure':0.4})
-        rospy.sleep(5.0)
+        rospy.sleep(0.1)
         image2 = topic_utils.get_next_message(image_topic,Image)
         
 
