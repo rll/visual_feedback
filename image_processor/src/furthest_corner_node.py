@@ -42,11 +42,16 @@ class FurthestCornerFinder(ImageProcessor):
         if not self.left_to_right:
             multiplier = -1
         pt = max(shape_contour,key=lambda pt: pt[0]*multiplier)
+        params = {}
+        # Make sure it isn't super close: homogeneity is proportional to the number of pts within 5 pixels of this pt
+        params["homogeneity"] = len([p for p in shape_contour if abs(p[0]-pt[0])<=15])/float(len(shape_contour))
+
         pt_opp = min(shape_contour,key=lambda pt: pt[0]*multiplier)
         self.highlight_pt(pt,cv.CV_RGB(255,255,255))
         self.highlight_pt(pt_opp,cv.CV_RGB(0,0,0))
         pts = [pt,pt_opp]
-        return (pts,{"tilt":multiplier*-pi/2},self.image2)
+        params["tilt"] = multiplier*-pi/2
+        return (pts,params,self.image2)
 
     def image_edge(self,contour):
         width = self.image.width

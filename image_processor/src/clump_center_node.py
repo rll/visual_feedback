@@ -112,7 +112,7 @@ class ClumpCenterFinder(ImageProcessor):
         else:
             print area(max_contour)
         """
-        shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True,crop_rect=(124,157,472,215),cam_info=info,listener=self.listener)
+        shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True,crop_rect=(120,170,390,267),cam_info=info,listener=self.listener)
 
         moments = cv.Moments(shape_contour,0)
         pt = get_center(moments)

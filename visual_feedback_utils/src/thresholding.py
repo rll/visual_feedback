@@ -79,7 +79,9 @@ def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=Non
                 for x in x_range:
                     for y in range(0,image_thresh.height):
                         image_thresh[y,x] = 0.0
-                        
+    save_num = 0
+    cv.SaveImage("/tmp/thresholded_%d.png"%save_num,image_thresh)
+    save_num = save_num +1
     return image_thresh
     
 def get_contour_from_thresh(image_thresh):
