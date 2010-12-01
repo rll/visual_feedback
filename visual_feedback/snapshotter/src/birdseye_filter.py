@@ -22,7 +22,7 @@ class BirdseyeFilter(SnapshotFilter):
         self.height = rospy.get_param("~init_height",-70)
         #Mode can be "default" "save_h" and "load_h"
         self.mode = rospy.get_param("~mode","default")
-        self.matrix_location = rospy.get_param("~matrix_location","H.yaml")
+        self.matrix_location = rospy.get_param("~matrix_location","/H.yaml")
     
     def image_filter(self,cv_image,info,copy=None):
         image = cv_image

@@ -53,6 +53,7 @@ class TriangleFitterNode(ImageProcessor):
         self.matrix_location = "%s/H.yaml"%self.config_dir
         self.modelpath = "%s/%s.pickle"%(self.load_dir,modelname)
         self.filter_pr2 = True
+        self.num_iters = rospy.get_param("~num_iters",None)
         if self.filter_pr2:
             self.listener = tf.TransformListener()
     
@@ -63,13 +64,13 @@ class TriangleFitterNode(ImageProcessor):
        
         #Use the thresholding module to get the contour out
         shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True
-                                                    ,crop_rect=None,cam_info=info,listener=self.listener)
+                                                    ,crop_rect=(116,121,431,347),cam_info=info,listener=self.listener)
         #Use shapefitting module to fit a triangles model to the data
-        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False)
+        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,num_iters=self.num_iters)
         image_anno = cv.CloneImage(cv_image)
         (nearest_pts, final_model, fitted_model) = fitter.fit(self.model,shape_contour,image_anno)
         #Get 3 samples from the 3 different regions of interest
-        (l_line,r_line) = self.extract_samples(nearest_pts,cv_image)
+        (l_line,r_line) = self.extract_samples(nearest_pts,cv_image,shape_contour)
         lbp_classification = self.lbp_classify()
         if lbp_classification == LEFT:
             left = True
@@ -78,7 +79,7 @@ class TriangleFitterNode(ImageProcessor):
         else:
             edge_classification = self.edge_classify(cv_image,l_line,r_line)
             if edge_classification == LEFT:
-                left = true
+                left = True
             else:
                 left = False
         pts = nearest_pts        
@@ -94,7 +95,7 @@ class TriangleFitterNode(ImageProcessor):
         return (return_pts,params,image_anno)
 
 
-    def extract_samples(self,nearest_pts,cv_image):
+    def extract_samples(self,nearest_pts,cv_image,contour):
         [center,b_l,t_l,t_r,b_r] = nearest_pts
         l_line = Vector2D.make_seg(center,t_l)
         r_line = Vector2D.make_seg(center,t_r)
@@ -123,15 +124,30 @@ class TriangleFitterNode(ImageProcessor):
             t_crop_tr = Vector2D.intercept(Vector2D.vert_ln(t_crop_br[0]),t_side)
             t_crop_tl = Vector2D.pt_sum(t_crop_bl,Vector2D.pt_diff(t_crop_tr,t_crop_br))
         
+        """
+        t_rect_old = (t_crop_bl,t_crop_br,t_crop_tr,t_crop_tl)
+        
+        (orig_t_width,orig_t_height) = Vector2D.rect_size(t_rect_old)
+        while cv.PointPolygonTest(contour,Vector2D.pt_scale(Vector2D.pt_sum(t_crop_tl,t_crop_tr),0.5),0) < 0:
+            t_crop_tl = (t_crop_tl[0],t_crop_tl[1]+0.05*orig_t_height)
+            t_crop_tr = (t_crop_tr[0],t_crop_tr[1]+0.05*orig_t_height)
+            print "shrinking t_height"
+        """
         t_rect = (t_crop_bl,t_crop_br,t_crop_tr,t_crop_tl)
         
         (l_width,l_height) = Vector2D.rect_size(l_rect)
         (r_width,r_height) = Vector2D.rect_size(r_rect)
         (t_width,t_height) = Vector2D.rect_size(t_rect)
+        #print "Height difference:%f"%(t_height - orig_t_height)
         
         width = min(l_width,r_width,t_width) * 0.9
         height = min(l_height,r_height,t_height) * 0.9
-        
+        if width < 5:
+            width = 5
+            print "Hit min"
+        if height < 5:
+            height = 5
+            print "Hit min"
         l_rect_scaled = Vector2D.scale_rect(l_rect,width,height)
         r_rect_scaled = Vector2D.scale_rect(r_rect,width,height)
         t_rect_scaled = Vector2D.scale_rect(t_rect,width,height)
@@ -161,7 +177,8 @@ class TriangleFitterNode(ImageProcessor):
         print "L-to-R: %f\nL-to-T: %f\nR-to-T: %f\n"%(l_r_dist,l_t_dist,r_t_dist)
         print "As fraction of scale:\nL-to-R: %f\nL-to-T: %f\nR-to-T: %f\n"%(l_r_dist/scale,l_t_dist/scale,r_t_dist/scale)
         
-        if abs(l_t_dist/scale - r_t_dist/scale) < 0.02:
+        #if abs(l_t_dist/scale - r_t_dist/scale) < 0.05: #Was 0.02
+        if l_r_dist/float(scale) < .3:
             return UNDETERMINED
         
         if l_t_dist < r_t_dist:
@@ -176,7 +193,6 @@ class TriangleFitterNode(ImageProcessor):
         cv.Split(image_hsv,image_hue,None,None,None)
         image_grad = cv.CreateImage(cv.GetSize(image_hsv),cv.IPL_DEPTH_16S,1)
         cv.Sobel(image_hue,image_grad,0,1)
-        cv.SaveImage("grad_"+imgpath,image_grad)
         scores = []
         for line in (l_line,r_line):
             score = self.score_of(line,image_hue)
@@ -196,6 +212,15 @@ class TriangleFitterNode(ImageProcessor):
         cv.Sobel(image,image_grad_y,0,1)
         scores = [self.score_pt(pt,image_grad_y) for pt in sampled(line,50)]
         return norm(scores)
+        
+    def score_pt(self,pt,image_grad):
+        (pt_x,pt_y) = pt
+        kernel_size = 3
+        values = []
+        for x in range(-1 * kernel_size, kernel_size+1):
+            for y in range(-1 * kernel_size,kernel_size+1):
+                values.append(abs(image_grad[pt_y+y,pt_x+x]))
+        return lst_avg(values)
     
     def load_model(self,filepath):
         self.model = pickle.load(open(filepath))
@@ -208,6 +233,31 @@ class TriangleFitterNode(ImageProcessor):
     def draw_seg(self,img,seg,color):
         (start,end) = Vector2D.end_points(seg)
         cv.Line(img,start,end,color,3)
+
+def lst_avg(lst):
+    return sum(lst) / float(len(lst))
+    
+def lst_var(lst):
+    mean = lst_avg(lst)
+    total = 0
+    for el in lst:
+        total += (el - mean)**2
+    return total / float(len(lst))
+    
+def sampled(line,NUM_SAMPLES):
+    pts = []
+    (start,end) = Vector2D.end_points(line)
+    dist = Vector2D.pt_distance(start,end)
+    for i in range(NUM_SAMPLES):
+        pt = Vector2D.extrapolate(line, dist * i / float(NUM_SAMPLES))
+        pts.append(pt)
+    return pts
+    
+def norm(lst):
+    total = 0
+    for v in lst:
+        total += abs(v)
+    return total
 
 def main(args):
     rospy.init_node("triangle_fitter_node")

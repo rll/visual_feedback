@@ -41,11 +41,16 @@ class TriangleFitter:
         lbp_right = lbp.compute_hist(R_img,P,R,'raw')
         
         print "Norm of L: %f\nNorm of R: %f\nNorm of T: %f\n"%(linalg.norm(lbp_left),linalg.norm(lbp_right),linalg.norm(lbp_top))
-        scale = (linalg.norm(lbp_left)+linalg.norm(lbp_right)+linalg.norm(lbp_top))/3.0
+        #scale = (chi_square(lbp_left)+linalg.norm(lbp_right)+linalg.norm(lbp_top))/3.0
         
-        l_r_dist = linalg.norm(lbp_left - lbp_right)
-        l_t_dist = linalg.norm(lbp_left - lbp_top)
-        r_t_dist = linalg.norm(lbp_right - lbp_top)
+        #l_r_dist = linalg.norm(lbp_left - lbp_right)
+        #l_t_dist = linalg.norm(lbp_left - lbp_top)
+        #r_t_dist = linalg.norm(lbp_right - lbp_top)
+        dist_fxn = chi_square
+        scale = (dist_fxn(lbp_left,lbp_left)+dist_fxn(lbp_right,lbp_right)_dist_fxn(lbp_top,lbp_top))/3.0
+        l_r_dist = dist_fxn(lbp_left, lbp_right)
+        l_t_dist = dist_fxn(lbp_left, lbp_top)
+        r_t_dist = dist_fxn(lbp_right, lbp_top)
         
         print "L-to-R: %f\nL-to-T: %f\nR-to-T: %f\n"%(l_r_dist,l_t_dist,r_t_dist)
         print "As fraction of scale:\nL-to-R: %f\nL-to-T: %f\nR-to-T: %f\n"%(l_r_dist/scale,l_t_dist/scale,r_t_dist/scale)
@@ -85,7 +90,7 @@ class TriangleFitter:
         #Use the thresholding module to get the contour out
         shape_contour = thresholding.get_contour(image_raw,bg_mode=thresholding.GREEN_BG,filter_pr2=False,crop_rect=None)
         #Use the shape_fitting module to fit the model to the contour
-        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,INITIALIZE=True)
+        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,INITIALIZE=True,num_iters=30)
         (nearest_pts, final_model, fitted_model) = fitter.fit(model,shape_contour,image_out)    
         [center,b_l,t_l,t_r,b_r] = nearest_pts
         l_line = Vector2D.make_seg(center,t_l)
@@ -222,6 +227,15 @@ def lst_var(lst):
     for el in lst:
         total += (el - mean)**2
     return total / float(len(lst))
+    
+def chi_square(v1,v2):
+    total = 0
+    for i in range(len(v1)):
+        total += (v1[i] - v2[i])**2 / float(v1[i] + v2[i]+
+    return total
+    
+def l2(v1,v2):
+    return linalg.norm(v1 - v2)
     
 def sampled(line,NUM_SAMPLES):
     pts = []

@@ -44,6 +44,7 @@ class ShapeFitterNode(ImageProcessor):
         self.matrix_location = "%s/H.yaml"%self.config_dir
         self.modelpath = "%s/%s.pickle"%(self.load_dir,modelname)
         self.filter_pr2 = True
+        self.num_iters = rospy.get_param("~num_iters",None)
         if self.filter_pr2:
             self.listener = tf.TransformListener()
         
@@ -58,20 +59,21 @@ class ShapeFitterNode(ImageProcessor):
         #Use the thresholding module to get the contour out
         if self.filter_pr2:
             shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True
-                                                    ,crop_rect=(133,58,386,355),cam_info=info,listener=self.listener)
+                                                    ,crop_rect=(115,58,396,355),cam_info=info,listener=self.listener)
         else:
             shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=False
-                                                    ,crop_rect=(133,58,386,355),cam_info=info,listener=None)
+                                                    ,crop_rect=(115,58,396,355),cam_info=info,listener=None)
         #Use the shape_fitting module to fit the model to the contour
+        
         if self.mode=="tee":
             #fitter = shape_fitting.ShapeFitter(SYMM_OPT=True,ORIENT_OPT=False,FINE_TUNE=False)
-            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=True,FINE_TUNE=False)
+            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=True,FINE_TUNE=False,num_iters=self.num_iters)
         elif self.mode=="sweater":
-            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False)
+            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,num_iters=self.num_iters)
         elif self.mode=="folded":
-            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,INITIALIZE=False)
+            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,INITIALIZE=False,num_iters=self.num_iters)
         else:
-            fitter = shape_fitting.ShapeFitter(SYMM_OPT=True,ORIENT_OPT=False,FINE_TUNE=False)
+            fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,num_iters=self.num_iters)
         image_anno = cv.CloneImage(cv_image)
         """
         if self.mode == "folded":
@@ -82,6 +84,7 @@ class ShapeFitterNode(ImageProcessor):
         pts = nearest_pts
         
         params = {}
+        
         
         if self.mode == "triangles":
             return_pts = [pts[1],pts[4],pts[2],pts[3]]
@@ -130,6 +133,8 @@ class ShapeFitterNode(ImageProcessor):
         #Ignore nearest
         #if self.mode == "tee" or self.mode == "sweater":
         #    return_pts = final_model.vertices_full()[0:5] + final_model.vertices_full()[8:]
+        score = fitter.energy_fxn(final_model,shape_contour)
+        params["score"] = score
         return (return_pts,params,image_anno)
         
     def transform_pts(self,pts,M): 
