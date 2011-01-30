@@ -94,7 +94,6 @@ def get_contour_from_thresh(image_thresh):
         if length > max_length:
             max_length = length
             max_contour = contour
-            print "Replaced with %f"%length
         contour = contour.h_next()
     if max_contour == None:
         print "Couldn't find any contours"
