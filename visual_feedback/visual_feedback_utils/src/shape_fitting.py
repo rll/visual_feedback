@@ -35,11 +35,6 @@ SHOW_FITTED = False
 
 class ShapeFitter:
     def __init__(self,DIST_FXN="l2",SYMM_OPT=False,FINE_TUNE=False,ORIENT_OPT=True,INITIALIZE=True,HIGH_EXPLORATION=False,ROTATE=True, SHOW=True,SILENT=False):
-
-        if not num_iters:
-            self.num_iters = 100
-        else:
-            self.num_iters = num_iters
         if DIST_FXN == "l1":
             self.dist_fxn = l1_norm
         elif DIST_FXN == "l2":
