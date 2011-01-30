@@ -25,7 +25,7 @@ SYMM = 1
 SKEL = 2
 PANTS_SKEL = 3
 TEE_SKEL = 4
-TYPE = SKEL
+TYPE = PANTS_SKEL
 
 class ModelMaker(ShapeWindow):
     

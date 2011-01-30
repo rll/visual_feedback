@@ -44,6 +44,7 @@ class Model:
         if self.contour_mode():
             sil = self.get_silhouette(vertices,num_pts=density*len(self.sides()))
             return sil
+        
         output = []    
         for i,vert in enumerate(vertices):
             output.append(vert)
@@ -216,6 +217,7 @@ class Point_Model(Model):
         if not origin:
             origin = self.center()
         self.vertices = scale_pts(self.vertices,amt,origin)
+        self.scalar_params = [p*amt for p in self.scalar_params]
     
     #Parameters are all of my vertices plus all of my other parameters
     def params(self):
@@ -280,14 +282,12 @@ class Point_Model(Model):
                 for j in range(i,len(sides)):
                     if i != j:
                         if seg_intercept(sides[i],sides[j]) != None:
-                            print "Self intersection!"
                             return True
         if not self.allow_flipping():
             sides=  self.sides()
             for i in range(len(sides)):
                 for j in range(i-2,i+1):
                     if seg_intercept(sides[i],sides[j]) != None:
-                            print "Flipped"
                             return True
                 
         return False

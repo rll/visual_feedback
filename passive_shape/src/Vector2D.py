@@ -24,6 +24,7 @@ def pt_distance(pt1,pt2):
 def pt_scale(pt,scale):
     return (pt[0]*scale,pt[1]*scale)
     
+    
 def dot_prod(pt1,pt2):
     return pt1[0]*pt2[0]+pt1[1]*pt2[1]
     
@@ -52,7 +53,10 @@ def line_offset(ln):
     
 def line_vector(ln):
     return ln[1]
-    
+
+def normalize(vect):
+    return pt_scale(vect,1.0/sqrt(float(dot_prod(vect,vect))))
+   
 def perpendicular(ln,pt):
     (dx,dy) = line_vector(ln)
     perp_vector = (-1*dy,dx)
@@ -91,6 +95,8 @@ def intercept(ln1,ln2):
     elif (m2 == None and b1 == None):
         x = line_offset(ln2)[0]
         y = m1*x + b1
+    elif(b2 == None or b1 == None or m1 == None or m2 == None):
+        return None
     else:
         x = (b2 - b1) / (m1 - m2)
         y = m1*x + b1

@@ -29,8 +29,8 @@ def score(testfile,correctfile):
         correct_pt = correct_pts[i]
         error = Vector2D.pt_distance(test_pt,correct_pt)
         errors.append(error)
-    #return lst_avg(errors)
-    return [lst_avg(errors)]
+    return lst_avg(errors)
+    #return [lst_avg(errors)]
         
 def lst_avg(lst):
     return sum(lst) / float(len(lst))
