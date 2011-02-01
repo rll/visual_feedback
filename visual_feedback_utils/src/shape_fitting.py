@@ -34,14 +34,14 @@ SHOW_FITTED = False
 
 
 class ShapeFitter:
-    def __init__(self,DIST_FXN="l2",SYMM_OPT=False,FINE_TUNE=False,ORIENT_OPT=True,INITIALIZE=True,HIGH_EXPLORATION=False,ROTATE=True, SHOW=True,SILENT=False):
+    def __init__(self,DIST_FXN="l2",SYMM_OPT=False,FINE_TUNE=False,ORIENT_OPT=True,INITIALIZE=True,HIGH_EXPLORATION=False,ROTATE=True, SHOW=True,SILENT=False,num_iters=100):
         if DIST_FXN == "l1":
             self.dist_fxn = l1_norm
         elif DIST_FXN == "l2":
             self.dist_fxn = l2_norm
         else:
             self.dist_fxn = l2_norm
-            
+        self.num_iters = num_iters
         self.SYMM_OPT = SYMM_OPT
         self.ORIENT_OPT = ORIENT_OPT
         self.FINE_TUNE = FINE_TUNE   
@@ -119,14 +119,14 @@ class ShapeFitter:
         #Optimize
         if self.ORIENT_OPT:
             init_model = Models.Orient_Model(model,pi/2)
-            orient_model_finished = self.black_box_opt(model=init_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 15,delta=init_model.preferred_delta(),epsilon = 0.01,mode="orient") 
+            orient_model_finished = self.black_box_opt(model=init_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = self.num_iters,delta=init_model.preferred_delta(),epsilon = 0.01,mode="orient") 
             model_oriented = orient_model_finished.transformed_model()
         else:
             model_oriented = model
         
         if self.SYMM_OPT:
            self.printout("SYMMETRIC OPTIMIZATION")
-           new_model_symm = self.black_box_opt(model=model_oriented,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = 15,delta=model.preferred_delta(),epsilon = 0.01,mode="symm")
+           new_model_symm = self.black_box_opt(model=model_oriented,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = self.num_iters,delta=model.preferred_delta(),epsilon = 0.01,mode="symm")
         else:
             new_model_symm = model_oriented    
         if SHOW_SYMM_MODEL:
@@ -136,12 +136,12 @@ class ShapeFitter:
             exp_factor = 3.0
         else:
             exp_factor = 1.5
-        new_model_asymm = self.black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=15,delta=model.preferred_delta(),exploration_factor=exp_factor,fine_tune=False,mode="asymm")
+        new_model_asymm = self.black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=self.num_iters,delta=model.preferred_delta(),exploration_factor=exp_factor,fine_tune=False,mode="asymm")
         
         if self.FINE_TUNE:
             #tunable_model = model_oriented.make_tunable()
             tunable_model = new_model_asymm.make_tunable()
-            final_model = self.black_box_opt(model=tunable_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=15,delta=5.0,exploration_factor=1.5,fine_tune=False)
+            final_model = self.black_box_opt(model=tunable_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=self.num_iters,delta=5.0,exploration_factor=1.5,fine_tune=False)
             final_model = final_model.final()
         else:
             final_model = new_model_asymm
