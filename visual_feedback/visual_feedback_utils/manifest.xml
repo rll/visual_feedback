@@ -14,7 +14,6 @@
   <depend package="polled_camera" />
   <depend package="dynamic_reconfigure" />
   <depend package="shape_window" />
-  <depend package="TPS" />
   <depend package="passive_shape"/>
 </package>
 
