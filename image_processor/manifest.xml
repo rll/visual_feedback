@@ -20,13 +20,13 @@
   <depend package="image_geometry"/>
   <depend package="roscpp"/>
   <depend package="image_transport"/>
+  <depend package="dynamic_reconfigure" />
   <depend package="shape_window"/>
   <depend package="folding_gui"/>
   <depend package="stereo_click"/>
   <depend package="snapshotter" />
-  <depend package="visual_feedback_utils" />
   <depend package="passive_shape" />
-  <depend package="dynamic_reconfigure" />
+  <depend package="visual_feedback_utils" />
 </package>
 
 
