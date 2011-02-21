@@ -19,13 +19,13 @@ import pickle
 import Vector2D
 import Models
 
-
 ASYMM = 0
 SYMM = 1
 SKEL = 2
 PANTS_SKEL = 3
 TEE_SKEL = 4
-TYPE = PANTS_SKEL
+SOCK_SKEL = 5
+TYPE = SOCK_SKEL
 
 class ModelMaker(ShapeWindow):
     
@@ -63,6 +63,13 @@ class ModelMaker(ShapeWindow):
             self.mid_left = None
             self.left_leg_bottom = None
             self.left_leg_left = None
+        if TYPE == SOCK_SKEL:
+            self.mode = 0
+            self.ankle_center = None
+            self.ankle_joint = None
+            self.toe_center = None
+            self.toe_top = None
+            self.sock_width = None
         clearShapesButton = CVButton(text="CLEAR",bottomLeft=Geometry2D.Point(50,100), onClick=self.clearAll)
         self.addOverlay(clearShapesButton)
         saveModelButton = CVButton(text="SAVE MODEL",bottomLeft=Geometry2D.Point(150,100), onClick = self.saveModel)
@@ -87,11 +94,19 @@ class ModelMaker(ShapeWindow):
             return self.skelDrawer(event,x,y,flags,param)
         elif TYPE==PANTS_SKEL:
             return self.pantsSkelDrawer(event,x,y,flags,param)
+        elif TYPE==SOCK_SKEL:
+            return self.sockSkelDrawer(event,x,y,flags,param)
             
     def skelDrawer(self,event,x,y,flags,param):
         if self.mode==0:
             #Draw spine_bottom
             if event==cv.CV_EVENT_LBUTTONUP:
+                self.permanentHighlightPt(self.toe_center)
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.ankle_joint,self.toe_center))
+                self.mode += 1
+            else:
+                self.highlightPoint(self.toe_center)
+                self.highlightSegment(Geometry2D.LineSegment(self.ankle_joint,self.toe_center))
                 self.spine_bottom = Geometry2D.Point(x,y)
                 self.permanentHighlightPt(self.spine_bottom)
                 self.mode += 1
@@ -232,7 +247,50 @@ class ModelMaker(ShapeWindow):
                 self.highlightPt(virtual_sleeve_bottom)
                 self.highlightSegment(Geometry2D.LineSegment(sleeve_bottom,sleeve_top))
                 self.highlightSegment(Geometry2D.LineSegment(virtual_sleeve_bottom,virtual_sleeve_top))    
-            
+    
+    def sockSkelDrawer(self,event,x,y,flags,param):
+        if self.mode==0:
+            new_pt = Geometry2D.Point(x,y)
+            self.ankle_center = new_pt
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.permanentHighlightPt(self.ankle_center)
+                self.mode += 1
+            else:
+                self.highlightPt(self.ankle_center)
+        elif self.mode==1:
+            new_pt = Geometry2D.Point(x,y)
+            self.ankle_joint = new_pt
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.permanentHighlightPt(self.ankle_joint)
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.ankle_center,self.ankle_joint))
+                self.mode += 1
+            else:
+                self.highlightPt(self.ankle_joint)
+                self.highlightSegment(Geometry2D.LineSegment(self.ankle_center,self.ankle_joint))
+
+        elif self.mode==2:
+            new_pt = Geometry2D.Point(x,y)
+            self.toe_center = new_pt
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.permanentHighlightPt(self.toe_center)
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.ankle_joint,self.toe_center))
+                self.mode += 1
+            else:
+                self.highlightPt(self.toe_center)
+                self.highlightSegment(Geometry2D.LineSegment(self.ankle_joint,self.toe_center))
+
+        elif self.mode==3:
+            new_pt = Geometry2D.Point(x,y)
+            self.toe_top = new_pt
+            self.sock_width = 2*Geometry2D.distance(self.toe_top,self.toe_center)
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.permanentHighlightPt(self.toe_top)
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.toe_center,self.toe_top))
+                self.mode += 1
+            else:
+                self.highlightPt(self.toe_top)
+                self.highlightSegment(Geometry2D.LineSegment(self.toe_center,self.toe_top))
+
     def pantsSkelDrawer(self,event,x,y,flags,param):
         if self.mode==0:
             new_pt = Geometry2D.Point(x,y)
@@ -262,6 +320,7 @@ class ModelMaker(ShapeWindow):
                 self.mid_right = Geometry2D.mirrorPt(self.mid_left,Geometry2D.LineSegment(self.mid_center,self.top_center))
                 self.permanentHighlightPt(self.mid_left)
                 self.permanentHighlightPt(self.mid_right)
+            
                 self.permanentHighlightSegment(Geometry2D.LineSegment(self.mid_left,self.mid_right))
                 self.mode += 1
             else:
@@ -395,6 +454,8 @@ class ModelMaker(ShapeWindow):
             model = self.getModelTee()
         elif TYPE==PANTS_SKEL:
             model = self.getModelPantsSkel()
+        elif TYPE==SOCK_SKEL:
+            model = self.getModelSockSkel()
         model.draw_to_image(self.background,cv.RGB(255,0,0))
         if model.illegal() or model.structural_penalty() >= 1.0:
             print "Model is illegal, with penalty %f!"%model.structural_penalty()
@@ -481,6 +542,10 @@ class ModelMaker(ShapeWindow):
             self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
             self.left_leg_center.toTuple(),self.top_left.toTuple(),width
         )
+
+    def getModelSockSkel(self):
+        return Models.Model_Sock_Skel(True,
+            self.ankle_center.toTuple(),self.ankle_joint.toTuple(),self.toe_center.toTuple(),self.sock_width)
 
     
 def main(args):

@@ -18,6 +18,7 @@ sensor_msgs::CvBridge bridge_;
 bool load_image_srv         (   appearance_utils::LoadImage::Request    &req,
                                 appearance_utils::LoadImage::Response   &res )
 {
+    cout << "Called load_image service" << endl;
     sensor_msgs::Image image = req.image;
     sensor_msgs::ImagePtr img_ptr(new sensor_msgs::Image(image));
     
@@ -31,8 +32,11 @@ bool load_image_srv         (   appearance_utils::LoadImage::Request    &req,
                 ROS_ERROR("Error bridging to openCV format");
                 return false;
         }
+    cout << "Converted to cv_image" << endl;
     landmarkDetector_->loadNewImage(cv_image);
+    cout << "Loaded image" << endl;
     landmarkDetector_->computeResponseStartingAtPt();
+    cout << "Computed response" << endl;
     return true;
 }
 

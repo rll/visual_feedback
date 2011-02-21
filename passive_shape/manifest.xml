@@ -23,7 +23,8 @@
   <depend package="folding_gui"/>
   <depend package="stereo_click"/>
   <depend package="snapshotter" />
- 
+  <depend package="appearance_utils" />
+  <depend package="rll_utils" /> 
 </package>
 
 

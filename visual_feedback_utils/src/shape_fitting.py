@@ -55,7 +55,7 @@ class ShapeFitter:
     
 
     #Returns the nearest points, the model, and the fitted model
-    def fit(self,model,contour,img_annotated=None):
+    def fit(self,model,contour,img_annotated=None,img=None):
         #infuriating fix
         x = 0
         cv.NamedWindow("Result",1)
@@ -73,13 +73,13 @@ class ShapeFitter:
         shape_contour = contour
         
         if SHOW_CONTOURS:
-                cv.DrawContours(img_annotated,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,1,8,(0,0))
+            cv.DrawContours(img_annotated,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,1,8,(0,0))
         if self.INITIALIZE:
             self.printout("INITIALIZING")
             (real_center,real_top,real_theta,real_scale) = get_principle_info(shape_contour)
             if SHOW_UNSCALED_MODEL:
                 model.draw_to_image(img_annotated,cv.CV_RGB(0,0,255))
-            (model_center,model_top,model_theta,model_scale) = get_principle_info(model.vertices_full())
+            (model_center,model_top,model_theta,model_scale) = get_principle_info(model.polygon_vertices())
             displ = displacement(model_center,real_center)
                 
             self.printout(model_theta)
@@ -93,7 +93,7 @@ class ShapeFitter:
             if scale < 0.25:
                 scale = 1
     
-            model_trans = translate_poly(model.vertices_full(),displ)
+            model_trans = translate_poly(model.polygon_vertices(),displ)
             model_rot = rotate_poly(model_trans,-1*angle,real_center)
             #scale = 1 #FIXME
             model_scaled = scale_poly(model_rot,scale,real_center)
@@ -119,14 +119,17 @@ class ShapeFitter:
         #Optimize
         if self.ORIENT_OPT:
             init_model = Models.Orient_Model(model,pi/2)
-            orient_model_finished = self.black_box_opt(model=init_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = self.num_iters,delta=init_model.preferred_delta(),epsilon = 0.01,mode="orient") 
+            orient_model_finished = self.black_box_opt(model=init_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = self.num_iters,delta=init_model.preferred_delta(),epsilon = 0.01,mode="orient",image=img) 
             model_oriented = orient_model_finished.transformed_model()
         else:
             model_oriented = model
-        
+       
+        #FIXME
+        model_oriented.initialize_appearance(img)
+
         if self.SYMM_OPT:
            self.printout("SYMMETRIC OPTIMIZATION")
-           new_model_symm = self.black_box_opt(model=model_oriented,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = self.num_iters,delta=model.preferred_delta(),epsilon = 0.01,mode="symm")
+           new_model_symm = self.black_box_opt(model=model_oriented,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = self.num_iters,delta=model.preferred_delta(),epsilon = 0.01,mode="symm",image=img)
         else:
             new_model_symm = model_oriented    
         if SHOW_SYMM_MODEL:
@@ -136,18 +139,18 @@ class ShapeFitter:
             exp_factor = 3.0
         else:
             exp_factor = 1.5
-        new_model_asymm = self.black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=self.num_iters,delta=model.preferred_delta(),exploration_factor=exp_factor,fine_tune=False,mode="asymm")
+        new_model_asymm = self.black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=self.num_iters,delta=model.preferred_delta(),exploration_factor=exp_factor,fine_tune=False,mode="asymm",image=img)
         
         if self.FINE_TUNE:
             #tunable_model = model_oriented.make_tunable()
             tunable_model = new_model_asymm.make_tunable()
-            final_model = self.black_box_opt(model=tunable_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=self.num_iters,delta=5.0,exploration_factor=1.5,fine_tune=False)
+            final_model = self.black_box_opt(model=tunable_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=self.num_iters,delta=5.0,exploration_factor=1.5,fine_tune=False,image=img)
             final_model = final_model.final()
         else:
             final_model = new_model_asymm
         final_model.draw_to_image(img=img_annotated,color=cv.CV_RGB(255,0,255))
         nearest_pts = []
-        for vert in final_model.vertices_full():
+        for vert in final_model.polygon_vertices():
             nearest_pt = min(shape_contour,key=lambda pt: Vector2D.pt_distance(pt,vert))
             cv.Circle(img_annotated,nearest_pt,5,cv.CV_RGB(255,255,255),3)
             nearest_pts.append(nearest_pt)
@@ -242,10 +245,10 @@ class ShapeFitter:
         score_x = dtw.compute(model_x,sparse_x)
         score_y = dtw.compute(model_y,sparse_y)
         
-    def black_box_opt(self,model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5,fine_tune=False,num_fine_tunes=0,mode="asymm"):
+    def black_box_opt(self,model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5,fine_tune=False,num_fine_tunes=0,mode="asymm",image=None):
     
         epsilon = 0.001
-        score = -1 * energy_fxn(model,contour)
+        score = -1 * model.score(contour,image)
         self.printout("Initial score was %f"%score)
         params = model.params()
         deltas = [delta for p in params]
@@ -260,7 +263,7 @@ class ShapeFitter:
             for i in range(len(params)):
                 new_params = list(params)
                 new_params[i] += deltas[i]
-                new_score = -1 * energy_fxn(model.from_params(new_params),contour)
+                new_score = -1 * model.from_params(new_params).score(contour, image)
                 if new_score > score:
                     params = new_params
                     score = new_score
@@ -269,7 +272,7 @@ class ShapeFitter:
                     deltas[i] *= -1
                     new_params = list(params)
                     new_params[i] += deltas[i]
-                    new_score = -1 * energy_fxn(model.from_params(new_params),contour)
+                    new_score = -1 * model.from_params(new_params).score(contour,image)
                     if new_score > score:
                         params = new_params
                         score = new_score

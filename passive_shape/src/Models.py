@@ -5,7 +5,10 @@ import cv
 from Vector2D import *
 import inspect
 import pyflann
-
+import rospy
+from appearance_utils.srv import *
+import ImageUtils
+import RosUtils
 nn_solver = pyflann.FLANN()
 
 def make_sparse(contour,num_pts = 1000):
@@ -68,7 +71,11 @@ class Model:
     def score(self,contour=None, image=None):
         score = self.beta()*self.contour_score(contour) + (1 - self.beta())*self.appearance_score(image)
         score += self.structural_penalty()
+        print "score = %f x %f + %f * %f"%(self.beta(),self.contour_score(contour),1-self.beta(),self.appearance_score(image))
         return score
+    
+    def initialize_appearance(self,image):
+        pass
 
     def appearance_score(self,image):
         return 0
@@ -77,7 +84,7 @@ class Model:
         model_dist_param = 0.5
         contour_dist_param = 0.5
         sparse_contour = make_sparse(contour,1000)
-        num_model_pts = 30*len(model.sides())
+        num_model_pts = 30*len(self.sides())
         
         nn=self.nearest_neighbors_fast
         extra_sparse_contour = make_sparse(contour,num_model_pts)
@@ -86,12 +93,12 @@ class Model:
         nn_model = nn(model_contour,sparse_contour)
         model_dist_energy = sum([self.dist_fxn(dist) for dist in nn_model]) / float(len(nn_model))
         #Normalize
-        model_dist_energy /= float(self.dist_fxn(max(model.image.width,model.image.height)))
+        model_dist_energy /= float(self.dist_fxn(max(self.image.width,self.image.height)))
     
         nn_contour = nn(extra_sparse_contour,model_contour)
         contour_dist_energy = sum([self.dist_fxn(dist) for dist in nn_contour]) / float(len(nn_contour))
         #Normalize
-        contour_dist_energy /= float(self.dist_fxn(max(model.image.width,model.image.height)))
+        contour_dist_energy /= float(self.dist_fxn(max(self.image.width,self.image.height)))
         
         energy = model_dist_param * model_dist_energy + contour_dist_param * contour_dist_energy
         return energy
@@ -107,7 +114,7 @@ class Model:
         return val**2
 
     def beta(self):
-        return 0
+        return 1 
 
     def structural_penalty(self):
         return 0
@@ -679,6 +686,38 @@ class Model_Sock_Skel(Point_Model_Variable_Symm):
         self.draw_point(img,self.toe_center(),color)
         self.draw_line(img,self.ankle_center(),self.ankle_joint(),color)
         self.draw_line(img,self.ankle_joint(),self.toe_center(),color)
+
+    def beta(self):
+        return 0.999
+
+
+    
+    def initialize_appearance(self,image):
+        RosUtils.call_service("landmark_service_node/load_image", LoadImage, ImageUtils.cv_to_imgmsg(image))
+
+    def appearance_score(self,image):
+        appearance_score = 0
+        appearance_score += self.heel_score()
+        appearance_score += self.toe_score()
+        appearance_score += self.ankle_score()
+        return 1 - (appearance_score / 3.0)
+
+    def heel_score(self):
+        res1 = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
+                                        x=self.heel()[0],   y=self.heel()[1], mode=LandmarkResponseRequest.HEEL)
+        res2 = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
+                                        x=self.bend_point()[0],   y=self.bend_point()[1], mode=LandmarkResponseRequest.HEEL)
+        return max(res1.response, res2.response)
+
+    def toe_score(self):
+        res = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
+                                        x=self.toe_center()[0],   y=self.toe_center()[1], mode=LandmarkResponseRequest.TOE)
+        return res.response
+
+    def ankle_score(self):
+        res = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
+                                        x=self.ankle_center()[0],   y=self.ankle_center()[1], mode=LandmarkResponseRequest.OPENING)
+        return res.response
 
 class Model_Towel(Point_Model_Variable_Symm):
     def polygon_vertices(self):
