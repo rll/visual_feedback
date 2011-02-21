@@ -1,0 +1,13 @@
+#Pixel coordinates
+int32 x
+int32 y
+
+#Types
+int32 OTHER=0
+int32 HEEL=1
+int32 TOE=2
+int32 OPENING=3
+
+int32 mode
+---
+float64 response
