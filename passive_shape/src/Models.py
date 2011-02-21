@@ -4,7 +4,9 @@ from numpy import *
 import cv
 from Vector2D import *
 import inspect
+import pyflann
 
+nn_solver = pyflann.FLANN()
 
 def make_sparse(contour,num_pts = 1000):
         sparsity = int(math.ceil(len(contour) / float(num_pts)))
@@ -25,21 +27,21 @@ class Model:
     def preferred_delta(self):
         return 35.0
 
-    def vertices_full(self):
+    def polygon_vertices(self):
         abstract
         
     def set_image(self,image):
         self.image = image
           
     def sides(self):
-        verts =  self.vertices_full()
+        verts =  self.polygon_vertices()
         segs = []
         for i,v in enumerate(verts):
             segs.append(make_seg(verts[i-1],v))
         return segs
         
     def vertices_dense(self,density=10,length=10,constant_length=False,contour_mode=False):
-        vertices = self.vertices_full()
+        vertices = self.polygon_vertices()
         
         if self.contour_mode():
             sil = self.get_silhouette(vertices,num_pts=density*len(self.sides()))
@@ -63,6 +65,50 @@ class Model:
         
         return output
     
+    def score(self,contour=None, image=None):
+        score = self.beta()*self.contour_score(contour) + (1 - self.beta())*self.appearance_score(image)
+        score += self.structural_penalty()
+        return score
+
+    def appearance_score(self,image):
+        return 0
+
+    def contour_score(self,contour):
+        model_dist_param = 0.5
+        contour_dist_param = 0.5
+        sparse_contour = make_sparse(contour,1000)
+        num_model_pts = 30*len(model.sides())
+        
+        nn=self.nearest_neighbors_fast
+        extra_sparse_contour = make_sparse(contour,num_model_pts)
+        model_contour = self.vertices_dense(constant_length=False,density=30)
+        
+        nn_model = nn(model_contour,sparse_contour)
+        model_dist_energy = sum([self.dist_fxn(dist) for dist in nn_model]) / float(len(nn_model))
+        #Normalize
+        model_dist_energy /= float(self.dist_fxn(max(model.image.width,model.image.height)))
+    
+        nn_contour = nn(extra_sparse_contour,model_contour)
+        contour_dist_energy = sum([self.dist_fxn(dist) for dist in nn_contour]) / float(len(nn_contour))
+        #Normalize
+        contour_dist_energy /= float(self.dist_fxn(max(model.image.width,model.image.height)))
+        
+        energy = model_dist_param * model_dist_energy + contour_dist_param * contour_dist_energy
+        return energy
+        
+    def nearest_neighbors_fast(self,model_contour,sparse_contour):
+        global nn_solver
+        model_arr = array(model_contour)
+        contour_arr = array(sparse_contour)
+        result,dists = nn_solver.nn(sparse_contour,model_contour, num_neighbors=1,algorithm="kmeans",branching=32, iterations=3, checks=16);
+        return [sqrt(dist) for dist in dists]
+
+    def dist_fxn(self,val):
+        return val**2
+
+    def beta(self):
+        return 0
+
     def structural_penalty(self):
         return 0
         
@@ -92,8 +138,8 @@ class Model:
         return make_sparse(max_contour,num_pts)
 
     def center(self):
-        xs = [x for (x,y) in self.vertices_full()]
-        ys = [y for (x,y) in self.vertices_full()]
+        xs = [x for (x,y) in self.polygon_vertices()]
+        ys = [y for (x,y) in self.polygon_vertices()]
         min_x = min(xs)
         min_y = min(ys)
         max_x = max(xs)
@@ -116,13 +162,13 @@ class Model:
         abstract
         
     def draw_to_image(self,img,color):
-        cv.PolyLine(img,[self.vertices_full()],1,color,2)
+        cv.PolyLine(img,[self.polygon_vertices()],1,color,3)
         
     def draw_point(self,img,pt,color):
         cv.Circle(img,pt,5,color,-1)
         
     def draw_line(self,img,pt1,pt2,color):
-        cv.Line(img,pt1,pt2,color)
+        cv.Line(img,pt1,pt2,color,thickness=2)
         
 
     def make_asymm(self):
@@ -163,6 +209,7 @@ class Model:
 
     def illegal(self):
         return False
+
         
 #Abstract class for a model which is fully defined by its points (i.e., has no other parameters like symmline)
 class Point_Model(Model):
@@ -289,8 +336,8 @@ class Point_Model(Model):
                 for j in range(i-2,i+1):
                     if seg_intercept(sides[i],sides[j]) != None:
                             return True
-                
         return False
+
         
 class Point_Model_Contour_Only_Asymm(Point_Model):
     def __init__(self,*vertices_and_params):
@@ -302,7 +349,7 @@ class Point_Model_Contour_Only_Asymm(Point_Model):
         return ["pt_%d"%i for i in range(self.num_variable_pts)]
         #return ["pt_%d"%i for i in range(13)]
         
-    def vertices_full(self):
+    def polygon_vertices(self):
         return self.vertices
         
     def __getattr__(self,attr):
@@ -310,89 +357,16 @@ class Point_Model_Contour_Only_Asymm(Point_Model):
             return self.__dict__["num_variable_pts"]
         else:
             return Point_Model.get_attr(self,attr)
-"""
-# A model which is defined by fixed points and one foldline  
-class Point_Model_Folded(Point_Model):
-    #For now, we can easily assume all folds are left to right, and work a sign in later to fix it
-    def __init__(self,initial_model,fold_angle,fold_displ):
-        self.initial_model = initial_model
-        self.vertices = []
-        self.scalar_params = [fold_angle,fold_displ]
-        print "Angle = %f, Displ = %f"%(fold_angle,fold_displ)
-        
-    def variable_param_names(self):
-        return ["fold_angle","fold_displ"]
-        
-    def variable_pt_names(self):
-        return []
-        
-    def vertices_full(self):
-        print "CALCULATING VERTICES FULL"
-        init_vertices_full = self.initial_model.vertices_full()
-        foldline = self.foldline()
-        perp = perpendicular(foldline,(self.fold_displ(),0.0))
-        pts = []
-        
-        for pt in init_vertices_full:
-            if dot_prod(pt,line_vector(perp)) < dot_prod(line_offset(perp),line_vector(perp)):
-                pts.append(mirror_pt(pt,foldline))
-                #pts.append(pt)
-            else:
-                pts.append(pt)
-        last_inter = None
-        offset = 0
-        print len(pts)
-        for i,seg in enumerate(self.initial_model.sides()):
-            inter = seg_intercept(seg,foldline)
-            if inter != None:
-                pts.insert(i+offset,inter)
-                print "INSERTING INTERCEPT"
-                if last_inter != None:
-                    pts.insert(i+1+offset,last_inter)
-                    pts.insert(i+2+offset,inter)
-                    offset += 2
-                    last_iter = None
-                else:
-                    last_inter = inter
-                offset += 1
-        print len(pts)
-        print "DONE CALCULATING VERTICES FULL"
-        return list(pts)
-    
-    def contour_mode(self):
-        return True
-        
-    def illegal(self):
-        return False
-      
-    def foldline(self):
-        return make_ln_from_pts((self.fold_displ(),0.0),(self.fold_displ()+100*cos(self.fold_angle()),100*sin(self.fold_angle())))
-        
-    def allow_intersections(self):
-        return True
-        
-    def draw_to_image(self,img,color):
-        self.draw_line(img,intercept(self.foldline(),horiz_ln(y=0.0)),intercept(self.foldline(),horiz_ln(y=img.height)),color)
-        val = [self.draw_point(img,pt,color) for pt in self.vertices_full()]
-        Point_Model.draw_to_image(self,img,color)
-        
-    def clone(self,*init_args):
-        print "Init args are: %s"%init_args
-        print len(init_args)
-        print init_args[0][0]
-        myclone = self.__class__(self.initial_model,*init_args[0])
-        myclone.set_image(self.image)
-        return myclone
-"""
 
+# Phases of optimization
 class Orient_Model(Point_Model):
     def __init__(self,initial_model,*params):
         self.initial_model = initial_model
         self.image = initial_model.image
         Point_Model.__init__(self,*params)
         
-    def vertices_full(self):
-        return self.transformed_model().vertices_full()
+    def polygon_vertices(self):
+        return self.transformed_model().polygon_vertices()
     
     def displacement(self):
         return (self.x_displacement(),self.y_displacement())
@@ -430,26 +404,7 @@ class Orient_Model(Point_Model):
         myclone = self.__class__(self.initial_model,*init_args)
         myclone.set_image(self.image)
         return myclone
-"""        
-class Fine_Tune_Model(Point_Model):
-    def __init__(self,initial_model,tunable_indices,*params):
-        self.initial_model = initial_model
-        self.image = initial_model.image
-        self.initial_vertices_full = initial_model.vertices_full()
-        self.tunable_indices = tunable_indices
-        Point_Model.__init__(self,*params)
-        
-    def vertices_full(self):
-        init_value = self.initial_vertices_full
-        for i in self.tunable_indices:
-            init_value[i] = self.__getattr__("pt_%d"%i)
-        
-    def variable_pt_names(self):
-        return ["pt_%d"%i for i in self.tunable_indices]
-     
-    def structural_penalty(self):
-        return self.in
-"""
+
 # A model which is defined by fixed points and one foldline  
 class Point_Model_Folded(Point_Model):
     #For now, we can easily assume all folds are left to right, and work a sign in later to fix it
@@ -475,9 +430,9 @@ class Point_Model_Folded(Point_Model):
         self.initial_model.set_image(image)
         Point_Model.set_image(self,image)
     
-    def vertices_full(self):
+    def polygon_vertices(self):
 
-        init_vertices_full = self.initial_model.vertices_full()
+        init_polygon_vertices = self.initial_model.polygon_vertices()
         foldline = self.foldline()
         foldseg = self.foldseg()
         perp = perpendicular(foldline,line_offset(foldline))
@@ -486,14 +441,14 @@ class Point_Model_Folded(Point_Model):
         dot_prods = [dot_prod(p,line_vector(foldline)) for p in (self.fold_top(),self.fold_bottom())]
         epsilon = 0.25 * (max(dot_prods) - min(dot_prods))
         
-        for i,pt in enumerate(init_vertices_full):
+        for i,pt in enumerate(init_polygon_vertices):
             if dot_prod(pt,line_vector(perp)) < dot_prod(line_offset(perp),line_vector(perp)):
                 #Check if I'm within the bounds
 
                 if min(dot_prods)-epsilon <= dot_prod(pt,line_vector(foldline)) <= max(dot_prods)+epsilon:
                     pts.append(mirror_pt(pt,foldline))
                 else:
-                    touching_sides = [make_seg(init_vertices_full[i-1],pt),make_seg(pt,init_vertices_full[(i+1)%len(init_vertices_full)])]
+                    touching_sides = [make_seg(init_polygon_vertices[i-1],pt),make_seg(pt,init_polygon_vertices[(i+1)%len(init_polygon_vertices)])]
                     if len([seg for seg in touching_sides if seg_intercept(seg,foldseg)]) > 0:
                         pts.append(mirror_pt(pt,foldline))
                     else:
@@ -519,36 +474,7 @@ class Point_Model_Folded(Point_Model):
                 offset += 1
 
         return list(pts)
-    """
-    def vertices_full(self):
-        init_vertices_full = self.initial_model.vertices_full()
-        foldline = self.foldline()
-        foldseg = self.foldseg()
-        perp = perpendicular(foldline,line_offset(foldline))
-        pts = []
-        
-        for pt in init_vertices_full:
-            if dot_prod(pt,line_vector(perp)) < dot_prod(line_offset(perp),line_vector(perp)):
-                pts.append(mirror_pt(pt,foldline))
-            else:
-                pts.append(pt)
-        last_inter = None
-        offset = 0
-        dot_prods = [dot_prod(p,line_vector(foldline)) for p in (self.fold_top(),self.fold_bottom())]
-        for i,seg in enumerate(self.initial_model.sides()):
-            inter = seg_intercept(seg,foldline)
-            if inter != None:
-                pts.insert(i+offset,inter)
-                if last_inter != None:
-                    pts.insert(i+1+offset,last_inter)
-                    pts.insert(i+2+offset,inter)
-                    offset += 2
-                    last_iter = None
-                else:
-                    last_inter = inter
-                    offset += 1
-        return list(pts)
-    """  
+    
     def contour_mode(self):
         return True
         
@@ -574,7 +500,7 @@ class Point_Model_Folded(Point_Model):
         
     def draw_to_image(self,img,color):
         self.draw_line(img,intercept(self.foldline(),horiz_ln(y=0.0)),intercept(self.foldline(),horiz_ln(y=img.height)),color)
-        val = [self.draw_point(img,pt,color) for pt in self.vertices_full()]
+        val = [self.draw_point(img,pt,color) for pt in self.polygon_vertices()]
         self.draw_point(img,self.fold_bottom(),cv.CV_RGB(0,255,0))
         self.draw_point(img,self.fold_top(),cv.CV_RGB(0,0,255))
         Point_Model.draw_to_image(self,img,color)
@@ -605,9 +531,10 @@ class Point_Model_Folded_Robust(Point_Model_Folded):
         newmodel.initial_model = new_initial_model
         newmodel.set_image(self.image)
         return newmodel
-        
+
     def structural_penalty(self):
         return self.initial_model.structural_penalty()
+
 
 class Point_Model_Variable_Symm(Point_Model):
     
@@ -669,13 +596,6 @@ class Point_Model_Variable_Symm(Point_Model):
             return self
         pts = []
         pts.extend(self.vertices)
-        """
-        for pt1_name in self.variable_pt_names():
-            if pt1_name in self.mirrored_pts().keys():
-                pt2_name = self.mirrored_pts()[pt1_name]
-                pt2 = self.__getattr__(pt2_name)()
-                pts.append(pt2)
-        """
         for pt1_name,pt2_name in sorted(self.mirrored_pts().items(),key = lambda (k,v): v):
             pt2 = self.__getattr__(pt2_name)()
             pts.append(pt2)
@@ -691,7 +611,7 @@ class Point_Model_Variable_Symm(Point_Model):
         return asymm
         
     def free(self):
-        model = Point_Model_Contour_Only_Asymm(*self.vertices_full())
+        model = Point_Model_Contour_Only_Asymm(*self.polygon_vertices())
         model.set_image(self.image)
         return model
     
@@ -701,11 +621,67 @@ class Point_Model_Variable_Symm(Point_Model):
         return myclone
         
 ###
-# Defining some models
+# Defining some clothing models
 ###
 
+class Model_Sock_Skel(Point_Model_Variable_Symm):
+    def polygon_vertices(self):
+       return [self.ankle_bottom(), self.ankle_top(), self.bend_point(), self.toe_top(), self.toe_bottom(), self.heel()]
+
+    def symmetric_variable_pt_names(self):
+       return ["ankle_center","ankle_joint","toe_center"]
+
+    def symmetric_variable_param_names(self):
+        return ["sock_width"]
+
+    def ankle_top(self): 
+        straight_pt = extrapolate(self.ankle_axis(),abs(self.ankle_length()) + abs(self.sock_width())/2.0)
+        return rotate_pt(straight_pt,pi/2,self.ankle_center())
+
+    def ankle_bottom(self): 
+        straight_pt = extrapolate(self.ankle_axis(),abs(self.ankle_length()) + abs(self.sock_width())/2.0)
+        return rotate_pt(straight_pt,-pi/2,self.ankle_center())
+
+    def toe_top(self): 
+        straight_pt = extrapolate(self.toe_axis(),abs(self.toe_length()) + abs(self.sock_width())/2.0)
+        return rotate_pt(straight_pt,-pi/2,self.toe_center())
+
+    def toe_bottom(self): 
+        straight_pt = extrapolate(self.toe_axis(),abs(self.toe_length()) + abs(self.sock_width())/2.0)
+        return rotate_pt(straight_pt,pi/2,self.toe_center())
+
+    def ankle_length(self):
+        return pt_distance(self.ankle_center(),self.ankle_joint())
+    
+    def toe_length(self):
+        return pt_distance(self.toe_center(),self.ankle_joint())
+
+    def ankle_axis(self):
+        return make_seg(self.ankle_joint(),self.ankle_center())
+
+    def toe_axis(self):
+        return make_seg(self.ankle_joint(),self.toe_center())
+
+    def heel(self):
+        straight_pt = extrapolate(self.ankle_axis(),self.sock_width()/2)
+        return rotate_pt(straight_pt,-pi/2,self.ankle_joint())
+   
+    def bend_point(self):
+        straight_pt = extrapolate(self.ankle_axis(),self.sock_width()/2)
+        return rotate_pt(straight_pt,pi/2,self.ankle_joint())
+
+    def draw_to_image(self,img,color): 
+        Point_Model_Variable_Symm.draw_to_image(self,img,color)
+
+        #Draw skeletal frame
+        self.draw_point(img,self.ankle_center(),color)
+        self.draw_point(img,self.ankle_joint(),color)
+        self.draw_point(img,self.toe_center(),color)
+        self.draw_line(img,self.ankle_center(),self.ankle_joint(),color)
+        self.draw_line(img,self.ankle_joint(),self.toe_center(),color)
+
 class Model_Towel(Point_Model_Variable_Symm):
-    def vertices_full(self):
+    def polygon_vertices(self):
         return [self.bottom_left(),self.top_left(),self.top_right(),self.bottom_right()]
         
     def symmetric_variable_pt_names(self):
@@ -715,7 +691,7 @@ class Model_Towel(Point_Model_Variable_Symm):
         return make_ln_from_pts(pt_scale(pt_sum(self.bottom_left(),self.bottom_right()),0.5),pt_scale(pt_sum(self.top_left(),self.top_right()),0.5))
 
 class Model_Pants_Generic(Point_Model_Variable_Symm):
-    def vertices_full(self):
+    def polygon_vertices(self):
         return [self.left_leg_right(),self.left_leg_left(),self.top_left(),self.top_right(),self.right_leg_right(),self.right_leg_left(),self.crotch()]
 
     def axis_of_symmetry(self):
@@ -751,6 +727,7 @@ class Model_Pants_Generic(Point_Model_Variable_Symm):
         self.draw_point(img,self.right_leg_center(),color)
         self.draw_line(img,self.mid_left(),self.left_leg_center(),color)
         self.draw_line(img,self.mid_right(),self.right_leg_center(),color)
+        
 
 class Model_Pants_Skel(Model_Pants_Generic):
 
@@ -786,8 +763,9 @@ class Model_Pants_Skel(Model_Pants_Generic):
         if seg_intercept(make_seg(self.top_right(),self.right_leg_right()),make_seg(self.mid_left(),self.mid_right())):
             penalty += 1
         """
-        return penalty
-        
+        print "blah"
+        if self.crotch_length() / ((self.left_leg_length() + self.right_leg_length())/2.0) > 0.5:
+            penalty += 1
         
 
         
@@ -797,11 +775,13 @@ class Model_Pants_Contour_Only(Point_Model_Contour_Only_Asymm):
     def variable_pt_names(self):
         #return ["pt_%d"%i for i in range(self.num_variable_pts)]
         return ["pt_%d"%i for i in range(7)]
+        return penalty
+        
 
         
 class Model_Pants_Skel_Extended(Model_Pants_Skel):
     
-    def vertices_full(self):
+    def polygon_vertices(self):
         return [self.left_leg_right(),self.left_leg_left(),self.top_left(),self.top_right(),self.right_leg_right(),self.right_leg_left(),self.crotch()]
         
     def symmetric_variable_pt_names(self):
@@ -841,16 +821,21 @@ class Model_Pants_Skel_New(Model_Pants_Generic):
         return {"left_leg_width":"right_leg_width"}
     
     def left_leg_axis(self):
-        return make_ln_from_pts(self.mid_left(),self.left_leg_center())
+        #return make_ln_from_pts(self.mid_left(),self.left_leg_center())
+        return make_seg(self.mid_left(),self.left_leg_center())
         
     def right_leg_axis(self):
-        return make_ln_from_pts(self.mid_right(),self.right_leg_center())
+        #return make_ln_from_pts(self.mid_right(),self.right_leg_center())
+        return make_seg(self.mid_right(),self.right_leg_center())
         
     def left_leg_length(self):
         return pt_distance(self.mid_left(),self.left_leg_center())
         
     def right_leg_length(self):
         return pt_distance(self.mid_right(),self.right_leg_center())
+        
+    def crotch_length(self):
+        return pt_distance(self.top_center(),self.crotch())
     
     def left_leg_left(self):
         straight_pt = extrapolate(self.left_leg_axis(),abs(self.left_leg_length()) + abs(self.left_leg_width())/2.0)
@@ -887,12 +872,35 @@ class Model_Pants_Skel_New(Model_Pants_Generic):
         if seg_intercept(make_seg(self.mid_left(),self.mid_right()),make_seg(self.top_right(),self.right_leg_right())):
             penalty += 1
         """
+        if seg_intercept(self.left_leg_axis(),self.right_leg_axis()):
+            penalty += 1
+
+        if self.crotch_length() / (self.left_leg_length() + self.right_leg_length()/ 2.0) > 0.8:
+            penalty += 1
+            
+        if pt_distance(self.left_leg_left(),self.left_leg_right()) < pt_distance(self.top_left(),self.top_right())/5.0:
+            penalty += 1
+        if pt_distance(self.left_leg_left(),self.left_leg_right()) < pt_distance(self.top_left(),self.top_right())/5.0:
+            penalty += 1
+        if pt_distance(self.mid_left(),self.mid_right()) > 2 * pt_distance(self.top_left(),self.top_right()):
+            penalty += 1
+        if pt_distance(self.top_left(),self.top_right()) > 0.75 * pt_distance(self.top_left(),self.left_leg_left()):
+            penalty += 1
+        if self.left_leg_width() > pt_distance(self.left_leg_right(),self.crotch()):
+            penalty += 1
+        if self.right_leg_width() > pt_distance(self.right_leg_left(),self.crotch()):
+            penalty += 1
+        if self.left_leg_width()/self.right_leg_width() < 0.5:
+            penalty += 1    
+        if self.right_leg_width()/self.left_leg_width() < 0.5:
+            penalty += 1
+            
         return penalty
 
 #Generic class which makes no assertions about what the variable points are
 class Model_Shirt_Generic(Point_Model_Variable_Symm):
     
-    def vertices_full(self):
+    def polygon_vertices(self):
         return [self.bottom_left(),self.left_armpit(),self.left_sleeve_bottom(),self.left_sleeve_top(),self.left_shoulder_top(),self.left_collar(),self.spine_top()
                ,self.right_collar(),self.right_shoulder_top(),self.right_sleeve_top(),self.right_sleeve_bottom(),self.right_armpit(),self.bottom_right()]
                
@@ -948,7 +956,20 @@ class Model_Shirt_Generic(Point_Model_Variable_Symm):
         
     def right_sleeve_axis(self):
         return make_ln_from_pts(self.right_sleeve_center(),self.right_shoulder_joint())
+    
+    def left_sleeve_length(self):
+        return pt_distance(self.left_sleeve_center(),self.left_shoulder_joint())
         
+    def right_sleeve_length(self):
+        return pt_distance(self.right_sleeve_center(),self.right_shoulder_joint())
+    
+    def shirt_width(self):
+        return pt_distance(self.bottom_left(),self.bottom_right())
+        
+    def shirt_height(self):
+        return pt_distance(self.spine_bottom(),self.spine_top())
+        
+    
     """
     Defining drawing
     """
@@ -967,6 +988,21 @@ class Model_Shirt_Generic(Point_Model_Variable_Symm):
         self.draw_line(img,self.right_shoulder_top(),self.right_armpit(),color)
         self.draw_line(img,self.left_shoulder_top(),self.left_armpit(),color)
         
+    def structural_penalty(self):
+        penalty = Point_Model_Variable_Symm.structural_penalty(self)
+        if self.shirt_width() > self.shirt_height() * 1.25:
+            penalty += 1
+        if pt_distance(self.left_shoulder_joint(),self.right_shoulder_joint()) > self.shirt_height() * 1.25:
+            penalty += 1
+        if self.left_sleeve_width() < 0.05*self.shirt_height():
+            penalty += 1
+        if self.right_sleeve_width() < 0.05*self.shirt_height():
+            penalty += 1
+        if pt_distance(self.left_shoulder_top(),self.left_armpit()) > self.shirt_height() * 0.5:
+            penalty += 1
+        if pt_distance(self.right_shoulder_top(),self.right_armpit()) > self.shirt_height() * 0.5:
+            penalty += 1
+        return penalty
         
     def illegal(self):
         return Point_Model_Variable_Symm.illegal(self)
@@ -1045,6 +1081,15 @@ class Model_Tee_Generic(Model_Shirt_Generic):
         #Make the center be roughtly...well...centered
         penalty += self.constrain(pt_distance(self.left_shoulder_top(),self.spine_top()) / pt_distance(self.right_shoulder_top(),self.spine_top()),0.5,LOWER,PROPORTIONAL_SIGMA)
         penalty += self.constrain(pt_distance(self.left_shoulder_top(),self.spine_top()) / pt_distance(self.right_shoulder_top(),self.spine_top()),1.5,UPPER,PROPORTIONAL_SIGMA)
+        
+        if self.left_sleeve_length()/self.shirt_width() < 0.05:
+            penalty += 1 
+        if self.right_sleeve_length()/self.shirt_width() < 0.05:
+            penalty += 1
+        if pt_distance(self.left_sleeve_bottom(),self.left_armpit())/self.shirt_width() < 0.05:
+            penalty += 1
+        if pt_distance(self.right_sleeve_bottom(),self.right_armpit())/self.shirt_width() < 0.05:
+            penalty += 1
         return penalty
 
 class Model_Long_Shirt_Generic(Model_Shirt_Generic):
@@ -1129,6 +1174,14 @@ class Model_Long_Shirt_Generic(Model_Shirt_Generic):
         #Make sure the sleeve doesn't collapse
         penalty += self.constrain(pt_distance(self.left_sleeve_top(),self.left_shoulder_top())/pt_distance(self.left_sleeve_bottom(),self.left_armpit()),0.66,LOWER,PROPORTIONAL_SIGMA)
         penalty += self.constrain(pt_distance(self.left_sleeve_top(),self.left_shoulder_top())/pt_distance(self.left_sleeve_bottom(),self.left_armpit()),1.5,UPPER,PROPORTIONAL_SIGMA)
+        if self.left_sleeve_length()/self.shirt_width() < 0.3:
+            penalty += 1 
+        if self.right_sleeve_length()/self.shirt_width() < 0.3:
+            penalty += 1
+        if pt_distance(self.left_sleeve_bottom(),self.left_armpit())/self.shirt_width() < 0.2:
+            penalty += 1
+        if pt_distance(self.right_sleeve_bottom(),self.right_armpit())/self.shirt_width() < 0.2:
+            penalty += 1
         return penalty
 
 class Model_Tee_Skel(Model_Tee_Generic):
@@ -1231,8 +1284,8 @@ class Model_Tee_Tunable(Model_Tee_Generic):
     def symmetric_variable_pt_names(self):
         return ["left_armpit","left_sleeve_bottom","left_sleeve_top","right_armpit","right_sleeve_bottom","right_sleeve_top"]
         
-    def vertices_full(self):
-        return Model_Tee_Generic.vertices_full(self)
+    def polygon_vertices(self):
+        return Model_Tee_Generic.polygon_vertices(self)
         
     def symmetric_variable_param_names(self):
         return []
