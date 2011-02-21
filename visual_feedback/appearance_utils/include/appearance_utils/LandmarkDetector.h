@@ -39,6 +39,8 @@ private:
     LibsvmWrapper* _libsvm;
     IplImage * _image;
     IplImage * _hollow;
+    bool _set_image;
+    bool _set_hollow;
     int _sLength, _sStep;
     vector<CvPoint> *_contour;
     vector<CvPoint> *_centers;

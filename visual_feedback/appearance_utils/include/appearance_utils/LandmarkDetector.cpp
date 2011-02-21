@@ -19,6 +19,8 @@ LandmarkDetector::LandmarkDetector(int s_length, int s_step){
     _segments = new vector<IplImage*>;
     _orientedSegments = new vector<IplImage*>;
     _libsvm = new LibsvmWrapper();
+    _image = NULL;
+    _hollow = NULL;
 }
 
 LandmarkDetector::~LandmarkDetector() {
@@ -45,14 +47,25 @@ void LandmarkDetector::freeSegmentInfo() {
 void LandmarkDetector::loadNewImage(IplImage * image) {
     assert(image != NULL);
     assert(image->nChannels == 3);
-
-    cvReleaseImage(&_image);
-    cvReleaseImage(&_hollow);
+    cout << "Passed assertion" << endl;
+    if (_image != NULL){
+      cvReleaseImage(&_image);
+    }
+    cout << "Passed image release" << endl;
+    if (_hollow != NULL){
+      cvReleaseImage(&_hollow);
+    }
+    cout << "Passed hollow release" <<
+ endl;
     delete _contour;
-    
+    cout << "Passed contour release" << endl;
+    cout << "Passed deletion" << endl; 
     _image = cvCloneImage(image);
+    cout << "Passed cloning" << endl;
     _hollow = createHollowImage(_image);
+    cout << "Passed hollow" << endl;
     _contour = getSockContourSeq(_hollow);
+    cout << "Passed contour" << endl;
 }
 
 void LandmarkDetector::loadModelFile(char * fileName) {
