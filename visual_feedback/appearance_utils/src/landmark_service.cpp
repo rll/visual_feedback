@@ -1,6 +1,6 @@
 #include <iostream>
 #include <ros/ros.h>
-#include <appearance_utils/LandmarkDetector.h>
+#include <socks/LandmarkDetection/LandmarkDetector.h>
 #include <appearance_utils/LoadImage.h>
 #include <appearance_utils/LandmarkResponse.h>
 #include "sensor_msgs/Image.h"
@@ -35,7 +35,7 @@ bool load_image_srv         (   appearance_utils::LoadImage::Request    &req,
     cout << "Converted to cv_image" << endl;
     landmarkDetector_->loadNewImage(cv_image);
     cout << "Loaded image" << endl;
-    landmarkDetector_->computeResponseStartingAtPt();
+    landmarkDetector_->computeResponseStartingAtPt(cvPoint(0,0),true);
     cout << "Computed response" << endl;
     return true;
 }
