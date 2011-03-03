@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="appearance_utils" type="landmark_service" name="landmark_service_node" output="screen" >
+    <param name="model_file" value="$(find appearance_utils)/model.txt" />
+  </node>
+</launch>
