@@ -3,6 +3,7 @@
 #include <socks/LandmarkDetection/LandmarkDetector.h>
 #include <appearance_utils/LoadImage.h>
 #include <appearance_utils/LandmarkResponse.h>
+#include <appearance_utils/ExtractLBPFeatures.h>
 #include "sensor_msgs/Image.h"
 #include "image_transport/image_transport.h"
 #include "cv_bridge/CvBridge.h"
@@ -37,6 +38,28 @@ bool load_image_srv         (   appearance_utils::LoadImage::Request    &req,
     cout << "Loaded image" << endl;
     landmarkDetector_->computeResponseStartingAtPt(cvPoint(0,0),true);
     cout << "Computed response" << endl;
+    return true;
+}
+
+bool extract_lbp_features_srv (   appearance_utils::ExtractLBPFeatures::Request     &req,
+                                  appearance_utils::ExtractLBPFeatures::Response    &res )
+{
+    cout << "Called extract_lbp_features service" << endl;
+    sensor_msgs::Image image = req.image;
+    sensor_msgs::ImagePtr img_ptr(new sensor_msgs::Image(image));
+    IplImage *cv_image = NULL;    
+    try
+        {
+                cv_image = bridge_.imgMsgToCv(img_ptr, "bgr8");
+        }
+        catch (sensor_msgs::CvBridgeException error)
+        {
+                ROS_ERROR("Error bridging to openCV format");
+                return false;
+        }
+    cout << "Converted to cv_image" << endl;
+    landmarkDetector_->getLandmarkFeatures(cv_image, &res.features);
+
     return true;
 }
 
@@ -80,6 +103,8 @@ int main(int argc, char ** argv)
     ROS_INFO("load_image service ready.");
     ros::ServiceServer landmark_service = n.advertiseService("landmark_response", landmark_response_srv);
     ROS_INFO("landmark_response service ready.");
+    ros::ServiceServer extract_lbp_features_service = n.advertiseService("extract_lbp_features", extract_lbp_features_srv);
+    ROS_INFO("extract_lbp_features service ready.");
     ros::spin();
     return 0; 
 }
