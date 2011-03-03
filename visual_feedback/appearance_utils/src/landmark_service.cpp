@@ -67,7 +67,7 @@ bool landmark_response_srv  (   appearance_utils::LandmarkResponse::Request    &
                                 appearance_utils::LandmarkResponse::Response   &res )
 {
     vector<double> response;
-    landmarkDetector_->getResponseCloseToPt(cvPoint(req.x,req.y), response);
+    landmarkDetector_->getResponseCloseToPt(cvPoint(req.x,req.y), response,req.theta);
     if(req.mode == req.HEEL){
         res.response = response[HEEL];
     }

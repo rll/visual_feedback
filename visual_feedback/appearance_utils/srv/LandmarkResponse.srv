@@ -1,6 +1,8 @@
 #Pixel coordinates
 int32 x
 int32 y
+#Approach angle
+float64 theta 
 
 #Types
 int32 OTHER=0
