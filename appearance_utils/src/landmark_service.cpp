@@ -36,8 +36,8 @@ bool load_image_srv         (   appearance_utils::LoadImage::Request    &req,
     cout << "Converted to cv_image" << endl;
     landmarkDetector_->loadNewImage(cv_image);
     cout << "Loaded image" << endl;
-    landmarkDetector_->computeResponseStartingAtPt(cvPoint(0,0),true);
-    cout << "Computed response" << endl;
+    landmarkDetector_->computeResponseStartingAtPt(cvPoint(0,0),false);
+    cout << "Computed response (contour only)" << endl;
     return true;
 }
 
