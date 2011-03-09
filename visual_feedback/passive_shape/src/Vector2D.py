@@ -23,6 +23,9 @@ def pt_distance(pt1,pt2):
     
 def pt_scale(pt,scale):
     return (pt[0]*scale,pt[1]*scale)
+
+def pt_center(pt1,pt2):
+    return pt_scale(pt_sum(pt1,pt2),0.5)
     
     
 def dot_prod(pt1,pt2):

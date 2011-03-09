@@ -1,8 +1,7 @@
-#Pixel coordinates
+float64[] responses
+byte[] response_types
 int32 x
 int32 y
-#Approach angle
-float64 theta 
 
 #Types
 int32 OTHER=0
@@ -12,8 +11,3 @@ int32 OPENING=3
 #Special Bunched Features
 int32 BUNCH_SEAM=4
 int32 BUNCH_INSIDE_OUT=5
-int32 mode
-
-bool use_nearest
----
-float64 response

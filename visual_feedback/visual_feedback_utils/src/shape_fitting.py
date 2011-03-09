@@ -30,11 +30,14 @@ SHOW_SYMM_MODEL = False
 SHOW_OPT = True
 SAVE_ITERS = False
 SHOW_FITTED = False
+SHOW_INIT_PTS = False
 
+(BOUNDING, AXIS) = range(2)
+SCALE_METHOD = BOUNDING
 
 
 class ShapeFitter:
-    def __init__(self,DIST_FXN="l2",SYMM_OPT=False,FINE_TUNE=False,ORIENT_OPT=True,INITIALIZE=True,HIGH_EXPLORATION=False,ROTATE=True, SHOW=True,SILENT=False,num_iters=100):
+    def __init__(self,DIST_FXN="l2",SYMM_OPT=False,FINE_TUNE=False,ORIENT_OPT=True,INITIALIZE=True,HIGH_EXPLORATION=False,ROTATE=True, SHOW=True,SILENT=False,num_iters=100,INIT_APPEARANCE=True):
         if DIST_FXN == "l1":
             self.dist_fxn = l1_norm
         elif DIST_FXN == "l2":
@@ -50,6 +53,7 @@ class ShapeFitter:
         self.ROTATE=ROTATE
         self.SHOW=SHOW
         self.SILENT = SILENT
+        self.INIT_APPEARANCE = INIT_APPEARANCE
         self.flann = pyflann.FLANN()
         
     
@@ -79,9 +83,23 @@ class ShapeFitter:
             (real_center,real_top,real_theta,real_scale) = get_principle_info(shape_contour)
             if SHOW_UNSCALED_MODEL:
                 model.draw_to_image(img_annotated,cv.CV_RGB(0,0,255))
-            (model_center,model_top,model_theta,model_scale) = get_principle_info(model.polygon_vertices())
+            model_contour = model.vertices_dense(constant_length=False,density=30)
+            (model_center,model_top,model_theta,model_scale) = get_principle_info(model_contour)
             displ = displacement(model_center,real_center)
-                
+            
+            #Drawing
+            if SHOW_INIT_PTS:
+                top_img = cv.CloneImage(img_annotated)
+                cv.DrawContours(top_img,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,1,8,(0,0))
+                model.draw_contour(top_img,cv.CV_RGB(0,0,255),2)
+                draw_pt(top_img,real_top,cv.CV_RGB(255,0,0))
+                draw_pt(top_img,real_center,cv.CV_RGB(255,0,0))
+                draw_pt(top_img,model_top,cv.CV_RGB(0,0,255))
+                draw_pt(top_img,model_center,cv.CV_RGB(0,0,255))
+                cv.NamedWindow("Top")
+                cv.ShowImage("Top",top_img)
+                cv.WaitKey()
+            
             self.printout(model_theta)
             self.printout(real_theta)
             angle = model_theta - real_theta
@@ -92,10 +110,9 @@ class ShapeFitter:
             scale = real_scale/float(model_scale)
             if scale < 0.25:
                 scale = 1
-    
+            print "%f = %f/%f"%(scale,real_scale,model_scale) 
             model_trans = translate_poly(model.polygon_vertices(),displ)
             model_rot = rotate_poly(model_trans,-1*angle,real_center)
-            #scale = 1 #FIXME
             model_scaled = scale_poly(model_rot,scale,real_center)
                
             #(model_center,model_top,model_theta,model_scale) = get_principle_info(model_scaled)
@@ -125,7 +142,9 @@ class ShapeFitter:
             model_oriented = model
        
         #FIXME
-        model_oriented.initialize_appearance(img)
+        if self.INIT_APPEARANCE:
+            if model_oriented.beta() < 1:
+                model_oriented.initialize_appearance(img)
 
         if self.SYMM_OPT:
            self.printout("SYMMETRIC OPTIMIZATION")
@@ -303,8 +322,9 @@ def draw_line(img,pt1,pt2):
     ln_end = Vector2D.intercept(line,Vector2D.horiz_ln(y=img.height))
     cv.Line(img,ln_start,ln_end,cv.CV_RGB(255,0,0),2)
         
-def draw_pt(img,pt):
-    color = cv.CV_RGB(255,0,0)
+def draw_pt(img,pt, color=None):
+    if not color:
+        color = cv.CV_RGB(255,0,0)
     cv.Circle(img,pt,5,color,-1)
 
 def make_sparse(contour,num_pts = 1000):
@@ -329,21 +349,37 @@ def get_top(shape,center,theta):
         EPSILON = 1.0
         angle = theta
         scale = 0
-        #If initially outside, go twice
-        if(cv.PointPolygonTest(shape,pt,0) <= 0):
-            while(cv.PointPolygonTest(shape,pt,0) <= 0):
+        (r_x,r_y,r_w,r_h) = cv.BoundingRect(shape)
+       # #If initially outside, go twice
+       # if(cv.PointPolygonTest(shape,pt,0) <= 0):
+       #     while(cv.PointPolygonTest(shape,pt,0) <= 0):
+       #         (x,y) = pt
+       #         new_x = x + EPSILON*sin(angle)
+       #         new_y = y - EPSILON*cos(angle)
+       #         pt = (new_x,new_y)
+       #         scale += EPSILON
+       #     while(cv.PointPolygonTest(shape,pt,0) > 0):
+       #         (x,y) = pt
+       #         new_x = x + EPSILON*sin(angle)
+       #         new_y = y - EPSILON*cos(angle)
+       #         pt = (new_x,new_y)
+       #         scale += EPSILON
+        if SCALE_METHOD == AXIS:
+            top_pt = center
+            best_scale = 1
+            while(pt[0] > r_x and pt[0] < r_x+r_w and pt[1] > r_y and pt[1] < r_y+r_w):
+                print 
                 (x,y) = pt
                 new_x = x + EPSILON*sin(angle)
                 new_y = y - EPSILON*cos(angle)
                 pt = (new_x,new_y)
                 scale += EPSILON
-        while(cv.PointPolygonTest(shape,pt,0) > 0):
-            (x,y) = pt
-            new_x = x + EPSILON*sin(angle)
-            new_y = y - EPSILON*cos(angle)
-            pt = (new_x,new_y)
-            scale += EPSILON
-        return (pt,scale)
+                if cv.PointPolygonTest(shape,pt,0) > 0:
+                    top_pt = pt
+                    best_scale = scale
+            return (top_pt,best_scale)
+        else:
+            return ((r_x + r_w/2, r_y),max(r_w,r_h))
     
         
 def l2_norm(val):

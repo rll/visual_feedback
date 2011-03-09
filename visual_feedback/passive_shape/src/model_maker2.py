@@ -545,7 +545,7 @@ class ModelMaker(ShapeWindow):
 
     def getModelSockSkel(self):
         return Models.Model_Sock_Skel(True,
-            self.ankle_center.toTuple(),self.ankle_joint.toTuple(),self.toe_center.toTuple(),self.sock_width)
+            self.ankle_center.toTuple(),self.ankle_joint.toTuple(),self.toe_center.toTuple(),self.sock_width,self.sock_width/2)
 
     
 def main(args):
