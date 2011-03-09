@@ -46,7 +46,7 @@ def main(args):
             #Create an image to output
             image_out = cv.CloneImage(image_raw)
             #Use the thresholding module to get the contour out
-            shape_contour = thresholding.get_contour(image_raw,bg_mode=thresholding.WHITE_BG,filter_pr2=False,crop_rect=None)
+            shape_contour = thresholding.get_contour(image_raw,bg_mode=thresholding.GREEN_BG,filter_pr2=False,crop_rect=None)
             #Use the shape_fitting module to fit the model to the contour
             fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False, ROTATE=False,SHOW=False, SILENT=True)
             

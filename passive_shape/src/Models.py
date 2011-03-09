@@ -1,6 +1,7 @@
 import math
 import random
 from numpy import *
+import math
 import cv
 from Vector2D import *
 import inspect
@@ -69,9 +70,13 @@ class Model:
         return output
     
     def score(self,contour=None, image=None):
-        score = self.beta()*self.contour_score(contour) + (1 - self.beta())*self.appearance_score(image)
+        if self.beta() == 1:
+            score = self.contour_score(contour)
+        elif self.beta() == 0:
+            score = self.appearance_score(image)
+        else:
+            score = self.beta()*self.contour_score(contour) + (1 - self.beta())*self.appearance_score(image)
         score += self.structural_penalty()
-        print "score = %f x %f + %f * %f"%(self.beta(),self.contour_score(contour),1-self.beta(),self.appearance_score(image))
         return score
     
     def initialize_appearance(self,image):
@@ -121,16 +126,24 @@ class Model:
         
     def contour_mode(self):
         return False
-    
+
+    def draw_to_image(self,img,color):
+        self.draw_skeleton(img,color)
+        self.draw_contour(img,color)
+   
+    def draw_skeleton(self,img,color,thickness):
+        abstract
+
+    def draw_contour(self,img,color,thickness):
+        abstract
+
     #Simple hack to get the outer contour: draw it on a white background and find the largest contour            
     def get_silhouette(self,vertices,num_pts):
         storage = cv.CreateMemStorage(0)
         black_image = cv.CreateImage(cv.GetSize(self.image),8,1)
         cv.Set(black_image,cv.CV_RGB(0,0,0))
-        cv.PolyLine(black_image,[vertices],4,cv.CV_RGB(255,255,255),0)
-        #cv.NamedWindow("Black Image")
-        #cv.ShowImage("Black Image",black_image)
-        #cv.WaitKey(10.0)
+        self.draw_contour(black_image,cv.CV_RGB(255,255,255),2)
+        #cv.PolyLine(black_image,[vertices],4,cv.CV_RGB(255,255,255),0)
         contour = cv.FindContours   ( black_image, storage,
                                     cv.CV_RETR_LIST, cv.CV_CHAIN_APPROX_NONE, (0,0))
         max_contour = None
@@ -141,7 +154,6 @@ class Model:
                 max_ar = ar
                 max_contour = contour
             contour = contour.h_next()
-        
         return make_sparse(max_contour,num_pts)
 
     def center(self):
@@ -174,8 +186,8 @@ class Model:
     def draw_point(self,img,pt,color):
         cv.Circle(img,pt,5,color,-1)
         
-    def draw_line(self,img,pt1,pt2,color):
-        cv.Line(img,pt1,pt2,color,thickness=2)
+    def draw_line(self,img,pt1,pt2,color,thickness=2):
+        cv.Line(img,pt1,pt2,color,thickness=thickness)
         
 
     def make_asymm(self):
@@ -546,25 +558,25 @@ class Point_Model_Folded_Robust(Point_Model_Folded):
 class Point_Model_Variable_Symm(Point_Model):
     
     def __init__(self,symmetric,*vertices_and_params):
-        self.symmetric = symmetric
+        self.__setattr__('symmetric', symmetric)
         Point_Model.__init__(self,*vertices_and_params)
     
     
     def variable_pt_names(self):
-        if self.symmetric:
+        if 'symmetric' in self.__dict__.keys() and self.symmetric:
             return self.symmetric_variable_pt_names()
         else:
             return self.symmetric_variable_pt_names() + sorted(self.mirrored_pts().values())
             
     def variable_param_names(self):
-        if self.symmetric:
+        if 'symmetric' in self.__dict__.keys() and self.symmetric:
             return self.symmetric_variable_param_names()
         else:
             return self.symmetric_variable_param_names() + sorted(self.mirrored_params().values())
     
     #Modifies __getattr__ to lookup mirrored points and params
     def __getattr__(self,attr):
-        if self.symmetric:
+        if 'symmetric' in self.__dict__.keys() and self.symmetric:
             for pt1_name,pt2_name in self.mirrored_pts().items():
                 if pt2_name == attr:
                     pt1 = self.__getattr__(pt1_name)()
@@ -639,23 +651,25 @@ class Model_Sock_Skel(Point_Model_Variable_Symm):
        return ["ankle_center","ankle_joint","toe_center"]
 
     def symmetric_variable_param_names(self):
-        return ["sock_width"]
+        return ["sock_width","toe_radius"]
 
     def ankle_top(self): 
-        straight_pt = extrapolate(self.ankle_axis(),abs(self.ankle_length()) + abs(self.sock_width())/2.0)
+        straight_pt = extrapolate(self.ankle_axis(),self.ankle_length() + self.sock_width()/2.0)
         return rotate_pt(straight_pt,pi/2,self.ankle_center())
 
     def ankle_bottom(self): 
-        straight_pt = extrapolate(self.ankle_axis(),abs(self.ankle_length()) + abs(self.sock_width())/2.0)
+        straight_pt = extrapolate(self.ankle_axis(),self.ankle_length() + self.sock_width()/2.0)
         return rotate_pt(straight_pt,-pi/2,self.ankle_center())
 
     def toe_top(self): 
-        straight_pt = extrapolate(self.toe_axis(),abs(self.toe_length()) + abs(self.sock_width())/2.0)
-        return rotate_pt(straight_pt,-pi/2,self.toe_center())
+        straight_pt = extrapolate(self.toe_axis(),self.toe_length() + self.sock_width()/2.0)
+        pt = rotate_pt(straight_pt,-pi/2,self.toe_center())
+        return translate_pt(pt,pt_diff(extrapolate(self.toe_axis(),self.toe_length() - self.toe_radius()),self.toe_center()))
 
     def toe_bottom(self): 
         straight_pt = extrapolate(self.toe_axis(),abs(self.toe_length()) + abs(self.sock_width())/2.0)
-        return rotate_pt(straight_pt,pi/2,self.toe_center())
+        pt = rotate_pt(straight_pt,pi/2,self.toe_center())
+        return translate_pt(pt,pt_diff(extrapolate(self.toe_axis(),self.toe_length() - self.toe_radius()),self.toe_center()))
 
     def ankle_length(self):
         return pt_distance(self.ankle_center(),self.ankle_joint())
@@ -677,9 +691,26 @@ class Model_Sock_Skel(Point_Model_Variable_Symm):
         straight_pt = extrapolate(self.ankle_axis(),self.sock_width()/2)
         return rotate_pt(straight_pt,pi/2,self.ankle_joint())
 
-    def draw_to_image(self,img,color): 
-        Point_Model_Variable_Symm.draw_to_image(self,img,color)
+    def toe_angle(self):
+        return math.atan2(self.ankle_joint()[1]-self.toe_center()[1],-1*(self.ankle_joint()[0]-self.toe_center()[0]))*180/pi
 
+    def heel_angle(self):
+        return math.atan2(self.ankle_joint()[1]-self.heel_center()[1],-1*(self.ankle_joint()[0]-self.heel_center()[0]))*180/pii
+
+    def ankle_angle(self):
+        return math.atan2(self.ankle_joint()[1]-self.ankle_center()[1],-1*(self.ankle_joint()[0]-self.ankle_center()[0]))*180/pi
+
+    def draw_to_image(self,img,color): 
+        #Point_Model_Variable_Symm.draw_to_image(self,img,color)
+        #Draw polygon points
+        self.draw_point(    img,    self.ankle_bottom(),            color)
+        self.draw_point(    img,    self.ankle_top(),               color)
+        self.draw_point(    img,    self.bend_point(),              color)
+        self.draw_point(    img,    self.toe_top(),                 color)
+        self.draw_point(    img,    self.toe_bottom(),              color)
+        self.draw_point(    img,    self.heel(),                    color)
+        #Draw outline
+        self.draw_contour(img,color,1)
         #Draw skeletal frame
         self.draw_point(img,self.ankle_center(),color)
         self.draw_point(img,self.ankle_joint(),color)
@@ -687,37 +718,156 @@ class Model_Sock_Skel(Point_Model_Variable_Symm):
         self.draw_line(img,self.ankle_center(),self.ankle_joint(),color)
         self.draw_line(img,self.ankle_joint(),self.toe_center(),color)
 
+    def draw_contour(self,img,color,thickness=1):
+        #Draw outline
+        self.draw_line(      img,    self.ankle_bottom(),    self.ankle_top(),      color,  thickness)
+        self.draw_line(      img,    self.ankle_top(),       self.bend_point(),     color,  thickness)
+        self.draw_line(      img,    self.bend_point(),      self.toe_top(),        color,  thickness)
+        cv.Ellipse(
+            img,    pt_center(self.toe_top(),self.toe_bottom()),
+            (max(self.toe_radius(),1),max(self.sock_width()/2,1)),
+            self.toe_angle(),
+            -90,    90,     
+            color, thickness)
+        self.draw_line(      img,    self.toe_bottom(),       self.heel(),          color,  thickness)
+        self.draw_line(      img,    self.heel(),             self.ankle_bottom(),  color,  thickness)
+
+    def structural_penalty(self):
+        penalty = 0
+        if self.toe_radius() <= 0:
+            penalty += 1
+        if self.sock_width() <= 0:
+            penalty += 1
+        return penalty
+
     def beta(self):
-        return 0.999
+        return 0.99
+        #return 1
 
-
+    def contour_mode(self):
+        return True 
     
     def initialize_appearance(self,image):
         RosUtils.call_service("landmark_service_node/load_image", LoadImage, ImageUtils.cv_to_imgmsg(image))
 
     def appearance_score(self,image):
         appearance_score = 0
-        appearance_score += self.heel_score()
+        #appearance_score += self.heel_score()
         appearance_score += self.toe_score()
         appearance_score += self.ankle_score()
-        return 1 - (appearance_score / 3.0)
+        return 1 - (appearance_score / 2.0)
 
     def heel_score(self):
-        res1 = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
-                                        x=self.heel()[0],   y=self.heel()[1], mode=LandmarkResponseRequest.HEEL)
-        res2 = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
-                                        x=self.bend_point()[0],   y=self.bend_point()[1], mode=LandmarkResponseRequest.HEEL)
-        return max(res1.response, res2.response)
+        pt = self.heel()
+        joint = self.ankle_joint()
+        theta = math.atan2(-1*(joint[1]-pt[1]),joint[0]-pt[0]) - pi/2
+        res = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
+                                        x=pt[0],   y=pt[1], theta = theta,
+                                        mode=LandmarkResponseRequest.HEEL,
+                                        use_nearest = True)
+
+        return res.response
 
     def toe_score(self):
+        pt = self.toe_center()
+        joint = self.ankle_joint()
+        theta = math.atan2(-1*(joint[1]-pt[1]),joint[0]-pt[0]) - pi/2
         res = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
-                                        x=self.toe_center()[0],   y=self.toe_center()[1], mode=LandmarkResponseRequest.TOE)
+                                        x=pt[0],   y=pt[1], theta = theta,
+                                        mode=LandmarkResponseRequest.TOE,
+                                        use_nearest = True)
         return res.response
 
     def ankle_score(self):
+        pt = self.ankle_center()
+        joint = self.ankle_joint()
+        theta = math.atan2(-1*(joint[1]-pt[1]),joint[0]-pt[0]) - pi/2
         res = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
-                                        x=self.ankle_center()[0],   y=self.ankle_center()[1], mode=LandmarkResponseRequest.OPENING)
+                                        x=pt[0],   y=pt[1], theta = theta,
+                                        mode=LandmarkResponseRequest.OPENING,
+                                        use_nearest = True)
         return res.response
+
+# A model for a bunched sock
+class Model_Bunch(Point_Model_Variable_Symm):
+    def polygon_vertices(self):
+        return [self.bottom_left(),self.top_left(),self.top_right(),self.bottom_right()]
+
+    def symmetric_variable_pt_names(self):
+        return ["bottom_left","top_left","top_right","bottom_right"]
+
+    def symmetric_variable_param_names(self):
+        return ["seam_distance"]
+
+    def left_center(self):
+        return Vector2D.pt_center(self.top_left(),self.bottom_left())
+    
+    def right_center(self):
+        return Vector2D.pt_center(self.top_right(),self.bottom_right())
+
+    def horiz_axis(self):
+        return make_seg(self.left_center(),self.right_center())
+
+    def seam_axis(self):
+        return Vector2D.perpendicular(self.horiz_axis(),self.seam_location())
+
+    def seam_location(self):
+        return Vector2D.extrapolate(self.horiz_axis(),self.seam_distance())
+
+    def seam_bottom(self):
+        return Vector2D.intercept(  Vector2D.make_ln_from_pts(self.bottom_left(),self.bottom_right()),
+                                    self.seam_axis())
+
+    def seam_top(self):
+        return Vector2D.intercept(  Vector2D.make_ln_from_pts(self.top_left(),self.top_right()),
+                                    self.seam_axis())
+
+    def get_angle(self):
+        left_center = self.left_center()
+        right_center = self.right_center()
+        return math.atan2(-1*(right_center[1]-left_center[1]),right_center[0]-left_center[0])
+
+    def beta(self):
+        return 0.99
+
+    def initialize_appearance(self,image):
+        RosUtils.call_service("landmark_service_node/load_image", LoadImage, ImageUtils.cv_to_imgmsg(image))
+
+    def draw_to_image(self,img,color):
+        Point_Model_Variable_Symm.draw_to_image(self,img,color)
+        
+        self.draw_point(img,self.seam_top(),color)
+        self.draw_point(img,self.seam_bottom(),color)
+        self.draw_line(img,self.seam_top(),self.seam_bottom(),color)
+
+    def structural_penalty(self):
+        penalty = 0
+        if self.seam_distance() <= 0:
+            penalty += 1
+        if self.seam_distance() >= Vector2D.pt_distance(self.left_center(),self.right_center()):
+            penalty += 1
+        return penalty
+
+class Model_Bunch_Locate_Seam(Model_Bunch):
+
+    def appearance_score(self):
+        pt = self.seam_location()
+        theta = -self.get_angle()
+        res = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
+                                        x=pt[0],   y=pt[1], theta = theta,
+                                        mode=LandmarkResponseRequest.BUNCH_SEAM,
+                                        use_nearest = False)
+
+        return res.response
+
+class Model_Bunch_Locate_Inside_Out(Model_Bunch):
+
+    def appearance_score(self):
+        pt = self.seam_location()
+        theta = -self.get_angle()
+        #Check everything to the left and right
+        #FIXME
+        return 0
 
 class Model_Towel(Point_Model_Variable_Symm):
     def polygon_vertices(self):
@@ -1356,7 +1506,6 @@ class Model_Tee_Tunable(Model_Tee_Generic):
             val = Model_Tee_Generic.__getattr__(self,attr)
             return val
         except Exception,e:
-            #print "Getting attr %s from the initial_model"%attr
             val = self.initial_model.__getattr__(attr)
             return val
             
@@ -1381,128 +1530,6 @@ class Model_Shirt_Skel(Model_Long_Shirt_Generic):
         
     def allow_intersections(self):
         return False
-    
-        
-class Model_Shirt_Skel_New(Model_Long_Shirt_Generic):
-               
-    def symmetric_variable_pt_names(self):
-        return ["spine_bottom","spine_top","left_collar","left_shoulder_joint","left_shoulder_top","left_sleeve_center","left_sleeve_top","bottom_left"]
-        
-    def mirrored_pts(self):
-        #return {"left_collar":"right_collar","left_shoulder_joint":"right_shoulder_joint","left_shoulder_top":"right_shoulder_top","left_sleeve_center":"right_sleeve_center","left_sleeve_top":"right_sleeve_top"}
-        return {"left_shoulder_joint":"right_shoulder_joint","left_shoulder_top":"right_shoulder_top","left_sleeve_center":"right_sleeve_center","left_sleeve_top":"right_sleeve_top","left_collar":"right_collar"}
-    
-        
-    def allow_intersections(self):
-        return False
-            
-    def arm_pts_to_angles(self,sleeve_center,sleeve_top,spine_junction,shoulder_joint,arm):
-        sleeve_len = vect_length(pt_diff(sleeve_center,shoulder_joint))
-        angle = angle_between(pt_diff(shoulder_joint,spine_junction),pt_diff(sleeve_center,shoulder_joint))
-        sleeve_width = vect_length(pt_diff(sleeve_top,sleeve_center))*2
-        if sleeve_top[0] > sleeve_center[0]:
-            skew = -1*(angle_between(pt_diff(sleeve_top,sleeve_center),pt_diff(sleeve_center,shoulder_joint))-pi/2)
-        else:
-            skew = angle_between(pt_diff(sleeve_top,sleeve_center),pt_diff(sleeve_center,shoulder_joint)) - pi/2
-        if arm == "l":
-            skew *= -1
-                
-        return (sleeve_len,sleeve_width,angle,skew)
-        
-    def angles_to_arm_pts(self,sleeve_len,sleeve_width,angle,skew,spine_junction,shoulder_joint,arm="l"):
-        arm_ln = make_ln_from_pts(shoulder_joint,spine_junction)
-        straight_pt = extrapolate(arm_ln,-1*sleeve_len)
-        if arm == "r":
-            multiplier = 1
-        else:
-            multiplier = -1
-        sleeve_center = rotate_pt(straight_pt,multiplier*angle,shoulder_joint)
-        straight_top = extrapolate(make_ln_from_pts(sleeve_center,shoulder_joint),-1*sleeve_width/2.0)
-        straight_top_rot = rotate_pt(straight_top,-1*multiplier*pi/2,sleeve_center)
-        sleeve_top = rotate_pt(straight_top_rot,multiplier*skew,sleeve_center)
-        return (sleeve_center,sleeve_top)
-        
-    #Parameters are simply all of my vertices
-    def params(self):
-        output = []
-        vertices = []
-        vertices.extend(self.vertices)
-        (l_sleeve_len,l_sleeve_width,l_angle,l_skew) = self.arm_pts_to_angles(self.left_sleeve_center(),self.left_sleeve_top(),self.shoulder_spine_junction(),self.left_shoulder_joint(),"l")
-        #print "Sleeve length is %f, width is %f, angle is %f, skew is %f"%(l_sleeve_len,l_sleeve_width,l_angle,l_skew)
-        #exit()
-        if not self.symmetric:
-            r_sleeve_center_index = self.variable_pt_names().index("right_sleeve_center")
-            r_sleeve_top_index = self.variable_pt_names().index("right_sleeve_top")
-            remove_ith_element(r_sleeve_top_index,vertices)
-            remove_ith_element(r_sleeve_center_index,vertices)
-        l_sleeve_center_index = self.variable_pt_names().index("left_sleeve_center")
-        l_sleeve_top_index = self.variable_pt_names().index("left_sleeve_top")
-        remove_ith_element(l_sleeve_top_index,vertices)
-        remove_ith_element(l_sleeve_center_index,vertices)
-
-        output.extend([l_sleeve_len,l_sleeve_width,l_angle,l_skew])
-        if not self.symmetric:
-            (r_sleeve_len,r_sleeve_width,r_angle,r_skew) = self.arm_pts_to_angles(self.right_sleeve_center(),self.right_sleeve_top(),self.shoulder_spine_junction(),self.right_shoulder_joint(),"r")
-            output.extend([r_sleeve_len,r_sleeve_width,r_angle,r_skew])
-        for pt in vertices:
-            output.append(pt_x(pt))
-            output.append(pt_y(pt))
-        return output
-    
-    #Reads in a list of x,y values, and creates a new instance of myself with those points    
-    def from_params(self,params):
-        params = list(params)
-        #print "Len params: %d"%len(params)
-        pts = []
-        l_sleeve_len = params.pop(0)
-        l_sleeve_width = params.pop(0)
-        l_angle = params.pop(0)
-        l_skew = params.pop(0)
-        if not self.symmetric:
-            r_sleeve_len = params.pop(0)
-            r_sleeve_width = params.pop(0)
-            r_angle = params.pop(0)
-            r_skew = params.pop(0)
-        x = None
-        for i,p in enumerate(params):
-            if i%2 == 0:
-                x = p
-            else:
-                y = p
-                pts.append((x,y))
-        #First create a rough model to get all other information        
-        l_sleeve_center_index = self.variable_pt_names().index("left_sleeve_center")
-        l_sleeve_top_index = self.variable_pt_names().index("left_sleeve_top")
-        assert l_sleeve_top_index > l_sleeve_center_index
-        pts.insert(l_sleeve_center_index,self.left_sleeve_center())
-        pts.insert(l_sleeve_top_index,self.left_sleeve_top())
-        if not self.symmetric:
-            r_sleeve_center_index = self.variable_pt_names().index("right_sleeve_center")
-            r_sleeve_top_index = self.variable_pt_names().index("right_sleeve_top")
-            assert r_sleeve_center_index > l_sleeve_top_index
-            assert r_sleeve_top_index > r_sleeve_center_index
-            pts.insert(r_sleeve_center_index,self.right_sleeve_center())
-            pts.insert(r_sleeve_top_index,self.right_sleeve_top())
-        #print "Len pts: %d"%len(pts)
-        intermed_model = self.clone(pts)
-        
-        (l_sleeve_center,l_sleeve_top) = self.angles_to_arm_pts(l_sleeve_len,l_sleeve_width,l_angle,l_skew,intermed_model.shoulder_spine_junction(),intermed_model.left_shoulder_joint())
-        pts[l_sleeve_center_index] = l_sleeve_center
-        pts[l_sleeve_top_index] = l_sleeve_top
-        if not self.symmetric:
-            (r_sleeve_center,r_sleeve_top) = self.angles_to_arm_pts(r_sleeve_len,r_sleeve_width,r_angle,r_skew,intermed_model.shoulder_spine_junction(),intermed_model.right_shoulder_joint(),arm="r")
-            pts[r_sleeve_center_index] = r_sleeve_center
-            pts[r_sleeve_top_index] = r_sleeve_top
-        real_model = self.clone(pts)
-        """
-        img = cv.CloneImage(self.image)
-        real_model.draw_to_image(img,cv.CV_RGB(0,0,255))
-        cv.NamedWindow("intermed")
-        cv.ShowImage("intermed",img)
-        cv.WaitKey(100)
-        """
-        return real_model
-        
     
 class Model_Shirt_Skel_Restricted(Model_Long_Shirt_Generic):
     def symmetric_variable_pt_names(self):
@@ -1682,4 +1709,3 @@ def remove_ith_element(i,lst):
     copylst = list(lst)
     lst.pop(i)
         
-

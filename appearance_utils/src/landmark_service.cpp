@@ -3,6 +3,8 @@
 #include <socks/LandmarkDetection/LandmarkDetector.h>
 #include <appearance_utils/LoadImage.h>
 #include <appearance_utils/LandmarkResponse.h>
+#include <appearance_utils/LandmarkResponseAll.h>
+#include <appearance_utils/SaveVisualization.h>
 #include <appearance_utils/ExtractLBPFeatures.h>
 #include "sensor_msgs/Image.h"
 #include "image_transport/image_transport.h"
@@ -67,7 +69,7 @@ bool landmark_response_srv  (   appearance_utils::LandmarkResponse::Request    &
                                 appearance_utils::LandmarkResponse::Response   &res )
 {
     vector<double> response;
-    landmarkDetector_->getResponseCloseToPt(cvPoint(req.x,req.y), response,req.theta);
+    landmarkDetector_->getResponseCloseToPt(cvPoint(req.x,req.y), response,req.theta,req.use_nearest);
     if(req.mode == req.HEEL){
         res.response = response[HEEL];
     }
@@ -87,11 +89,44 @@ bool landmark_response_srv  (   appearance_utils::LandmarkResponse::Request    &
     return true;
 }
 
+/* Pulls all feature responses for all patches in the sock
+ * Input: None (maybe a bool to include inside?)
+ * Output: Two vectors: one of feature centers, and another of 
+ * */
+bool landmark_response_all_srv (    appearance_utils::LandmarkResponseAll::Request      &req,
+                                    appearance_utils::LandmarkResponseAll::Response     &res )
+{
+    return true;    
+}
+
+
+//Assumes LoadImage has been called
+bool get_visualization_srv     (   appearance_utils::SaveVisualization::Request    &req,
+                                    appearance_utils::SaveVisualization::Response   &res )
+{
+    cout << "Called get_visualization service" << endl;
+    IplImage *cv_image = landmarkDetector_->getSeparateResponseVisualization();
+    sensor_msgs::ImagePtr img_ptr;
+    sensor_msgs::Image img;
+    try
+    {
+            img_ptr = bridge_.cvToImgMsg(cv_image, "bgr8");
+            img = *img_ptr;
+    }
+    catch (sensor_msgs::CvBridgeException error)
+    {
+            ROS_ERROR("error");
+            return false;
+    }
+    res.image = img;
+    return true;
+}
+
 int main(int argc, char ** argv)
 {
     ros::init(argc, argv, "landmark_response_server");
     ros::NodeHandle n("~");
-    landmarkDetector_ = new LandmarkDetector();
+    landmarkDetector_ = new LandmarkDetector(600,260,100,200,200,100,3);
 
     //Initialize by loading the model
     string model_file;
