@@ -21,6 +21,7 @@
   <depend package="image_transport"/>
   <depend package="visual_feedback_utils"/>
   <depend package="stereo_click"/>
+  <depend package="joy" />
 </package>
 
 
