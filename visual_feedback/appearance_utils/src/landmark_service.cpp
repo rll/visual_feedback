@@ -6,6 +6,8 @@
 #include <appearance_utils/LandmarkResponseAll.h>
 #include <appearance_utils/SaveVisualization.h>
 #include <appearance_utils/ExtractLBPFeatures.h>
+#include <appearance_utils/GetMask.h>
+#include <appearance_utils/PatchResponse.h>
 #include "sensor_msgs/Image.h"
 #include "image_transport/image_transport.h"
 #include "cv_bridge/CvBridge.h"
@@ -38,9 +40,8 @@ bool load_image_srv         (   appearance_utils::LoadImage::Request    &req,
     cout << "Converted to cv_image" << endl;
     landmarkDetector_->loadNewImage(cv_image);
     cout << "Loaded image" << endl;
-    landmarkDetector_->computeResponseStartingAtPt(cvPoint(0,0),false);
+    landmarkDetector_->computeResponseStartingAtPt(cvPoint(0,0),true,false);
     cout << "Computed response (contour only)" << endl;
-    return true;
 }
 
 bool extract_lbp_features_srv (   appearance_utils::ExtractLBPFeatures::Request     &req,
@@ -96,6 +97,25 @@ bool landmark_response_srv  (   appearance_utils::LandmarkResponse::Request    &
 bool landmark_response_all_srv (    appearance_utils::LandmarkResponseAll::Request      &req,
                                     appearance_utils::LandmarkResponseAll::Response     &res )
 {
+    
+    cout << "Called landmark_response_all service" << endl;
+    vector <CvPoint>* centers =      landmarkDetector_->getCenters();
+    vector <IplImage*>* patches =    landmarkDetector_->getOrientedSegmentImages();
+    for (int i=0; i < centers->size(); i++){
+        appearance_utils::PatchResponse pr;
+        CvPoint center = centers->at(i);
+        pr.x = center.x;
+        pr.y = center.y;
+        landmarkDetector_->getResponse (patches->at(i), pr.responses);
+        
+        //Hard Coded now, find principled approach later
+        pr.response_types.push_back(pr.OTHER);
+        pr.response_types.push_back(pr.HEEL);
+        pr.response_types.push_back(pr.TOE);
+        pr.response_types.push_back(pr.OPENING);
+        res.patch_responses.push_back(pr);
+    }
+    cout << "Computed features" << endl;
     return true;    
 }
 
@@ -122,6 +142,31 @@ bool get_visualization_srv     (   appearance_utils::SaveVisualization::Request 
     return true;
 }
 
+
+//Assumes LoadImage has been called
+bool get_mask_srv              (    appearance_utils::GetMask::Request    &req,
+                                    appearance_utils::GetMask::Response   &res )
+{
+    cout << "Called get_mask service" << endl;
+    IplImage *cv_image = landmarkDetector_->getMask();
+    sensor_msgs::ImagePtr img_ptr;
+    sensor_msgs::Image img;
+    try
+    {
+            img_ptr = bridge_.cvToImgMsg(cv_image, "mono8");
+            img = *img_ptr;
+    }
+    catch (sensor_msgs::CvBridgeException error)
+    {
+            ROS_ERROR("error");
+            return false;
+    }
+    res.mask = img;
+    return true;
+}
+
+
+
 int main(int argc, char ** argv)
 {
     ros::init(argc, argv, "landmark_response_server");
@@ -138,8 +183,12 @@ int main(int argc, char ** argv)
     ROS_INFO("load_image service ready.");
     ros::ServiceServer landmark_service = n.advertiseService("landmark_response", landmark_response_srv);
     ROS_INFO("landmark_response service ready.");
+    ros::ServiceServer landmark_all_service = n.advertiseService("landmark_response_all", landmark_response_all_srv);
+    ROS_INFO("landmark_response_all service ready.");
     ros::ServiceServer extract_lbp_features_service = n.advertiseService("extract_lbp_features", extract_lbp_features_srv);
     ROS_INFO("extract_lbp_features service ready.");
+    ros::ServiceServer mask_service = n.advertiseService("get_mask", get_mask_srv);
+    ROS_INFO("get_mask service ready.");
     ros::spin();
     return 0; 
 }

@@ -4,10 +4,9 @@ int32 x
 int32 y
 
 #Types
-int32 OTHER=0
-int32 HEEL=1
-int32 TOE=2
-int32 OPENING=3
-#Special Bunched Features
-int32 BUNCH_SEAM=4
-int32 BUNCH_INSIDE_OUT=5
+byte OTHER=0
+byte HEEL=1
+byte TOE=2
+byte OPENING=3
+byte BUNCH_SEAM=4
+byte BUNCH_INSIDE_OUT=5
