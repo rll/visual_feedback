@@ -40,8 +40,13 @@ bool load_image_srv         (   appearance_utils::LoadImage::Request    &req,
     cout << "Converted to cv_image" << endl;
     landmarkDetector_->loadNewImage(cv_image);
     cout << "Loaded image" << endl;
-    landmarkDetector_->computeResponseStartingAtPt(cvPoint(0,0),true,false);
+    if (req.mode == req.CONTOUR){
+        landmarkDetector_->computeResponseStartingAtPt(cvPoint(0,0),true,false);
     cout << "Computed response (contour only)" << endl;
+    }else{
+        landmarkDetector_->computeResponseStartingAtPt(cvPoint(0,0),false,true);
+    cout << "Computed response (inside only)" << endl;
+    }
 }
 
 bool extract_lbp_features_srv (   appearance_utils::ExtractLBPFeatures::Request     &req,
@@ -61,7 +66,7 @@ bool extract_lbp_features_srv (   appearance_utils::ExtractLBPFeatures::Request 
                 return false;
         }
     cout << "Converted to cv_image" << endl;
-    landmarkDetector_->getLandmarkFeatures(cv_image, &res.features);
+    landmarkDetector_->getLandmarkFeatures(cv_image, &res.features,req.type);
 
     return true;
 }
@@ -106,7 +111,7 @@ bool landmark_response_all_srv (    appearance_utils::LandmarkResponseAll::Reque
         CvPoint center = centers->at(i);
         pr.x = center.x;
         pr.y = center.y;
-        landmarkDetector_->getResponse (patches->at(i), pr.responses);
+        landmarkDetector_->getResponse (patches->at(i), pr.responses,req.type);
         
         //Hard Coded now, find principled approach later
         pr.response_types.push_back(pr.OTHER);

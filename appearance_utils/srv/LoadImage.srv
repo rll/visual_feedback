@@ -1,2 +1,5 @@
 sensor_msgs/Image image
+byte mode
+byte CONTOUR=0
+byte INSIDE=1
 ---

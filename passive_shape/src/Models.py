@@ -8,9 +8,13 @@ import inspect
 import pyflann
 import rospy
 from appearance_utils.srv import *
+from appearance_utils.msg import PatchResponse
 import ImageUtils
 import RosUtils
+
+#Global variables -- need to think about this if it ever starts parallelizing
 nn_solver = pyflann.FLANN()
+patch_responses = None
 
 def make_sparse(contour,num_pts = 1000):
         sparsity = int(math.ceil(len(contour) / float(num_pts)))
@@ -82,9 +86,6 @@ class Model:
     def initialize_appearance(self,image):
         pass
 
-    def appearance_score(self,image):
-        return 0
-
     def contour_score(self,contour):
         model_dist_param = 0.5
         contour_dist_param = 0.5
@@ -135,12 +136,13 @@ class Model:
         abstract
 
     def draw_contour(self,img,color,thickness):
-        abstract
+        abstract 
 
     #Simple hack to get the outer contour: draw it on a white background and find the largest contour            
     def get_silhouette(self,vertices,num_pts):
         storage = cv.CreateMemStorage(0)
-        black_image = cv.CreateImage(cv.GetSize(self.image),8,1)
+        #black_image = cv.CreateImage(cv.GetSize(self.image),8,1)
+        black_image = cv.CreateImage((self.image.width*2,self.image.height*2),8,1)
         cv.Set(black_image,cv.CV_RGB(0,0,0))
         self.draw_contour(black_image,cv.CV_RGB(255,255,255),2)
         #cv.PolyLine(black_image,[vertices],4,cv.CV_RGB(255,255,255),0)
@@ -184,11 +186,13 @@ class Model:
         cv.PolyLine(img,[self.polygon_vertices()],1,color,3)
         
     def draw_point(self,img,pt,color):
-        cv.Circle(img,pt,5,color,-1)
+        cv.Circle(img,self.snap(pt,img),5,color,-1)
         
     def draw_line(self,img,pt1,pt2,color,thickness=2):
-        cv.Line(img,pt1,pt2,color,thickness=thickness)
+        cv.Line(img,self.snap(pt1,img),self.snap(pt2,img),color,thickness=thickness)
         
+    def snap(self,pt,img):
+        return (max( min(pt[0],img.width),0), max( min(pt[1],img.height), 0))
 
     def make_asymm(self):
         return self
@@ -321,10 +325,10 @@ class Point_Model(Model):
                     rel_pt = init_args[rel_pt_index]
                     x += pt_x(rel_pt)
                     y += pt_y(rel_pt)
-                init_args.append((x,y))
-        for s in scalar_params:
-            init_args.append(s)
-        return self.clone(init_args)
+                self.vertices[i/2] = (x,y)
+        for i,s in enumerate(scalar_params):
+            self.scalar_params[i] = s
+            return self
 
     def clone(self,init_args):
         myclone = self.__class__(*init_args)
@@ -558,7 +562,7 @@ class Point_Model_Folded_Robust(Point_Model_Folded):
 class Point_Model_Variable_Symm(Point_Model):
     
     def __init__(self,symmetric,*vertices_and_params):
-        self.__setattr__('symmetric', symmetric)
+        self.symmetric = symmetric
         Point_Model.__init__(self,*vertices_and_params)
     
     
@@ -642,10 +646,40 @@ class Point_Model_Variable_Symm(Point_Model):
 ###
 # Defining some clothing models
 ###
+class Model_Sock_Generic(Point_Model_Variable_Symm):
 
-class Model_Sock_Skel(Point_Model_Variable_Symm):
+    def closest_n_patch_responses(self,point,n):
+        mins = patch_responses[:n]
+        mins.sort(key=lambda pr: pt_distance(point,(pr.x,pr.y)))
+        for p in patch_responses[n:]:
+            if pt_distance((p.x,p.y),point) < pt_distance((mins[-1].x,mins[-1].y),point): 
+                mins.append(p)
+                mins.sort(key=lambda pr: pt_distance(point,(pr.x,pr.y)))
+                mins = mins[:n] 
+        return mins
+
+
+    def response(self,point,type):
+        #Do weighted sum
+        (pr1,pr2) = self.closest_n_patch_responses(point,2) #Only horizontal neighbors matter here
+        d1 = pt_distance((pr1.x,pr1.y),point)
+        d2 = pt_distance((pr2.x,pr2.y),point)
+        response = (d1 * pr2.responses[type] + d2*pr1.responses[type]) / (d1+d2)
+        #Scale by the distance to the nearest
+    
+        return response
+        #return (1 - exp(-5*response)) / (1 - exp(-5))
+    
+    def beta(self):
+        return 0.999
+        #return 1
+
+    def contour_mode(self):
+        return True 
+
+class Model_Sock_Skel(Model_Sock_Generic):
     def polygon_vertices(self):
-       return [self.ankle_bottom(), self.ankle_top(), self.bend_point(), self.toe_top(), self.toe_bottom(), self.heel()]
+       return [self.ankle_bottom(), self.ankle_center(), self.ankle_top(), self.heel() if self.flipped() else self.bend_point(), self.toe_top(), self.toe_center(), self.toe_bottom(), self.bend_point() if self.flipped() else self.heel()]
 
     def symmetric_variable_pt_names(self):
        return ["ankle_center","ankle_joint","toe_center"]
@@ -682,14 +716,28 @@ class Model_Sock_Skel(Point_Model_Variable_Symm):
 
     def toe_axis(self):
         return make_seg(self.ankle_joint(),self.toe_center())
+    
+    def flipped(self):
+        return False
+
 
     def heel(self):
         straight_pt = extrapolate(self.ankle_axis(),self.sock_width()/2)
-        return rotate_pt(straight_pt,-pi/2,self.ankle_joint())
+        if self.flipped():    
+            return rotate_pt(straight_pt,pi/2,self.ankle_joint())
+        else:
+            return rotate_pt(straight_pt,-pi/2,self.ankle_joint())
    
     def bend_point(self):
         straight_pt = extrapolate(self.ankle_axis(),self.sock_width()/2)
-        return rotate_pt(straight_pt,pi/2,self.ankle_joint())
+        if self.flipped():    
+            return rotate_pt(straight_pt,-pi/2,self.ankle_joint())
+        else:
+            return rotate_pt(straight_pt,pi/2,self.ankle_joint())
+
+    def heel_and_bend_point(self):
+        straight_pt = extrapolate(self.ankle_axis(),self.sock_width()/2)
+        return (rotate_pt(straight_pt,-pi/2,self.ankle_joint()),rotate_pt(straight_pt,pi/2,self.ankle_joint()))
 
     def toe_angle(self):
         return math.atan2(self.ankle_joint()[1]-self.toe_center()[1],-1*(self.ankle_joint()[0]-self.toe_center()[0]))*180/pi
@@ -701,14 +749,13 @@ class Model_Sock_Skel(Point_Model_Variable_Symm):
         return math.atan2(self.ankle_joint()[1]-self.ankle_center()[1],-1*(self.ankle_joint()[0]-self.ankle_center()[0]))*180/pi
 
     def draw_to_image(self,img,color): 
-        #Point_Model_Variable_Symm.draw_to_image(self,img,color)
         #Draw polygon points
         self.draw_point(    img,    self.ankle_bottom(),            color)
         self.draw_point(    img,    self.ankle_top(),               color)
         self.draw_point(    img,    self.bend_point(),              color)
         self.draw_point(    img,    self.toe_top(),                 color)
         self.draw_point(    img,    self.toe_bottom(),              color)
-        self.draw_point(    img,    self.heel(),                    color)
+        self.draw_point(    img,    self.heel(),                    cv.CV_RGB(0,255,0))
         #Draw outline
         self.draw_contour(img,color,1)
         #Draw skeletal frame
@@ -720,17 +767,26 @@ class Model_Sock_Skel(Point_Model_Variable_Symm):
 
     def draw_contour(self,img,color,thickness=1):
         #Draw outline
+        top_joint = self.heel() if self.flipped() else self.bend_point()
+        bottom_joint = self.bend_point() if self.flipped() else self.heel()
         self.draw_line(      img,    self.ankle_bottom(),    self.ankle_top(),      color,  thickness)
-        self.draw_line(      img,    self.ankle_top(),       self.bend_point(),     color,  thickness)
-        self.draw_line(      img,    self.bend_point(),      self.toe_top(),        color,  thickness)
+        self.draw_line(      img,    self.ankle_top(),       top_joint,     color,  thickness)
+        self.draw_line(      img,    top_joint,              self.toe_top(),        color,  thickness)
         cv.Ellipse(
             img,    pt_center(self.toe_top(),self.toe_bottom()),
             (max(self.toe_radius(),1),max(self.sock_width()/2,1)),
             self.toe_angle(),
             -90,    90,     
             color, thickness)
-        self.draw_line(      img,    self.toe_bottom(),       self.heel(),          color,  thickness)
-        self.draw_line(      img,    self.heel(),             self.ankle_bottom(),  color,  thickness)
+        self.draw_line(      img,    self.toe_bottom(),       bottom_joint,          color,  thickness)
+        self.draw_line(      img,    bottom_joint,             self.ankle_bottom(),  color,  thickness)
+    
+    def concave_heel(self):
+        vert_axis = pt_diff(self.bend_point(),self.heel())
+        if not self.flipped():
+            return  dot_prod(self.heel(),vert_axis) > dot_prod(self.toe_bottom(),vert_axis)
+        else:
+            return  dot_prod(self.heel(),vert_axis) > dot_prod(self.toe_top(),vert_axis)
 
     def structural_penalty(self):
         penalty = 0
@@ -738,89 +794,105 @@ class Model_Sock_Skel(Point_Model_Variable_Symm):
             penalty += 1
         if self.sock_width() <= 0:
             penalty += 1
+        #if self.concave_heel():
+        #    penalty += 1
         return penalty
 
-    def beta(self):
-        return 0.99
-        #return 1
-
-    def contour_mode(self):
-        return True 
     
     def initialize_appearance(self,image):
-        RosUtils.call_service("landmark_service_node/load_image", LoadImage, ImageUtils.cv_to_imgmsg(image))
-
+        RosUtils.call_service("landmark_service_node/load_image", LoadImage, 
+                image = ImageUtils.cv_to_imgmsg(image),
+                mode = LoadImageRequest.CONTOUR)
+        res = RosUtils.call_service("landmark_service_node/landmark_response_all", LandmarkResponseAll, type=3)
+        global patch_responses
+        patch_responses = res.patch_responses
+        mask_res = RosUtils.call_service("landmark_service_node/get_mask", GetMask)
+        return ImageUtils.imgmsg_to_cv(mask_res.mask,"mono8")
+    
     def appearance_score(self,image):
-        appearance_score = 0
-        #appearance_score += self.heel_score()
-        appearance_score += self.toe_score()
-        appearance_score += self.ankle_score()
-        return 1 - (appearance_score / 2.0)
+        appearance_reward = dot(array(self.appearance_weights()), array(self.appearance_responses()))
+        return 1 - appearance_reward
+    
+    def appearance_responses(self):
+        return (self.ankle_score(), self.toe_score(), self.heel_score(), self.nothing_score())
+
+    def appearance_weights(self):
+        return (0.4, 0.35, 0.25, 0.05)
+
+
+    def response_to_prob(self,responses,type):
+        return responses[type] / sum(responses)
 
     def heel_score(self):
+        #return min([self.response(pt,PatchResponse.HEEL) for pt in (self.heel(), self.bend_point())])
         pt = self.heel()
-        joint = self.ankle_joint()
-        theta = math.atan2(-1*(joint[1]-pt[1]),joint[0]-pt[0]) - pi/2
-        res = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
-                                        x=pt[0],   y=pt[1], theta = theta,
-                                        mode=LandmarkResponseRequest.HEEL,
-                                        use_nearest = True)
-
-        return res.response
+        return self.response(pt,PatchResponse.HEEL)
 
     def toe_score(self):
         pt = self.toe_center()
-        joint = self.ankle_joint()
-        theta = math.atan2(-1*(joint[1]-pt[1]),joint[0]-pt[0]) - pi/2
-        res = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
-                                        x=pt[0],   y=pt[1], theta = theta,
-                                        mode=LandmarkResponseRequest.TOE,
-                                        use_nearest = True)
-        return res.response
+        return self.response(pt,PatchResponse.TOE)
 
     def ankle_score(self):
         pt = self.ankle_center()
-        joint = self.ankle_joint()
-        theta = math.atan2(-1*(joint[1]-pt[1]),joint[0]-pt[0]) - pi/2
-        res = RosUtils.call_service(   "landmark_service_node/landmark_response", LandmarkResponse, 
-                                        x=pt[0],   y=pt[1], theta = theta,
-                                        mode=LandmarkResponseRequest.OPENING,
-                                        use_nearest = True)
-        return res.response
+        return self.response(pt,PatchResponse.OPENING)
+
+    def nothing_score(self):
+        score = 0
+        pts_list = (self.toe_top(),self.toe_bottom(),self.ankle_top(),self.ankle_bottom(),self.bend_point())
+        for pt in pts_list:
+            score += self.response(pt,PatchResponse.OTHER)
+        return score / len(pts_list)
+
+class Model_Sock_Skel_Flipped(Model_Sock_Skel):
+    def flipped(self):
+        return True
+
+class Model_Sock_Skel_Vert(Model_Sock_Skel):
+    def appearance_weights(self):
+        return (0.5, 0.4, 0.0, 0.1)
+
+    def concave_heel(self):
+        return False
 
 # A model for a bunched sock
-class Model_Bunch(Point_Model_Variable_Symm):
+class Model_Bunch(Model_Sock_Generic):
     def polygon_vertices(self):
-        return [self.bottom_left(),self.top_left(),self.top_right(),self.bottom_right()]
+        return [self.bottom_left(),self.top_left(),self.seam_top(),self.top_right(),self.bottom_right(),self.seam_bottom()]
 
     def symmetric_variable_pt_names(self):
-        return ["bottom_left","top_left","top_right","bottom_right"]
+        return ["left_center","right_center"]
 
     def symmetric_variable_param_names(self):
-        return ["seam_distance"]
+        return ["sock_width","seam_distance"]
 
-    def left_center(self):
-        return Vector2D.pt_center(self.top_left(),self.bottom_left())
-    
-    def right_center(self):
-        return Vector2D.pt_center(self.top_right(),self.bottom_right())
+    def top_left(self):
+        return pt_sum(self.left_center(), pt_scale(line_vector(self.seam_axis()),self.sock_width()*0.5))
+    def top_right(self):
+        return pt_sum(self.right_center(), pt_scale(line_vector(self.seam_axis()),self.sock_width()*0.5))
+    def bottom_left(self):
+        return pt_sum(self.left_center(), pt_scale(line_vector(self.seam_axis()),-1*self.sock_width()*0.5))
+    def bottom_right(self):
+        return pt_sum(self.right_center(), pt_scale(line_vector(self.seam_axis()),-1*self.sock_width()*0.5))
 
     def horiz_axis(self):
         return make_seg(self.left_center(),self.right_center())
 
     def seam_axis(self):
-        return Vector2D.perpendicular(self.horiz_axis(),self.seam_location())
+        return perpendicular(make_ln_from_pts(self.left_center(),self.right_center()),self.seam_location())
 
     def seam_location(self):
-        return Vector2D.extrapolate(self.horiz_axis(),self.seam_distance())
+        return extrapolate(self.horiz_axis(),self.seam_distance())
 
     def seam_bottom(self):
-        return Vector2D.intercept(  Vector2D.make_ln_from_pts(self.bottom_left(),self.bottom_right()),
-                                    self.seam_axis())
+        #return intercept(           make_ln_from_pts(self.bottom_left(),self.bottom_right()),
+        #                            self.seam_axis())
+        return extrapolate(make_ln_from_pts(self.bottom_left(),self.bottom_right()),self.seam_distance())
+
 
     def seam_top(self):
-        return Vector2D.intercept(  Vector2D.make_ln_from_pts(self.top_left(),self.top_right()),
-                                    self.seam_axis())
+        #return intercept(           make_ln_from_pts(self.top_left(),self.top_right()),
+        #                            self.seam_axis())
+        return extrapolate(make_ln_from_pts(self.top_left(),self.top_right()),self.seam_distance())
 
     def get_angle(self):
         left_center = self.left_center()
@@ -831,10 +903,20 @@ class Model_Bunch(Point_Model_Variable_Symm):
         return 0.99
 
     def initialize_appearance(self,image):
-        RosUtils.call_service("landmark_service_node/load_image", LoadImage, ImageUtils.cv_to_imgmsg(image))
+        RosUtils.call_service("landmark_service_node/load_image", LoadImage, 
+                image = ImageUtils.cv_to_imgmsg(image),
+                mode = LoadImageRequest.INSIDE)
+        res = RosUtils.call_service("landmark_service_node/landmark_response_all", LandmarkResponseAll, type=0)
+        global patch_responses
+        patch_responses = res.patch_responses
+        mask_res = RosUtils.call_service("landmark_service_node/get_mask", GetMask)
+        return ImageUtils.imgmsg_to_cv(mask_res.mask,"mono8")
 
-    def draw_to_image(self,img,color):
-        Point_Model_Variable_Symm.draw_to_image(self,img,color)
+    def draw_to_image(self,img,color,thickness=2):
+        self.draw_contour(img,color,thickness)
+
+    def draw_contour(self,img,color,thickness=2):
+        Model_Sock_Generic.draw_to_image(self,img,color)
         
         self.draw_point(img,self.seam_top(),color)
         self.draw_point(img,self.seam_bottom(),color)
@@ -844,9 +926,10 @@ class Model_Bunch(Point_Model_Variable_Symm):
         penalty = 0
         if self.seam_distance() <= 0:
             penalty += 1
-        if self.seam_distance() >= Vector2D.pt_distance(self.left_center(),self.right_center()):
+        if self.seam_distance() >= pt_distance(self.left_center(),self.right_center()):
             penalty += 1
         return penalty
+
 
 class Model_Bunch_Locate_Seam(Model_Bunch):
 
@@ -862,12 +945,18 @@ class Model_Bunch_Locate_Seam(Model_Bunch):
 
 class Model_Bunch_Locate_Inside_Out(Model_Bunch):
 
-    def appearance_score(self):
-        pt = self.seam_location()
-        theta = -self.get_angle()
-        #Check everything to the left and right
-        #FIXME
-        return 0
+    def appearance_score(self,image):
+        vals = [0,0]
+        val_left = 0
+        val_right = 0
+        vertical_axis = pt_diff(self.right_center(), self.left_center())
+        for ltr in (True,False):
+            for p in patch_responses:
+                if dot_prod((p.x,p.y),line_vector(self.horiz_axis()))  < dot_prod(self.seam_location(),line_vector(self.horiz_axis())):
+                    vals[0 if ltr else 1] += p.responses[0 if ltr else 1]
+                else:
+                    vals[0 if ltr else 1] += p.responses[1 if ltr else 0]
+        return 1 - max(vals)/len(patch_responses)
 
 class Model_Towel(Point_Model_Variable_Symm):
     def polygon_vertices(self):
