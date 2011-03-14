@@ -19,7 +19,7 @@ from geometry_msgs.msg import PointStamped
 from shape_fitting_utils import *
 import image_geometry
 
-(WHITE_BG,GREEN_BG) = range(2)
+(WHITE_BG,GREEN_BG,BLACK_BG) = range(3)
 MODE = WHITE_BG
 
 def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=None):
@@ -44,6 +44,8 @@ def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=Non
         
     elif bg_mode==WHITE_BG:
         cv.Threshold(image_gray, image_thresh, 250,255, cv.CV_THRESH_BINARY_INV)
+    else:
+        cv.Threshold(image_gray, image_thresh, 250,255, cv.CV_THRESH_BINARY)
         
     if crop_rect:
         (x,y,width,height) = crop_rect

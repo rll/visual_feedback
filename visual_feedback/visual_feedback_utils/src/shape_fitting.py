@@ -30,7 +30,7 @@ SHOW_SYMM_MODEL = False
 SHOW_OPT = True
 SAVE_ITERS = False
 SHOW_FITTED = False
-SHOW_INIT_PTS = False
+SHOW_INIT_PTS = False 
 
 (BOUNDING, AXIS) = range(2)
 SCALE_METHOD = BOUNDING
@@ -442,7 +442,7 @@ def get_angle(moments):
     mu20 = cv.GetCentralMoment(moments,2,0)
     mu02 = cv.GetCentralMoment(moments,0,2)
     return 1/2.0 * arctan( (2 * mu11 / float(mu20 - mu02)))
-    
+
 def get_center(moments):
     m00 = cv.GetSpatialMoment(moments,0,0)
     m10 = cv.GetSpatialMoment(moments,1,0)

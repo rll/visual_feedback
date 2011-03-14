@@ -15,5 +15,6 @@ int32 BUNCH_INSIDE_OUT=5
 int32 mode
 
 bool use_nearest
+int32 type
 ---
 float64 response

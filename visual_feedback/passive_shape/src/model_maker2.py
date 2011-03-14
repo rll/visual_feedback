@@ -25,7 +25,8 @@ SKEL = 2
 PANTS_SKEL = 3
 TEE_SKEL = 4
 SOCK_SKEL = 5
-TYPE = SOCK_SKEL
+SOCK_BUNCH = 6
+TYPE = SOCK_BUNCH
 
 class ModelMaker(ShapeWindow):
     
@@ -70,6 +71,11 @@ class ModelMaker(ShapeWindow):
             self.toe_center = None
             self.toe_top = None
             self.sock_width = None
+        if TYPE == SOCK_BUNCH:
+            self.mode = 0
+            self.left_center = None
+            self.right_center = None
+            self.height_pt = None
         clearShapesButton = CVButton(text="CLEAR",bottomLeft=Geometry2D.Point(50,100), onClick=self.clearAll)
         self.addOverlay(clearShapesButton)
         saveModelButton = CVButton(text="SAVE MODEL",bottomLeft=Geometry2D.Point(150,100), onClick = self.saveModel)
@@ -96,6 +102,8 @@ class ModelMaker(ShapeWindow):
             return self.pantsSkelDrawer(event,x,y,flags,param)
         elif TYPE==SOCK_SKEL:
             return self.sockSkelDrawer(event,x,y,flags,param)
+        elif TYPE==SOCK_BUNCH:
+            return self.bunchDrawer(event,x,y,flags,param)
             
     def skelDrawer(self,event,x,y,flags,param):
         if self.mode==0:
@@ -247,7 +255,36 @@ class ModelMaker(ShapeWindow):
                 self.highlightPt(virtual_sleeve_bottom)
                 self.highlightSegment(Geometry2D.LineSegment(sleeve_bottom,sleeve_top))
                 self.highlightSegment(Geometry2D.LineSegment(virtual_sleeve_bottom,virtual_sleeve_top))    
-    
+
+    def bunchDrawer(self,event,x,y,flags,param):
+        if self.mode==0:
+            new_pt = Geometry2D.Point(x,y)
+            self.left_center = new_pt
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.permanentHighlightPt(self.left_center)
+                self.mode += 1
+            else:
+                self.highlightPt(self.left_center)
+        elif self.mode==1:
+            new_pt = Geometry2D.Point(x,y)
+            self.right_center = new_pt
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.permanentHighlightPt(self.right_center)
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.left_center,self.right_center))
+                self.mode += 1
+            else:
+                self.highlightPt(self.right_center)
+                self.highlightSegment(Geometry2D.LineSegment(self.left_center,self.right_center))
+        elif self.mode==2:
+            new_pt = Geometry2D.Point(x,y)
+            self.height_pt = new_pt
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.permanentHighlightPt(self.height_pt)
+                self.mode += 1
+            else:
+                self.highlightPt(self.height_pt)
+        return
+
     def sockSkelDrawer(self,event,x,y,flags,param):
         if self.mode==0:
             new_pt = Geometry2D.Point(x,y)
@@ -456,6 +493,8 @@ class ModelMaker(ShapeWindow):
             model = self.getModelPantsSkel()
         elif TYPE==SOCK_SKEL:
             model = self.getModelSockSkel()
+        elif TYPE==SOCK_BUNCH:
+            model = self.getModel_Bunch_Locate_Seam()
         model.draw_to_image(self.background,cv.RGB(255,0,0))
         if model.illegal() or model.structural_penalty() >= 1.0:
             print "Model is illegal, with penalty %f!"%model.structural_penalty()

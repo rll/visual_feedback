@@ -20,7 +20,8 @@ import Models
 import annotator
 import thresholding
 import shape_fitting
-
+import RosUtils
+from appearance_utils.srv import LoadImage
 
 SAVE_IMAGE = True
 SAVE_MODEL = True
@@ -32,20 +33,27 @@ def main(args):
     corrected_modelpaths = args[1:]
     #Load model and image
     models = [pickle.load(open(corrected_modelpath)) for corrected_modelpath in corrected_modelpaths]
-    return
+    #Special for socks
     image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
+    image_mask = models[0].initialize_appearance(image_raw)
+    print image_mask
     best_model = None
     best_nearest_pts = None
     best_fitted_model = None
     best_image_out = None
     best_score = 100
     scores = []
+    appearance_scores = []
+    contour_scores = []
+    appearance_responses = []
+    best_appearance_responses =None
+
     for i,model in enumerate(models):
         print "On model %d of %d"%(i+1,len(models))
         #Create an image to output
         image_out = cv.CloneImage(image_raw)
         #Use the thresholding module to get the contour out
-        shape_contour = thresholding.get_contour(image_raw,bg_mode=thresholding.GREEN_BG,filter_pr2=False,crop_rect=None)
+        shape_contour = thresholding.get_contour_from_thresh(image_mask)
         #image_cont = cv.CloneImage(image_raw)
         #cv.DrawContours(image_cont,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,3)
         #cv.NamedWindow("Contours")
@@ -53,15 +61,20 @@ def main(args):
         #cv.WaitKey()
         #return #FIXME
         #Use the shape_fitting module to fit the model to the contour
-        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,SILENT=True, SHOW=False,num_iters=10,INIT_APPEARANCE=(i==0))
+        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,SILENT=True, SHOW=False,num_iters=25,INIT_APPEARANCE=False)
+
         
         (nearest_pts, final_model, fitted_model) = fitter.fit(model,shape_contour,image_out,image_raw)   
         final_model.set_image(cv.CloneImage(image_raw))
         score = final_model.score(shape_contour,image_raw)
-        final_model.set_image(None)
         scores.append(score)
+        appearance_scores.append(final_model.appearance_score(None))
+        contour_scores.append(final_model.contour_score(shape_contour))
+        final_model.set_image(None)
+        #appearance_responses.append(final_model.appearance_responses())
         if not best_model or score <= best_score:
             best_score = score
+            best_appearance_responses = appearance_responses
             best_model = model
             best_nearest_pts = nearest_pts
             best_fitted_model = fitted_model
@@ -91,6 +104,20 @@ def main(args):
         for i in range(len(scores)):
             savefile.write("%s\t%f\n"%(corrected_modelpaths[i],scores[i]))
         savefile.close()
+        savepath2 = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.appearancelog"
+        """
+        savefile2 = open(savepath2,'w')
+        for appearance_response in appearance_responses:
+            for val in appearance_response:
+                savefile2.write("%f\t"%val)
+            savefile2.write("\n")
+        savefile2.close()
+        """
+        savepath3 = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.scorebreakdownlog"
+        savefile3 = open(savepath3,'w')
+        for i in range(len(appearance_scores)):
+            savefile3.write("%f\t%f\n"%(appearance_scores[i],contour_scores[i]))
+        savefile3.close()
     #Optionally save the image      
     if SAVE_IMAGE:
         savepath = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.png"
