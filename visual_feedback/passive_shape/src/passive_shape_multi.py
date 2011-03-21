@@ -32,11 +32,10 @@ def main(args):
     corrected_filepath = args[0]
     corrected_modelpaths = args[1:]
     #Load model and image
-    models = [pickle.load(open(corrected_modelpath)) for corrected_modelpath in corrected_modelpaths]
+    models = [pickle.load(open(modelpath)) for modelpath in corrected_modelpaths]
     #Special for socks
     image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
-    image_mask = models[0].initialize_appearance(image_raw)
-    print image_mask
+    image_mask = models[0].initialize_appearance_cached(corrected_filepath)
     best_model = None
     best_nearest_pts = None
     best_fitted_model = None

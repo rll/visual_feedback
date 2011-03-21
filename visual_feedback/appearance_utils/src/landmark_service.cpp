@@ -24,10 +24,10 @@ bool load_image_srv         (   appearance_utils::LoadImage::Request    &req,
                                 appearance_utils::LoadImage::Response   &res )
 {
     cout << "Called load_image service" << endl;
-    sensor_msgs::Image image = req.image;
-    sensor_msgs::ImagePtr img_ptr(new sensor_msgs::Image(image));
     
     IplImage *cv_image = NULL;    
+    sensor_msgs::Image image = req.image;
+    sensor_msgs::ImagePtr img_ptr(new sensor_msgs::Image(image));
     try
         {
                 cv_image = bridge_.imgMsgToCv(img_ptr, "bgr8");
@@ -53,6 +53,9 @@ bool extract_lbp_features_srv (   appearance_utils::ExtractLBPFeatures::Request 
                                   appearance_utils::ExtractLBPFeatures::Response    &res )
 {
     cout << "Called extract_lbp_features service" << endl;
+    //Initialize by loading the model
+    landmarkDetector_->loadModelFile(const_cast<char*>(req.model_file.c_str()));
+    
     sensor_msgs::Image image = req.image;
     sensor_msgs::ImagePtr img_ptr(new sensor_msgs::Image(image));
     IplImage *cv_image = NULL;    
@@ -74,6 +77,9 @@ bool extract_lbp_features_srv (   appearance_utils::ExtractLBPFeatures::Request 
 bool landmark_response_srv  (   appearance_utils::LandmarkResponse::Request    &req,
                                 appearance_utils::LandmarkResponse::Response   &res )
 {
+    //Initialize by loading the model
+    landmarkDetector_->loadModelFile(const_cast<char*>(req.model_file.c_str()));
+    
     vector<double> response;
     landmarkDetector_->getResponseCloseToPt(cvPoint(req.x,req.y), response,req.theta,req.use_nearest);
     if(req.mode == req.HEEL){
@@ -102,6 +108,8 @@ bool landmark_response_srv  (   appearance_utils::LandmarkResponse::Request    &
 bool landmark_response_all_srv (    appearance_utils::LandmarkResponseAll::Request      &req,
                                     appearance_utils::LandmarkResponseAll::Response     &res )
 {
+    //Initialize by loading the model
+    landmarkDetector_->loadModelFile(const_cast<char*>(req.model_file.c_str()));
     
     cout << "Called landmark_response_all service" << endl;
     vector <CvPoint>* centers =      landmarkDetector_->getCenters();
@@ -130,7 +138,8 @@ bool get_visualization_srv     (   appearance_utils::SaveVisualization::Request 
                                     appearance_utils::SaveVisualization::Response   &res )
 {
     cout << "Called get_visualization service" << endl;
-    IplImage *cv_image = landmarkDetector_->getSeparateResponseVisualization();
+    landmarkDetector_->loadModelFile(const_cast<char*>(req.model_file.c_str()));
+    IplImage *cv_image = landmarkDetector_->getSeparateResponseVisualization(req.type);
     sensor_msgs::ImagePtr img_ptr;
     sensor_msgs::Image img;
     try
@@ -178,10 +187,6 @@ int main(int argc, char ** argv)
     ros::NodeHandle n("~");
     landmarkDetector_ = new LandmarkDetector(600,260,100,200,200,100,3);
 
-    //Initialize by loading the model
-    string model_file;
-    n.param<string>("model_file", model_file, "model.txt");
-    landmarkDetector_->loadModelFile(const_cast<char*>(model_file.c_str()));
 
     //Start the services
     ros::ServiceServer image_service = n.advertiseService("load_image", load_image_srv);
@@ -192,6 +197,8 @@ int main(int argc, char ** argv)
     ROS_INFO("landmark_response_all service ready.");
     ros::ServiceServer extract_lbp_features_service = n.advertiseService("extract_lbp_features", extract_lbp_features_srv);
     ROS_INFO("extract_lbp_features service ready.");
+    ros::ServiceServer vis_service = n.advertiseService("get_visualization", get_visualization_srv);
+    ROS_INFO("get_visualization service ready.");
     ros::ServiceServer mask_service = n.advertiseService("get_mask", get_mask_srv);
     ROS_INFO("get_mask service ready.");
     ros::spin();

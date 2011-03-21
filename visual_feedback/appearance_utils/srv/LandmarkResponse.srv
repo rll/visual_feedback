@@ -16,5 +16,6 @@ int32 mode
 
 bool use_nearest
 int32 type
+string model_file
 ---
 float64 response

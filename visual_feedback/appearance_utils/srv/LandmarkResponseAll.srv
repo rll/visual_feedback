@@ -1,3 +1,4 @@
 int32 type
+string model_file
 ---
 appearance_utils/PatchResponse[] patch_responses

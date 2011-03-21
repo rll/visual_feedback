@@ -11,6 +11,9 @@ from appearance_utils.srv import *
 from appearance_utils.msg import PatchResponse
 import ImageUtils
 import RosUtils
+import os
+import os.path
+import pickle
 
 #Global variables -- need to think about this if it ever starts parallelizing
 nn_solver = pyflann.FLANN()
@@ -646,6 +649,15 @@ class Point_Model_Variable_Symm(Point_Model):
 ###
 # Defining some clothing models
 ###
+class AppearanceInfo:
+    def __init__(self):
+        self.modelfile = None
+        self.responses = None
+        self.mask = None
+        self.maskfile = None
+        ##self.visfile = None
+        ##self.vis = None
+
 class Model_Sock_Generic(Point_Model_Variable_Symm):
 
     def closest_n_patch_responses(self,point,n):
@@ -658,10 +670,19 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
                 mins = mins[:n] 
         return mins
 
+    def appearance_model(self):
+        abstract
+
+    def appearance_type(self):
+        abstract
+
+    def appearance_mode(self):
+        abstract
 
     def response(self,point,type):
         #Do weighted sum
         (pr1,pr2) = self.closest_n_patch_responses(point,2) #Only horizontal neighbors matter here
+        print len(pr1.responses)
         d1 = pt_distance((pr1.x,pr1.y),point)
         d2 = pt_distance((pr2.x,pr2.y),point)
         response = (d1 * pr2.responses[type] + d2*pr1.responses[type]) / (d1+d2)
@@ -676,8 +697,90 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
 
     def contour_mode(self):
         return True 
+    
+    def initialize_appearance_cached(self,imagefile):
+        modelfile = self.appearance_model()
+        cached_info = self.lookup_appearance_cached(imagefile,modelfile)
+        if cached_info:
+            print "HIT CACHE!"
+            appearance_info = cached_info
+        else:
+            print "DIDN'T HIT CACHE"
+            appearance_info = self.initialize_appearance(imagefile,modelfile)
+            self.cache_appearance(appearance_info,imagefile,modelfile)
+        global patch_responses
+        patch_responses = appearance_info.responses
+        mask = appearance_info.mask
+        return mask
+
+    def get_cache_filename(self,imagefile,modelfile):
+        real_path = os.path.realpath(imagefile).replace("socks_data","socks_data_cached").replace(".","-")
+        dir = real_path
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        filename = os.path.realpath(modelfile).split("/home/stephen/")[1].split(".")[0].replace("/","-")
+        return "%s/%s"%(dir,filename)
+
+    def lookup_appearance_cached(self,imagefile,modelfile):
+        name = self.get_cache_filename(imagefile,modelfile)
+        print name
+        picklename = name+".pickle"
+        if os.path.exists(picklename):
+            f = open(picklename)
+            appearance_info = pickle.load(f)
+            f.close()
+            appearance_info.mask = cv.LoadImage(appearance_info.maskfile,cv.CV_LOAD_IMAGE_GRAYSCALE)
+            return appearance_info
+        else:
+            return None
+
+    def cache_appearance(self,info,imagefile,modelfile):
+        name = self.get_cache_filename(imagefile,modelfile)
+        picklename = name+".pickle"
+        maskname = name+".png"
+        #visname = name+"_vis.png"
+        cv.SaveImage(maskname,info.mask)
+        #cv.SaveImage(visname,info.vis)
+        info.maskfile = maskname
+        #info.visfile = visname
+        #info.vis = None
+        temp_mask = info.mask
+        info.mask = None
+        f = open(picklename,'w')
+        pickle.dump(info,f)
+        f.close()
+        info.mask = temp_mask
+        return info
+
+    def initialize_appearance(self,imagefile,modelfile):
+        image = cv.LoadImage(imagefile)
+        RosUtils.call_service("landmark_service_node/load_image", LoadImage, 
+                image = ImageUtils.cv_to_imgmsg(image),
+                mode = self.appearance_mode())
+        res = RosUtils.call_service("landmark_service_node/landmark_response_all", LandmarkResponseAll, 
+                type=self.appearance_type(),model_file = modelfile)
+        #vis_res = RosUtils.call_service("landmark_service_node/get_visualization", SaveVisualization, 
+        #        type =self.appearance_type(),model_file = modelfile)
+
+        mask_res = RosUtils.call_service("landmark_service_node/get_mask", GetMask)
+
+        info = AppearanceInfo()
+        #info.vis = ImageUtils.imgmsg_to_cv(vis_res.image,"bgr8")
+        info.mask = ImageUtils.imgmsg_to_cv(mask_res.mask,"mono8")
+        info.responses = res.patch_responses
+        return info
 
 class Model_Sock_Skel(Model_Sock_Generic):
+
+    def appearance_model(self):
+        return "/home/stephen/socks_data/models/curvature_model.txt"
+
+    def appearance_type(self):
+        return 3
+
+    def appearance_mode(self):
+        return LoadImageRequest.CONTOUR
+
     def polygon_vertices(self):
        return [self.ankle_bottom(), self.ankle_center(), self.ankle_top(), self.heel() if self.flipped() else self.bend_point(), self.toe_top(), self.toe_center(), self.toe_bottom(), self.bend_point() if self.flipped() else self.heel()]
 
@@ -799,15 +902,6 @@ class Model_Sock_Skel(Model_Sock_Generic):
         return penalty
 
     
-    def initialize_appearance(self,image):
-        RosUtils.call_service("landmark_service_node/load_image", LoadImage, 
-                image = ImageUtils.cv_to_imgmsg(image),
-                mode = LoadImageRequest.CONTOUR)
-        res = RosUtils.call_service("landmark_service_node/landmark_response_all", LandmarkResponseAll, type=3)
-        global patch_responses
-        patch_responses = res.patch_responses
-        mask_res = RosUtils.call_service("landmark_service_node/get_mask", GetMask)
-        return ImageUtils.imgmsg_to_cv(mask_res.mask,"mono8")
     
     def appearance_score(self,image):
         appearance_reward = dot(array(self.appearance_weights()), array(self.appearance_responses()))
@@ -848,11 +942,18 @@ class Model_Sock_Skel_Flipped(Model_Sock_Skel):
         return True
 
 class Model_Sock_Skel_Vert(Model_Sock_Skel):
+    def appearance_model(self):
+        return "/home/stephen/socks_data/models/vertical_model.txt"
+    
     def appearance_weights(self):
         return (0.5, 0.4, 0.0, 0.1)
 
     def concave_heel(self):
         return False
+
+class Model_Sock_Skel_Vert_Flipped(Model_Sock_Skel_Vert):
+    def flipped(self):
+        return True
 
 # A model for a bunched sock
 class Model_Bunch(Model_Sock_Generic):
@@ -902,15 +1003,6 @@ class Model_Bunch(Model_Sock_Generic):
     def beta(self):
         return 0.99
 
-    def initialize_appearance(self,image):
-        RosUtils.call_service("landmark_service_node/load_image", LoadImage, 
-                image = ImageUtils.cv_to_imgmsg(image),
-                mode = LoadImageRequest.INSIDE)
-        res = RosUtils.call_service("landmark_service_node/landmark_response_all", LandmarkResponseAll, type=0)
-        global patch_responses
-        patch_responses = res.patch_responses
-        mask_res = RosUtils.call_service("landmark_service_node/get_mask", GetMask)
-        return ImageUtils.imgmsg_to_cv(mask_res.mask,"mono8")
 
     def draw_to_image(self,img,color,thickness=2):
         self.draw_contour(img,color,thickness)
@@ -945,6 +1037,15 @@ class Model_Bunch_Locate_Seam(Model_Bunch):
 
 class Model_Bunch_Locate_Inside_Out(Model_Bunch):
 
+    def appearance_model(self):
+        return "/home/stephen/socks_data/models/model_io.txt"
+
+    def appearance_type(self):
+        return 0
+
+    def appearance_mode(self):
+        return LoadImageRequest.INSIDE
+    
     def appearance_score(self,image):
         vals = [0,0]
         val_left = 0
