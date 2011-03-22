@@ -60,7 +60,7 @@ def main(args):
         #cv.WaitKey()
         #return #FIXME
         #Use the shape_fitting module to fit the model to the contour
-        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,SILENT=True, SHOW=False,num_iters=25,INIT_APPEARANCE=False)
+        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,SILENT=True, SHOW=False,num_iters=15,INIT_APPEARANCE=False)
 
         
         (nearest_pts, final_model, fitted_model) = fitter.fit(model,shape_contour,image_out,image_raw)   

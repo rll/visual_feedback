@@ -120,12 +120,19 @@ bool landmark_response_all_srv (    appearance_utils::LandmarkResponseAll::Reque
         pr.x = center.x;
         pr.y = center.y;
         landmarkDetector_->getResponse (patches->at(i), pr.responses,req.type);
-        
+        for (int j=0; j < pr.responses.size(); j++){
         //Hard Coded now, find principled approach later
-        pr.response_types.push_back(pr.OTHER);
-        pr.response_types.push_back(pr.HEEL);
-        pr.response_types.push_back(pr.TOE);
-        pr.response_types.push_back(pr.OPENING);
+            if (j == OTHER)
+                pr.response_types.push_back(pr.OTHER);
+            else if (j == HEEL)
+                pr.response_types.push_back(pr.HEEL);
+            else if (j == TOE)
+                pr.response_types.push_back(pr.TOE);
+            else if (j == OPENING)
+                pr.response_types.push_back(pr.OPENING);
+            else
+                pr.response_types.push_back(-1);
+        }
         res.patch_responses.push_back(pr);
     }
     cout << "Computed features" << endl;

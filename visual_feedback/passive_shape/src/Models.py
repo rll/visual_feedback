@@ -682,10 +682,12 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
     def response(self,point,type):
         #Do weighted sum
         (pr1,pr2) = self.closest_n_patch_responses(point,2) #Only horizontal neighbors matter here
-        print len(pr1.responses)
+        if type not in pr2.response_types:
+            return 0
+        type_index = pr1.response_types.index(type)
         d1 = pt_distance((pr1.x,pr1.y),point)
         d2 = pt_distance((pr2.x,pr2.y),point)
-        response = (d1 * pr2.responses[type] + d2*pr1.responses[type]) / (d1+d2)
+        response = (d1 * pr2.responses[type_index] + d2*pr1.responses[type_index]) / (d1+d2)
         #Scale by the distance to the nearest
     
         return response
