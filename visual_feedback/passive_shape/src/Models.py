@@ -43,7 +43,10 @@ class Model:
         
     def set_image(self,image):
         self.image = image
-          
+    
+    def set_image_size(self,image_size):
+        self.image_size = image_size
+
     def sides(self):
         verts =  self.polygon_vertices()
         segs = []
@@ -102,12 +105,14 @@ class Model:
         nn_model = nn(model_contour,sparse_contour)
         model_dist_energy = sum([self.dist_fxn(dist) for dist in nn_model]) / float(len(nn_model))
         #Normalize
-        model_dist_energy /= float(self.dist_fxn(max(self.image.width,self.image.height)))
+        #model_dist_energy /= float(self.dist_fxn(max(self.image.width,self.image.height)))
+        model_dist_energy /= float(self.dist_fxn(max(self.image_size)))
     
         nn_contour = nn(extra_sparse_contour,model_contour)
         contour_dist_energy = sum([self.dist_fxn(dist) for dist in nn_contour]) / float(len(nn_contour))
         #Normalize
-        contour_dist_energy /= float(self.dist_fxn(max(self.image.width,self.image.height)))
+        #contour_dist_energy /= float(self.dist_fxn(max(self.image.width,self.image.height)))
+        contour_dist_energy /= float(self.dist_fxn(max(self.image_size)))
         
         energy = model_dist_param * model_dist_energy + contour_dist_param * contour_dist_energy
         return energy
@@ -145,7 +150,9 @@ class Model:
     def get_silhouette(self,vertices,num_pts):
         storage = cv.CreateMemStorage(0)
         #black_image = cv.CreateImage(cv.GetSize(self.image),8,1)
-        black_image = cv.CreateImage((self.image.width*2,self.image.height*2),8,1)
+        #black_image = cv.CreateImage((self.image.width*2,self.image.height*2),8,1)
+        (width,height) = self.image_size
+        black_image = cv.CreateImage((width*2,height*2),8,1)
         cv.Set(black_image,cv.CV_RGB(0,0,0))
         self.draw_contour(black_image,cv.CV_RGB(255,255,255),2)
         #cv.PolyLine(black_image,[vertices],4,cv.CV_RGB(255,255,255),0)
@@ -335,7 +342,8 @@ class Point_Model(Model):
 
     def clone(self,init_args):
         myclone = self.__class__(*init_args)
-        myclone.set_image(self.image)
+        #myclone.set_image(self.image)
+        myclone.set_image_size(self.image_size)
         return myclone
         
     def structural_penalty(self):
@@ -388,7 +396,8 @@ class Point_Model_Contour_Only_Asymm(Point_Model):
 class Orient_Model(Point_Model):
     def __init__(self,initial_model,*params):
         self.initial_model = initial_model
-        self.image = initial_model.image
+        #self.image = initial_model.image
+        self.image_size = initial_model.image_size
         Point_Model.__init__(self,*params)
         
     def polygon_vertices(self):
@@ -428,7 +437,8 @@ class Orient_Model(Point_Model):
         
     def clone(self,init_args):
         myclone = self.__class__(self.initial_model,*init_args)
-        myclone.set_image(self.image)
+        #myclone.set_image(self.image)
+        myclone.set_image_size(self.image_size)
         return myclone
 
 # A model which is defined by fixed points and one foldline  
@@ -436,7 +446,8 @@ class Point_Model_Folded(Point_Model):
     #For now, we can easily assume all folds are left to right, and work a sign in later to fix it
     def __init__(self,initial_model,*pts):
         self.initial_model = initial_model
-        self.image = None
+        #self.image = None
+        self.image_size = None
         Point_Model.__init__(self,*pts)
         
    # def variable_param_names(self):
@@ -445,6 +456,10 @@ class Point_Model_Folded(Point_Model):
     def set_image(self,img):
         self.image = img
         self.initial_model.set_image(img)
+
+    def set_image_size(self,image_size):
+        self.image_size = image_size
+        self.initial_model.set_image_size(self.image_size)
     
     def variable_pt_names(self):
         return ["fold_bottom","fold_top"]
@@ -533,7 +548,8 @@ class Point_Model_Folded(Point_Model):
         
     def clone(self,init_args):
         myclone = self.__class__(self.initial_model,*init_args)
-        myclone.set_image(self.image)
+        #myclone.set_image(self.image)
+        myclone.set_image_size(self.image_size)
         return myclone
         
     def preferred_delta(self):
@@ -555,7 +571,8 @@ class Point_Model_Folded_Robust(Point_Model_Folded):
         newmodel = Point_Model_Folded.from_params(self,my_params)
         new_initial_model = self.initial_model.from_params(params)
         newmodel.initial_model = new_initial_model
-        newmodel.set_image(self.image)
+        #newmodel.set_image(self.image)
+        newmodel.set_image_size(self.image_size)
         return newmodel
 
     def structural_penalty(self):
@@ -633,17 +650,20 @@ class Point_Model_Variable_Symm(Point_Model):
             params.append(param2)
         init_args = pts + params    
         asymm = self.__class__(False,*init_args)
-        asymm.set_image(self.image)
+        #asymm.set_image(self.image)
+        asymm.set_image_size(self.image_size)
         return asymm
         
     def free(self):
         model = Point_Model_Contour_Only_Asymm(*self.polygon_vertices())
-        model.set_image(self.image)
+        #model.set_image(self.image)
+        model.set_image_size(self.image_size)
         return model
     
     def clone(self,init_args):
         myclone = self.__class__(self.symmetric,*init_args)
-        myclone.set_image(self.image)
+        #myclone.set_image(self.image)
+        myclone.set_image_size(self.image_size)
         return myclone
         
 ###
@@ -1659,7 +1679,8 @@ class Model_Tee_Skel_No_Skew(Model_Tee_Skel):
 class Model_Tee_Tunable(Model_Tee_Generic):
     def __init__(self,init_model,*pts):
         self.initial_model = init_model
-        self.image = init_model.image
+        #self.image = init_model.image
+        self.image_size = init_model.image_size
         Model_Tee_Generic.__init__(self,False,*pts)
         
     def symmetric_variable_pt_names(self):
@@ -1688,7 +1709,8 @@ class Model_Tee_Tunable(Model_Tee_Generic):
         
     def final(self):
         self.initial_model.image = None
-        self.image = None
+        #self.image = None
+        self.image_size = None
         return self
         
     def __getattr__(self,attr):
@@ -1704,7 +1726,8 @@ class Model_Tee_Tunable(Model_Tee_Generic):
     def clone(self,init_args):
         
         myclone = self.__class__(self.initial_model,*init_args)
-        myclone.set_image(self.image)
+        #myclone.set_image(self.image)
+        myclone.set_image_size(self.image_size)
         return myclone
 
 

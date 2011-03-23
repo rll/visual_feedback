@@ -72,7 +72,8 @@ class ShapeFitter:
             width = max(xs) - min(xs)
             height = max(ys) - min(ys)
             cv.Set(img_annotated,cv.CV_RGB(255,255,255))
-        model.set_image(cv.CloneImage(img_annotated))
+        #model.set_image(cv.CloneImage(img_annotated))
+        model.set_image_size((img_annotated.width,img_annotated.height))
         
         shape_contour = contour
         
@@ -129,7 +130,7 @@ class ShapeFitter:
                 model.draw_to_image(img_annotated,cv.CV_RGB(0,0,255))
     
             #Energy calculation
-        self.printout("Energy is: %f"%self.energy_fxn(model,shape_contour))
+        self.printout("Energy is: %f"%model.score(shape_contour,img))
         self.printout("Shape contour has %d points"%(len(shape_contour)))
         sparse_shape_contour = make_sparse(shape_contour,1000)
             
