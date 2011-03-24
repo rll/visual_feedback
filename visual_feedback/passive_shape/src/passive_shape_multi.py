@@ -36,6 +36,8 @@ def main(args):
     #Special for socks
     image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
     image_mask = models[0].initialize_appearance_cached(corrected_filepath)
+    shape_contour = thresholding.get_contour_from_thresh(image_mask)
+    models[0].initialize_contour(shape_contour)
     best_model = None
     best_nearest_pts = None
     best_fitted_model = None
@@ -52,7 +54,6 @@ def main(args):
         #Create an image to output
         image_out = cv.CloneImage(image_raw)
         #Use the thresholding module to get the contour out
-        shape_contour = thresholding.get_contour_from_thresh(image_mask)
         #image_cont = cv.CloneImage(image_raw)
         #cv.DrawContours(image_cont,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,3)
         #cv.NamedWindow("Contours")
@@ -60,16 +61,17 @@ def main(args):
         #cv.WaitKey()
         #return #FIXME
         #Use the shape_fitting module to fit the model to the contour
-        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,SILENT=True, SHOW=False,num_iters=15,INIT_APPEARANCE=False)
+        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,SILENT=True, 
+                SHOW=False,num_iters=25,INIT_APPEARANCE=False)
 
         
-        (nearest_pts, final_model, fitted_model) = fitter.fit(model,shape_contour,image_out,image_raw)   
-        final_model.set_image(cv.CloneImage(image_raw))
-        score = final_model.score(shape_contour,image_raw)
+        (nearest_pts, final_model, fitted_model) = fitter.fit(model,shape_contour,image_out,image_raw)
+        model_cache_name = final_model.get_cache_filename(corrected_filepath,corrected_modelpaths[i])+".shapepickle"
+        pickle.dump(final_model, open(model_cache_name,'w'))
+        score = final_model.score()
         scores.append(score)
         appearance_scores.append(final_model.appearance_score(None))
         contour_scores.append(final_model.contour_score(shape_contour))
-        final_model.set_image(None)
         #appearance_responses.append(final_model.appearance_responses())
         if not best_model or score <= best_score:
             best_score = score

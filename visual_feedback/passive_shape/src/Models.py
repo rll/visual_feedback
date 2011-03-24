@@ -18,6 +18,11 @@ import pickle
 #Global variables -- need to think about this if it ever starts parallelizing
 nn_solver = pyflann.FLANN()
 patch_responses = None
+black_image = None
+image = None
+contour = None
+sparse_contour = None
+extra_sparse_contour = None
 
 def make_sparse(contour,num_pts = 1000):
         sparsity = int(math.ceil(len(contour) / float(num_pts)))
@@ -81,25 +86,34 @@ class Model:
     
     def score(self,contour=None, image=None):
         if self.beta() == 1:
-            score = self.contour_score(contour)
+            score = self.contour_score()
         elif self.beta() == 0:
-            score = self.appearance_score(image)
+            score = self.appearance_score()
         else:
-            score = self.beta()*self.contour_score(contour) + (1 - self.beta())*self.appearance_score(image)
+            score = self.beta()*self.contour_score() + (1 - self.beta())*self.appearance_score()
         score += self.structural_penalty()
         return score
     
     def initialize_appearance(self,image):
         pass
 
-    def contour_score(self,contour):
+    def initialize_contour(self,contour_new):
+        global contour
+        contour = contour_new
+
+    def contour_score(self,new_contour=None):
         model_dist_param = 0.5
         contour_dist_param = 0.5
-        sparse_contour = make_sparse(contour,1000)
+        global contour
+        global sparse_contour
+        if not sparse_contour:
+            sparse_contour = make_sparse(contour,1000)
         num_model_pts = 30*len(self.sides())
         
         nn=self.nearest_neighbors_fast
-        extra_sparse_contour = make_sparse(contour,num_model_pts)
+        global extra_sparse_contour
+        if not extra_sparse_contour:
+            extra_sparse_contour = make_sparse(contour,num_model_pts)
         model_contour = self.vertices_dense(constant_length=False,density=30)
         
         nn_model = nn(model_contour,sparse_contour)
@@ -152,7 +166,9 @@ class Model:
         #black_image = cv.CreateImage(cv.GetSize(self.image),8,1)
         #black_image = cv.CreateImage((self.image.width*2,self.image.height*2),8,1)
         (width,height) = self.image_size
-        black_image = cv.CreateImage((width*2,height*2),8,1)
+        global black_image
+        if not black_image:
+            black_image = cv.CreateImage((width*2,height*2),8,1)
         cv.Set(black_image,cv.CV_RGB(0,0,0))
         self.draw_contour(black_image,cv.CV_RGB(255,255,255),2)
         #cv.PolyLine(black_image,[vertices],4,cv.CV_RGB(255,255,255),0)
@@ -714,11 +730,11 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
         #return (1 - exp(-5*response)) / (1 - exp(-5))
     
     def beta(self):
-        return 0.999
-        #return 1
+        #return 0.999
+        return 1
 
     def contour_mode(self):
-        return True 
+        return False 
     
     def initialize_appearance_cached(self,imagefile):
         modelfile = self.appearance_model()
@@ -792,6 +808,9 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
         info.responses = res.patch_responses
         return info
 
+
+
+
 class Model_Sock_Skel(Model_Sock_Generic):
 
     def appearance_model(self):
@@ -804,7 +823,12 @@ class Model_Sock_Skel(Model_Sock_Generic):
         return LoadImageRequest.CONTOUR
 
     def polygon_vertices(self):
-       return [self.ankle_bottom(), self.ankle_center(), self.ankle_top(), self.heel() if self.flipped() else self.bend_point(), self.toe_top(), self.toe_center(), self.toe_bottom(), self.bend_point() if self.flipped() else self.heel()]
+       #return [self.ankle_bottom(), self.ankle_center(), self.ankle_top(), self.heel() if self.flipped() else self.bend_point(), self.toe_top(), self.toe_center(), self.toe_bottom(), self.bend_point() if self.flipped() else self.heel()]
+       #interpolating ellipse for speed
+        return [self.ankle_bottom(), self.ankle_center(), self.ankle_top(), 
+                self.heel() if self.flipped() else self.bend_point(), 
+                self.toe_top(), self.toe_at(0.25), self.toe_center(), self.toe_at(0.75), self.toe_bottom(), 
+                self.bend_point() if self.flipped() else self.heel()]
 
     def symmetric_variable_pt_names(self):
        return ["ankle_center","ankle_joint","toe_center"]
@@ -829,6 +853,17 @@ class Model_Sock_Skel(Model_Sock_Generic):
         straight_pt = extrapolate(self.toe_axis(),abs(self.toe_length()) + abs(self.sock_width())/2.0)
         pt = rotate_pt(straight_pt,pi/2,self.toe_center())
         return translate_pt(pt,pt_diff(extrapolate(self.toe_axis(),self.toe_length() - self.toe_radius()),self.toe_center()))
+
+    def toe_at(self,pct):
+        ctr = pt_center(self.toe_top(),self.toe_bottom())
+        angle = (pct-0.5)*pi
+        a = self.toe_radius()
+        b = self.sock_width()/2.0
+        radius = a*b / sqrt((b*cos(angle))**2 + (a*sin(angle))**2)
+        straight_pt = extrapolate(self.toe_axis(),abs(pt_distance(self.ankle_joint(),ctr) + radius))
+        pt = rotate_pt(straight_pt,angle,ctr)
+        #return translate_pt(pt,pt_diff(extrapolate(self.toe_axis(),self.toe_length() - self.toe_radius()),self.toe_center()))
+        return pt
 
     def ankle_length(self):
         return pt_distance(self.ankle_center(),self.ankle_joint())
@@ -873,6 +908,34 @@ class Model_Sock_Skel(Model_Sock_Generic):
     def ankle_angle(self):
         return math.atan2(self.ankle_joint()[1]-self.ankle_center()[1],-1*(self.ankle_joint()[0]-self.ankle_center()[0]))*180/pi
 
+    def vertices_dense(self,density=10,length=10,constant_length=False,contour_mode=False):
+        output = []
+        vertices = [self.toe_bottom(), self.bend_point() if self.flipped() else self.heel(),
+                    self.ankle_bottom(), self.ankle_center(), self.ankle_top(),
+                    self.heel() if self.flipped() else self.bend_point(),
+                    self.toe_top()] 
+        for i,vert in enumerate(vertices):
+                output.append(vert)
+                if i == len(vertices)-1:
+                    pass
+                else:
+                    next_vert = vertices[(i+1)%len(vertices)]
+                    displ = pt_diff(next_vert,vert)
+                    side_length = vect_length(displ)
+                    if not constant_length:
+                        dt = 1/float(density+1)
+                        num_pts = density
+                    else:
+                        num_pts = max(int(side_length / length) - 1,0)
+                        dt = 1.0 / (num_pts+1)
+                    for j in range(num_pts):
+                        new_pt = pt_sum(vert,pt_scale(displ,dt*(j+1)))
+                        output.append(new_pt)
+        for i in range(density):
+            dt = 1/float(density+1)
+            output.append(self.toe_at((i+1)*dt))
+        return output
+    
     def draw_to_image(self,img,color): 
         #Draw polygon points
         self.draw_point(    img,    self.ankle_bottom(),            color)
@@ -881,6 +944,8 @@ class Model_Sock_Skel(Model_Sock_Generic):
         self.draw_point(    img,    self.toe_top(),                 color)
         self.draw_point(    img,    self.toe_bottom(),              color)
         self.draw_point(    img,    self.heel(),                    cv.CV_RGB(0,255,0))
+        for i in range(100):
+            self.draw_point(img, self.toe_at(i*0.01), color)
         #Draw outline
         self.draw_contour(img,color,1)
         #Draw skeletal frame
@@ -925,7 +990,7 @@ class Model_Sock_Skel(Model_Sock_Generic):
 
     
     
-    def appearance_score(self,image):
+    def appearance_score(self,new_image = None):
         appearance_reward = dot(array(self.appearance_weights()), array(self.appearance_responses()))
         return 1 - appearance_reward
     

@@ -130,7 +130,7 @@ class ShapeFitter:
                 model.draw_to_image(img_annotated,cv.CV_RGB(0,0,255))
     
             #Energy calculation
-        self.printout("Energy is: %f"%model.score(shape_contour,img))
+        self.printout("Energy is: %f"%model.score())
         self.printout("Shape contour has %d points"%(len(shape_contour)))
         sparse_shape_contour = make_sparse(shape_contour,1000)
             
@@ -268,13 +268,13 @@ class ShapeFitter:
     def black_box_opt(self,model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5,fine_tune=False,num_fine_tunes=0,mode="asymm",image=None):
     
         epsilon = 0.001
-        score = -1 * model.score(contour,image)
+        score = -1 * model.score()
         self.printout("Initial score was %f"%score)
         params = model.params()
         deltas = [delta for p in params]
         if(self.SHOW):
             cv.NamedWindow("Optimizing")
-            img = cv.CloneImage(model.image)
+            img = cv.CloneImage(image)
             model.from_params(params).draw_to_image(img,cv.CV_RGB(255,0,0))
             cv.ShowImage("Optimizing",img)
             cv.WaitKey(50)
@@ -283,7 +283,7 @@ class ShapeFitter:
             for i in range(len(params)):
                 new_params = list(params)
                 new_params[i] += deltas[i]
-                new_score = -1 * model.from_params(new_params).score(contour, image)
+                new_score = -1 * model.from_params(new_params).score()
                 if new_score > score:
                     params = new_params
                     score = new_score
@@ -292,7 +292,7 @@ class ShapeFitter:
                     deltas[i] *= -1
                     new_params = list(params)
                     new_params[i] += deltas[i]
-                    new_score = -1 * model.from_params(new_params).score(contour,image)
+                    new_score = -1 * model.from_params(new_params).score()
                     if new_score > score:
                         params = new_params
                         score = new_score
@@ -301,7 +301,7 @@ class ShapeFitter:
                         deltas[i] *= 0.5
             self.printout("Current best score is %f"%score)
             if(self.SHOW):
-                img = cv.CloneImage(model.image)
+                img = cv.CloneImage(image)
                 model.from_params(params).draw_to_image(img,cv.CV_RGB(255,0,0))
                 if SAVE_ITERS:
                     cv.SaveImage("%s_iter_%d.png"%(mode,it),img)
