@@ -19,7 +19,7 @@ import Vector2D
 import Models
 import annotator
 import thresholding
-import shape_fitting
+import shape_fitting_twophase
 import RosUtils
 from appearance_utils.srv import LoadImage
 
@@ -30,14 +30,12 @@ ANNOTATE = True
     
 def main(args):
     corrected_filepath = args[0]
-    corrected_modelpaths = args[1:]
+    set = args[1]
+    corrected_modelpaths = args[2:]
     #Load model and image
     models = [pickle.load(open(modelpath)) for modelpath in corrected_modelpaths]
     #Special for socks
     image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
-    image_mask = models[0].initialize_appearance_cached(corrected_filepath)
-    shape_contour = thresholding.get_contour_from_thresh(image_mask)
-    models[0].initialize_contour(shape_contour)
     best_model = None
     best_nearest_pts = None
     best_fitted_model = None
@@ -52,26 +50,40 @@ def main(args):
     for i,model in enumerate(models):
         print "On model %d of %d"%(i+1,len(models))
         #Create an image to output
+        image_mask = model.initialize_appearance_cached(corrected_filepath,set=set)
         image_out = cv.CloneImage(image_raw)
-        #Use the thresholding module to get the contour out
-        #image_cont = cv.CloneImage(image_raw)
-        #cv.DrawContours(image_cont,shape_contour,cv.CV_RGB(255,0,0),cv.CV_RGB(255,0,0),0,3)
-        #cv.NamedWindow("Contours")
-        #cv.ShowImage("Contours",image_cont)
-        #cv.WaitKey()
-        #return #FIXME
-        #Use the shape_fitting module to fit the model to the contour
-        fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,SILENT=True, 
+        shape_contour = thresholding.get_contour_from_thresh(image_mask)
+        model.initialize_contour(shape_contour)
+        fitter = shape_fitting_twophase.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,SILENT=True, 
                 SHOW=False,num_iters=25,INIT_APPEARANCE=False)
 
         
-        (nearest_pts, final_model, fitted_model) = fitter.fit(model,shape_contour,image_out,image_raw)
-        model_cache_name = final_model.get_cache_filename(corrected_filepath,corrected_modelpaths[i])+".shapepickle"
-        pickle.dump(final_model, open(model_cache_name,'w'))
+        (nearest_pts, final_model, phase1_model) = fitter.fit(model,shape_contour,image_out,image_raw)
+        #Get root path
+        root_path = final_model.get_cache_model_directory(corrected_filepath,set,corrected_modelpaths[i])
+        #Save the phase1 model
+        model_cache_name_phase1 = root_path+"/phase1.pickle"
+        pickle.dump(final_model, open(model_cache_name_phase1,'w'))
+        #Save the phase2 model
+        model_cache_name_phase2 = root_path+"/phase2.pickle"
+        pickle.dump(final_model, open(model_cache_name_phase2,'w'))
+        #Save the annotated points
+        anno_path = root_path + "/points.anno"
+        annotator.write_anno(nearest_pts,anno_path)
+        #Save the score breakdown
         score = final_model.score()
+        appearance_score = final_model.appearance_score(None)
+        contour_score = final_model.contour_score(shape_contour)
+        savepath = root_path + "/scorebreakdown.log"
+        savefile = open(savepath,'w')
+        savefile.write("%f\t%f\t%f\n"%(appearance_score,contour_score,score))
+        savefile.close()
         scores.append(score)
-        appearance_scores.append(final_model.appearance_score(None))
-        contour_scores.append(final_model.contour_score(shape_contour))
+        #Save the annotated image
+        img_path = root_path + "/classified.png"
+        cv.SaveImage(img_path,image_out)
+        appearance_scores.append(appearance_score)
+        contour_scores.append(contour_score)
         #appearance_responses.append(final_model.appearance_responses())
         if not best_model or score <= best_score:
             best_score = score
@@ -85,50 +97,24 @@ def main(args):
     fitted_model = best_fitted_model
     image_out = best_image_out
     
-    
+    #New root is the experiment directory
+    root_path = final_model.get_cache_experiment_directory(corrected_filepath,set) 
     #Optionally save the nearest points in a .anno file, for comparison with my own annotations
     if ANNOTATE:
-        anno_path = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.anno"
+        anno_path = root_path + "/points.anno"
         annotator.write_anno(nearest_pts,anno_path)
     #Optionally save the model, for reuse later
     if SAVE_MODEL:
         #Remove the image to make pickling possible
         final_model.set_image(None)
-        save_model_path = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.pickle"
+        save_model_path = root_path + "/final_model.pickle"
         model_dest = open(save_model_path,'w')
         pickle.dump(final_model,model_dest)
         model_dest.close()
-    #Optionally save scores
-    if SAVE_SCORES:
-        savepath = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.log"
-        savefile = open(savepath,'w')
-        for i in range(len(scores)):
-            savefile.write("%s\t%f\n"%(corrected_modelpaths[i],scores[i]))
-        savefile.close()
-        savepath2 = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.appearancelog"
-        """
-        savefile2 = open(savepath2,'w')
-        for appearance_response in appearance_responses:
-            for val in appearance_response:
-                savefile2.write("%f\t"%val)
-            savefile2.write("\n")
-        savefile2.close()
-        """
-        savepath3 = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.scorebreakdownlog"
-        savefile3 = open(savepath3,'w')
-        for i in range(len(appearance_scores)):
-            savefile3.write("%f\t%f\n"%(appearance_scores[i],contour_scores[i]))
-        savefile3.close()
     #Optionally save the image      
     if SAVE_IMAGE:
-        savepath = corrected_filepath[0:len(corrected_filepath)-4]+"_classified.png"
+        savepath = root_path + "/classified.png"
         cv.SaveImage(savepath,image_out)
-        return
-    else:
-        cv.NamedWindow("Result")
-        cv.ShowImage("Result",image_out)
-        cv.WaitKey()
-        return
     
 if __name__ == '__main__':
     args = sys.argv[1:]

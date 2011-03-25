@@ -84,17 +84,24 @@ class Model:
         
         return output
     
-    def score(self,contour=None, image=None):
-        if self.beta() == 1:
+    def score(self,contour=None, image=None, contourOnly=False):
+        beta = self.realBeta(contourOnly)
+        if beta == 1:
             score = self.contour_score()
-        elif self.beta() == 0:
+        elif beta == 0:
             score = self.appearance_score()
         else:
-            score = self.beta()*self.contour_score() + (1 - self.beta())*self.appearance_score()
+            score = beta*self.contour_score() + (1 - beta)*self.appearance_score()
         score += self.structural_penalty()
         return score
-    
-    def initialize_appearance(self,image):
+   
+    def realBeta(contourOnly):
+        if contourOnly:
+            return 1
+        else:
+            return self.beta()
+
+    def initialize_appearance(self,image,set=1):
         pass
 
     def initialize_contour(self,contour_new):
@@ -706,7 +713,7 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
                 mins = mins[:n] 
         return mins
 
-    def appearance_model(self):
+    def appearance_model(self,set=1):
         abstract
 
     def appearance_type(self):
@@ -730,91 +737,120 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
         #return (1 - exp(-5*response)) / (1 - exp(-5))
     
     def beta(self):
-        #return 0.999
-        return 1
+        return 0.99
 
     def contour_mode(self):
         return False 
     
-    def initialize_appearance_cached(self,imagefile):
-        modelfile = self.appearance_model()
-        cached_info = self.lookup_appearance_cached(imagefile,modelfile)
+    
+    def get_cache_directory(self,imagefile):
+        real_path = os.path.realpath(imagefile).replace("socks_data","socks_data_cached").replace(".","-")
+        dir = real_path
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        return dir
+
+    def get_cache_experiment_directory(self,imagefile,set):
+        dir = self.get_cache_directory(imagefile)
+        subdir = "set_%d"%set
+        fulldir = "%s/%s"%(dir,subdir)
+        if not os.path.exists(fulldir):
+            os.makedirs(fulldir)
+        return fulldir
+
+    def get_cache_response_file(self,imagefile,set,modelfile):
+        dir = self.get_cache_experiment_directory(imagefile,set)
+        filename = "response_" + os.path.realpath(modelfile).split("/home/stephen/")[1].split(".")[0].replace("/","-") + ".pickle"
+        return "%s/%s"%(dir,filename)
+
+    def get_mask_file(self,imagefile):
+        dir = self.get_cache_directory(imagefile)
+        filename = "mask.png"
+        return "%s/%s"%(dir,filename)
+
+    def get_cache_model_directory(self,imagefile,set,shapemodelfile):
+        dir = self.get_cache_experiment_directory(imagefile,set)
+        subdir =  "model_" + os.path.realpath(shapemodelfile).split("/home/stephen/")[1].split(".")[0].replace("/","-") + ".pickle"
+        fuldir = "%s/%s"%(dir,subdir)
+        if not os.path.exists(fulldir):
+            os.makedirs(fulldir)
+        return fulldir
+
+    def lookup_appearance_cached(self,imagefile,set,modelfile):
+        response_name = self.get_cache_response_file(imagefile,set,modelfile)
+        if os.path.exists(response_name):
+            f = open(response_name)
+            appearance_info = pickle.load(f)
+            f.close()
+            return appearance_info
+        else:
+            return None
+
+    def lookup_mask_cached(self,imagefile):
+        maskfile = self.get_mask_file(imagefile)
+        if os.path.exists(maskfile):
+            return cv.LoadImage(maskfile,cv.CV_LOAD_IMAGE_GRAYSCALE)
+        else:
+            return None
+
+    def cache_appearance(self,info,imagefile,set,modelfile):
+        picklename = self.get_cache_response_file(imagefile,set,modelfile)
+        f = open(picklename,'w')
+        pickle.dump(info,f)
+        f.close()
+        return info
+
+    def cache_mask(self,mask,imagefile):
+        filename = self.get_mask_file(imagefile)
+        cv.SaveImage(filename,mask)
+
+    def initialize_appearance_cached(self,imagefile,set=1):
+        modelfile = self.appearance_model(set)
+        cached_info = self.lookup_appearance_cached(imagefile,set,modelfile)
         if cached_info:
             print "HIT CACHE!"
             appearance_info = cached_info
         else:
             print "DIDN'T HIT CACHE"
             appearance_info = self.initialize_appearance(imagefile,modelfile)
-            self.cache_appearance(appearance_info,imagefile,modelfile)
+            self.cache_appearance(appearance_info,imagefile,set,modelfile)
+        mask = self.lookup_mask_cached(imagefile)
+        if mask:
+            print "HIT MASK CACHE"
+        else:
+            if cached_info:
+                print "Didn't have mask but had cached info. That makes no sense!"
+                assert False
+            mask = self.initialize_mask(imagefile)
         global patch_responses
         patch_responses = appearance_info.responses
-        mask = appearance_info.mask
         return mask
-
-    def get_cache_filename(self,imagefile,modelfile):
-        real_path = os.path.realpath(imagefile).replace("socks_data","socks_data_cached").replace(".","-")
-        dir = real_path
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-        filename = os.path.realpath(modelfile).split("/home/stephen/")[1].split(".")[0].replace("/","-")
-        return "%s/%s"%(dir,filename)
-
-    def lookup_appearance_cached(self,imagefile,modelfile):
-        name = self.get_cache_filename(imagefile,modelfile)
-        print name
-        picklename = name+".pickle"
-        if os.path.exists(picklename):
-            f = open(picklename)
-            appearance_info = pickle.load(f)
-            f.close()
-            appearance_info.mask = cv.LoadImage(appearance_info.maskfile,cv.CV_LOAD_IMAGE_GRAYSCALE)
-            return appearance_info
-        else:
-            return None
-
-    def cache_appearance(self,info,imagefile,modelfile):
-        name = self.get_cache_filename(imagefile,modelfile)
-        picklename = name+".pickle"
-        maskname = name+".png"
-        #visname = name+"_vis.png"
-        cv.SaveImage(maskname,info.mask)
-        #cv.SaveImage(visname,info.vis)
-        info.maskfile = maskname
-        #info.visfile = visname
-        #info.vis = None
-        temp_mask = info.mask
-        info.mask = None
-        f = open(picklename,'w')
-        pickle.dump(info,f)
-        f.close()
-        info.mask = temp_mask
-        return info
-
-    def initialize_appearance(self,imagefile,modelfile):
+    
+    def initialize_appearance(self,imagefile,modelfile,getMask=True):
         image = cv.LoadImage(imagefile)
         RosUtils.call_service("landmark_service_node/load_image", LoadImage, 
                 image = ImageUtils.cv_to_imgmsg(image),
                 mode = self.appearance_mode())
         res = RosUtils.call_service("landmark_service_node/landmark_response_all", LandmarkResponseAll, 
                 type=self.appearance_type(),model_file = modelfile)
-        #vis_res = RosUtils.call_service("landmark_service_node/get_visualization", SaveVisualization, 
-        #        type =self.appearance_type(),model_file = modelfile)
-
-        mask_res = RosUtils.call_service("landmark_service_node/get_mask", GetMask)
 
         info = AppearanceInfo()
         #info.vis = ImageUtils.imgmsg_to_cv(vis_res.image,"bgr8")
-        info.mask = ImageUtils.imgmsg_to_cv(mask_res.mask,"mono8")
         info.responses = res.patch_responses
         return info
+
+    def initialize_mask(self):
+            mask_res = RosUtils.call_service("landmark_service_node/get_mask", GetMask)
+            return ImageUtils.imgmsg_to_cv(mask_res.mask,"mono8")
+
 
 
 
 
 class Model_Sock_Skel(Model_Sock_Generic):
 
-    def appearance_model(self):
-        return "/home/stephen/socks_data/models/curvature_model.txt"
+    def appearance_model(self,set=1):
+        return "/home/stephen/socks_data/model/normal_model/model_CHI_%d.txt"%set
 
     def appearance_type(self):
         return 3
@@ -1029,8 +1065,8 @@ class Model_Sock_Skel_Flipped(Model_Sock_Skel):
         return True
 
 class Model_Sock_Skel_Vert(Model_Sock_Skel):
-    def appearance_model(self):
-        return "/home/stephen/socks_data/models/vertical_model.txt"
+    def appearance_model(self, set=1):
+        return "/home/stephen/socks_data/model/heel_model/model_CHI_%d.txt"%set
     
     def appearance_weights(self):
         return (0.5, 0.4, 0.0, 0.1)
@@ -1124,8 +1160,8 @@ class Model_Bunch_Locate_Seam(Model_Bunch):
 
 class Model_Bunch_Locate_Inside_Out(Model_Bunch):
 
-    def appearance_model(self):
-        return "/home/stephen/socks_data/models/model_io.txt"
+    def appearance_model(self,set=1):
+        return "/home/stephen/socks_data/model/bunch_model/model_CHI_%d.txt"%set
 
     def appearance_type(self):
         return 0
@@ -1133,7 +1169,7 @@ class Model_Bunch_Locate_Inside_Out(Model_Bunch):
     def appearance_mode(self):
         return LoadImageRequest.INSIDE
     
-    def appearance_score(self,image):
+    def appearance_score(self,image=None):
         vals = [0,0]
         val_left = 0
         val_right = 0
