@@ -166,15 +166,11 @@ class ShapeFitter:
         final_model = new_model_appearance
         final_model.draw_to_image(img=img_annotated,color=cv.CV_RGB(255,0,255))
         nearest_pts = []
-        for vert in final_model.polygon_vertices():
+        for vert in final_model.save_pts():
             nearest_pt = min(shape_contour,key=lambda pt: Vector2D.pt_distance(pt,vert))
             cv.Circle(img_annotated,nearest_pt,5,cv.CV_RGB(255,255,255),3)
             nearest_pts.append(nearest_pt)
                 
-        fitted_model = Models.Point_Model_Contour_Only_Asymm(*nearest_pts)
-        #fitted_model = final_model
-        if SHOW_FITTED:
-            fitted_model.draw_to_image(img=img_annotated,color=cv.CV_RGB(0,255,255))
         return (nearest_pts,final_model,phase1_model)
     
 
@@ -261,10 +257,10 @@ class ShapeFitter:
         score_x = dtw.compute(model_x,sparse_x)
         score_y = dtw.compute(model_y,sparse_y)
         
-    def black_box_opt(self,model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5,fine_tune=False,num_fine_tunes=0,mode="asymm",image=None):
+    def black_box_opt(self,model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5,fine_tune=False,num_fine_tunes=0,mode="asymm",image=None,contourOnly=False):
     
         epsilon = 0.001
-        score = -1 * model.score()
+        score = -1 * model.score(contourOnly=contourOnly)
         self.printout("Initial score was %f"%score)
         params = model.params()
         deltas = [delta for p in params]
@@ -279,7 +275,7 @@ class ShapeFitter:
             for i in range(len(params)):
                 new_params = list(params)
                 new_params[i] += deltas[i]
-                new_score = -1 * model.from_params(new_params).score()
+                new_score = -1 * model.from_params(new_params).score(contourOnly=contourOnly)
                 if new_score > score:
                     params = new_params
                     score = new_score
@@ -288,7 +284,7 @@ class ShapeFitter:
                     deltas[i] *= -1
                     new_params = list(params)
                     new_params[i] += deltas[i]
-                    new_score = -1 * model.from_params(new_params).score()
+                    new_score = -1 * model.from_params(new_params).score(contourOnly=contourOnly)
                     if new_score > score:
                         params = new_params
                         score = new_score

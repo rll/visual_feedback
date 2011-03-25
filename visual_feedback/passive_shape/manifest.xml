@@ -20,11 +20,10 @@
   <depend package="roscpp"/>
   <depend package="image_transport"/>
   <depend package="shape_window"/>
-  <depend package="folding_gui"/>
   <depend package="stereo_click"/>
-  <depend package="snapshotter" />
   <depend package="appearance_utils" />
   <depend package="rll_utils" /> 
+  <depend package="visual_feedback_utils" />
 </package>
 
 

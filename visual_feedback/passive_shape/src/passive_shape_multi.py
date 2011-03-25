@@ -30,7 +30,7 @@ ANNOTATE = True
     
 def main(args):
     corrected_filepath = args[0]
-    set = args[1]
+    set = int(args[1])
     corrected_modelpaths = args[2:]
     #Load model and image
     models = [pickle.load(open(modelpath)) for modelpath in corrected_modelpaths]
@@ -38,7 +38,6 @@ def main(args):
     image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
     best_model = None
     best_nearest_pts = None
-    best_fitted_model = None
     best_image_out = None
     best_score = 100
     scores = []
@@ -90,11 +89,9 @@ def main(args):
             best_appearance_responses = appearance_responses
             best_model = model
             best_nearest_pts = nearest_pts
-            best_fitted_model = fitted_model
             best_image_out = image_out
     final_model = best_model
     nearest_pts = best_nearest_pts
-    fitted_model = best_fitted_model
     image_out = best_image_out
     
     #New root is the experiment directory

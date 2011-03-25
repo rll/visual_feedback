@@ -40,6 +40,9 @@ def make_sparse(contour,num_pts = 1000):
 #Abstract model class        
 class Model:
 
+    def save_pts(self):
+        return self.polygon_vertices()
+    
     def preferred_delta(self):
         return 35.0
 
@@ -95,7 +98,7 @@ class Model:
         score += self.structural_penalty()
         return score
    
-    def realBeta(contourOnly):
+    def realBeta(self,contourOnly):
         if contourOnly:
             return 1
         else:
@@ -770,8 +773,8 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
 
     def get_cache_model_directory(self,imagefile,set,shapemodelfile):
         dir = self.get_cache_experiment_directory(imagefile,set)
-        subdir =  "model_" + os.path.realpath(shapemodelfile).split("/home/stephen/")[1].split(".")[0].replace("/","-") + ".pickle"
-        fuldir = "%s/%s"%(dir,subdir)
+        subdir =  "model_" + os.path.realpath(shapemodelfile).split("/home/stephen/")[1].split(".")[0].replace("/","-")
+        fulldir = "%s/%s"%(dir,subdir)
         if not os.path.exists(fulldir):
             os.makedirs(fulldir)
         return fulldir
@@ -821,7 +824,8 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
             if cached_info:
                 print "Didn't have mask but had cached info. That makes no sense!"
                 assert False
-            mask = self.initialize_mask(imagefile)
+            mask = self.initialize_mask()
+            self.cache_mask(mask,imagefile)
         global patch_responses
         patch_responses = appearance_info.responses
         return mask
@@ -848,6 +852,8 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
 
 
 class Model_Sock_Skel(Model_Sock_Generic):
+    def save_pts(self):
+        return [self.ankle_center(),self.heel(),self.toe_center()]
 
     def appearance_model(self,set=1):
         return "/home/stephen/socks_data/model/normal_model/model_CHI_%d.txt"%set
@@ -980,10 +986,10 @@ class Model_Sock_Skel(Model_Sock_Generic):
         self.draw_point(    img,    self.toe_top(),                 color)
         self.draw_point(    img,    self.toe_bottom(),              color)
         self.draw_point(    img,    self.heel(),                    cv.CV_RGB(0,255,0))
-        for i in range(100):
-            self.draw_point(img, self.toe_at(i*0.01), color)
+        ##for i in range(100):
+        ##    self.draw_point(img, self.toe_at(i*0.01), color)
         #Draw outline
-        self.draw_contour(img,color,1)
+        self.draw_contour(img,color,2)
         #Draw skeletal frame
         self.draw_point(img,self.ankle_center(),color)
         self.draw_point(img,self.ankle_joint(),color)
@@ -991,7 +997,7 @@ class Model_Sock_Skel(Model_Sock_Generic):
         self.draw_line(img,self.ankle_center(),self.ankle_joint(),color)
         self.draw_line(img,self.ankle_joint(),self.toe_center(),color)
 
-    def draw_contour(self,img,color,thickness=1):
+    def draw_contour(self,img,color,thickness=2):
         #Draw outline
         top_joint = self.heel() if self.flipped() else self.bend_point()
         bottom_joint = self.bend_point() if self.flipped() else self.heel()
@@ -1001,7 +1007,7 @@ class Model_Sock_Skel(Model_Sock_Generic):
         cv.Ellipse(
             img,    pt_center(self.toe_top(),self.toe_bottom()),
             (max(self.toe_radius(),1),max(self.sock_width()/2,1)),
-            self.toe_angle(),
+            -1*self.toe_angle(),
             -90,    90,     
             color, thickness)
         self.draw_line(      img,    self.toe_bottom(),       bottom_joint,          color,  thickness)
@@ -1034,7 +1040,7 @@ class Model_Sock_Skel(Model_Sock_Generic):
         return (self.ankle_score(), self.toe_score(), self.heel_score(), self.nothing_score())
 
     def appearance_weights(self):
-        return (0.4, 0.35, 0.25, 0.05)
+        return (0.4, 0.35, 0.20, 0.05)
 
 
     def response_to_prob(self,responses,type):
@@ -1065,6 +1071,9 @@ class Model_Sock_Skel_Flipped(Model_Sock_Skel):
         return True
 
 class Model_Sock_Skel_Vert(Model_Sock_Skel):
+    def save_pts(self):
+        return [self.ankle_center(),self.toe_center()]
+    
     def appearance_model(self, set=1):
         return "/home/stephen/socks_data/model/heel_model/model_CHI_%d.txt"%set
     
@@ -1080,6 +1089,9 @@ class Model_Sock_Skel_Vert_Flipped(Model_Sock_Skel_Vert):
 
 # A model for a bunched sock
 class Model_Bunch(Model_Sock_Generic):
+    def save_pts(self):
+        return [self.seam_top(), self.seam_bottom()]
+    
     def polygon_vertices(self):
         return [self.bottom_left(),self.top_left(),self.seam_top(),self.top_right(),self.bottom_right(),self.seam_bottom()]
 
