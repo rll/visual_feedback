@@ -798,6 +798,11 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
 
     def cache_appearance(self,info,imagefile,set,modelfile):
         picklename = self.get_cache_response_file(imagefile,set,modelfile)
+        if os.path.exists(picklename):
+            val = raw_input("Appearance already exists! Overwrite?")
+            if not (len(val) > 0 and val[0] == y):
+                print "Quitting."
+                exit()
         f = open(picklename,'w')
         pickle.dump(info,f)
         f.close()
@@ -815,7 +820,7 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
             appearance_info = cached_info
         else:
             print "DIDN'T HIT CACHE"
-            appearance_info = self.initialize_appearance(imagefile,modelfile)
+            appearance_info = self.initialize_appearance(imagefile,modelfile,set=set)
             self.cache_appearance(appearance_info,imagefile,set,modelfile)
         mask = self.lookup_mask_cached(imagefile)
         if mask:
@@ -824,18 +829,18 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
             if cached_info:
                 print "Didn't have mask but had cached info. That makes no sense!"
                 assert False
-            mask = self.initialize_mask()
+            mask = self.initialize_mask(set)
             self.cache_mask(mask,imagefile)
         global patch_responses
         patch_responses = appearance_info.responses
         return mask
     
-    def initialize_appearance(self,imagefile,modelfile,getMask=True):
+    def initialize_appearance(self,imagefile,modelfile,getMask=True,set=1):
         image = cv.LoadImage(imagefile)
-        RosUtils.call_service("landmark_service_node/load_image", LoadImage, 
+        RosUtils.call_service("%s/load_image"%self.landmark_service(set), LoadImage, 
                 image = ImageUtils.cv_to_imgmsg(image),
                 mode = self.appearance_mode())
-        res = RosUtils.call_service("landmark_service_node/landmark_response_all", LandmarkResponseAll, 
+        res = RosUtils.call_service("%s/landmark_response_all"%self.landmark_service(set), LandmarkResponseAll, 
                 type=self.appearance_type(),model_file = modelfile)
 
         info = AppearanceInfo()
@@ -843,15 +848,17 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
         info.responses = res.patch_responses
         return info
 
-    def initialize_mask(self):
-            mask_res = RosUtils.call_service("landmark_service_node/get_mask", GetMask)
+    def initialize_mask(self,set=1):
+            mask_res = RosUtils.call_service("%s/get_mask"%self.landmark_service(set), GetMask)
             return ImageUtils.imgmsg_to_cv(mask_res.mask,"mono8")
 
-
+    def landmark_service(self,set):
+        return "landmark_service_node_%d"%set
 
 
 
 class Model_Sock_Skel(Model_Sock_Generic):
+    
     def save_pts(self):
         return [self.ankle_center(),self.heel(),self.toe_center()]
 
@@ -1026,8 +1033,8 @@ class Model_Sock_Skel(Model_Sock_Generic):
             penalty += 1
         if self.sock_width() <= 0:
             penalty += 1
-        #if self.concave_heel():
-        #    penalty += 1
+        if self.concave_heel():
+            penalty += 1
         return penalty
 
     
@@ -1156,6 +1163,7 @@ class Model_Bunch(Model_Sock_Generic):
         if self.seam_distance() >= pt_distance(self.left_center(),self.right_center()):
             penalty += 1
         return penalty
+
 
 
 class Model_Bunch_Locate_Seam(Model_Bunch):

@@ -34,6 +34,11 @@ def main(args):
     corrected_modelpaths = args[2:]
     #Load model and image
     models = [pickle.load(open(modelpath)) for modelpath in corrected_modelpaths]
+    root_path = models[0].get_cache_experiment_directory(corrected_filepath,set)
+    save_model_path = root_path + "/final_model.pickle"
+    if os.path.exists(save_model_path):
+        print "Already exists!"
+        exit()
     #Special for socks
     image_raw = cv.LoadImage(corrected_filepath,cv.CV_LOAD_IMAGE_COLOR)
     best_model = None
