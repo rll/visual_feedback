@@ -1,0 +1,7 @@
+<launch>
+  <node pkg="appearance_utils" type="landmark_service" name="landmark_service_node_1" output="screen" />
+  <node pkg="appearance_utils" type="landmark_service" name="landmark_service_node_2" output="screen" />
+  <node pkg="appearance_utils" type="landmark_service" name="landmark_service_node_3" output="screen" />
+  <node pkg="appearance_utils" type="landmark_service" name="landmark_service_node_4" output="screen" />
+  <node pkg="appearance_utils" type="landmark_service" name="landmark_service_node_5" output="screen" />
+</launch>
