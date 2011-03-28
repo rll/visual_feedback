@@ -32,6 +32,12 @@ def make_sparse(contour,num_pts = 1000):
                 sparse_contour.append(pt)
         return sparse_contour
 
+def intpt(pt):
+    vals = []
+    for val in pt:
+        vals.append(int(val))
+    return tuple(vals)
+
 #Represents a structural constraint
 
 (LOWER,UPPER,ASYMPTOTE) = range(3)
@@ -222,13 +228,13 @@ class Model:
         cv.PolyLine(img,[self.polygon_vertices()],1,color,3)
         
     def draw_point(self,img,pt,color):
-        cv.Circle(img,self.snap(pt,img),5,color,-1)
+        cv.Circle(img,self.snap(intpt(pt),img),5,color,-1)
         
     def draw_line(self,img,pt1,pt2,color,thickness=2):
         cv.Line(img,self.snap(pt1,img),self.snap(pt2,img),color,thickness=thickness)
         
     def snap(self,pt,img):
-        return (max( min(pt[0],img.width),0), max( min(pt[1],img.height), 0))
+        return intpt((max( min(pt[0],img.width),0), max( min(pt[1],img.height), 0)))
 
     def make_asymm(self):
         return self
@@ -822,6 +828,7 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
             print "DIDN'T HIT CACHE"
             appearance_info = self.initialize_appearance(imagefile,modelfile,set=set)
             self.cache_appearance(appearance_info,imagefile,set,modelfile)
+            print "SAVED CACHE"
         mask = self.lookup_mask_cached(imagefile)
         if mask:
             print "HIT MASK CACHE"
@@ -829,8 +836,10 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
             if cached_info:
                 print "Didn't have mask but had cached info. That makes no sense!"
                 assert False
+            print "DIDN'T HIT MASK CACHE"
             mask = self.initialize_mask(set)
             self.cache_mask(mask,imagefile)
+            print "CACHED MASK"
         global patch_responses
         patch_responses = appearance_info.responses
         return mask
@@ -854,8 +863,6 @@ class Model_Sock_Generic(Point_Model_Variable_Symm):
 
     def landmark_service(self,set):
         return "landmark_service_node_%d"%set
-
-
 
 class Model_Sock_Skel(Model_Sock_Generic):
     
@@ -1012,8 +1019,8 @@ class Model_Sock_Skel(Model_Sock_Generic):
         self.draw_line(      img,    self.ankle_top(),       top_joint,     color,  thickness)
         self.draw_line(      img,    top_joint,              self.toe_top(),        color,  thickness)
         cv.Ellipse(
-            img,    pt_center(self.toe_top(),self.toe_bottom()),
-            (max(self.toe_radius(),1),max(self.sock_width()/2,1)),
+            img,    intpt(pt_center(self.toe_top(),self.toe_bottom())),
+            (int(max(self.toe_radius(),1)),int(max(self.sock_width()/2,1))),
             -1*self.toe_angle(),
             -90,    90,     
             color, thickness)
@@ -1097,25 +1104,28 @@ class Model_Sock_Skel_Vert_Flipped(Model_Sock_Skel_Vert):
 # A model for a bunched sock
 class Model_Bunch(Model_Sock_Generic):
     def save_pts(self):
-        return [self.seam_top(), self.seam_bottom()]
+        if self.sock_width_left() > self.sock_width_right():
+            return [self.seam_top_right(), self.seam_bottom_right()]
+        else:
+            return [self.seam_top_left(), self.seam_bottom_left()]
     
     def polygon_vertices(self):
-        return [self.bottom_left(),self.top_left(),self.seam_top(),self.top_right(),self.bottom_right(),self.seam_bottom()]
+        return [self.bottom_left(),self.top_left(),self.seam_top_left(),self.seam_top_right(),self.top_right(),self.bottom_right(),self.seam_bottom_right(),self.seam_bottom_left()]
 
     def symmetric_variable_pt_names(self):
         return ["left_center","right_center"]
 
     def symmetric_variable_param_names(self):
-        return ["sock_width","seam_distance"]
+        return ["sock_width_left","sock_width_right","seam_distance"]
 
     def top_left(self):
-        return pt_sum(self.left_center(), pt_scale(line_vector(self.seam_axis()),self.sock_width()*0.5))
+        return pt_sum(self.left_center(), pt_scale(line_vector(self.seam_axis()),self.sock_width_left()*0.5))
     def top_right(self):
-        return pt_sum(self.right_center(), pt_scale(line_vector(self.seam_axis()),self.sock_width()*0.5))
+        return pt_sum(self.right_center(), pt_scale(line_vector(self.seam_axis()),self.sock_width_right()*0.5))
     def bottom_left(self):
-        return pt_sum(self.left_center(), pt_scale(line_vector(self.seam_axis()),-1*self.sock_width()*0.5))
+        return pt_sum(self.left_center(), pt_scale(line_vector(self.seam_axis()),-1*self.sock_width_left()*0.5))
     def bottom_right(self):
-        return pt_sum(self.right_center(), pt_scale(line_vector(self.seam_axis()),-1*self.sock_width()*0.5))
+        return pt_sum(self.right_center(), pt_scale(line_vector(self.seam_axis()),-1*self.sock_width_right()*0.5))
 
     def horiz_axis(self):
         return make_seg(self.left_center(),self.right_center())
@@ -1129,13 +1139,26 @@ class Model_Bunch(Model_Sock_Generic):
     def seam_bottom(self):
         #return intercept(           make_ln_from_pts(self.bottom_left(),self.bottom_right()),
         #                            self.seam_axis())
-        return extrapolate(make_ln_from_pts(self.bottom_left(),self.bottom_right()),self.seam_distance())
+        return extrapolate(make_seg(self.bottom_left(),self.bottom_right()),self.seam_distance())
 
 
     def seam_top(self):
         #return intercept(           make_ln_from_pts(self.top_left(),self.top_right()),
         #                            self.seam_axis())
-        return extrapolate(make_ln_from_pts(self.top_left(),self.top_right()),self.seam_distance())
+        return extrapolate(make_seg(self.top_left(),self.top_right()),self.seam_distance())
+
+    def vert_axis(self):
+        ln = perpendicular(self.horiz_axis(),self.seam_location())
+        return ln
+
+    def seam_top_left(self):
+        return extrapolate(self.vert_axis(),self.sock_width_left()/2.0)
+    def seam_top_right(self):
+        return extrapolate(self.vert_axis(),self.sock_width_right()/2.0)
+    def seam_bottom_left(self):
+        return extrapolate(self.vert_axis(),-1*self.sock_width_left()/2.0)
+    def seam_bottom_right(self):
+        return extrapolate(self.vert_axis(),-1*self.sock_width_right()/2.0)
 
     def get_angle(self):
         left_center = self.left_center()
@@ -1143,18 +1166,19 @@ class Model_Bunch(Model_Sock_Generic):
         return math.atan2(-1*(right_center[1]-left_center[1]),right_center[0]-left_center[0])
 
     def beta(self):
-        return 0.99
+        return 0.9
 
 
     def draw_to_image(self,img,color,thickness=2):
+        self.draw_point(img, self.seam_location(),color)
         self.draw_contour(img,color,thickness)
 
     def draw_contour(self,img,color,thickness=2):
         Model_Sock_Generic.draw_to_image(self,img,color)
         
-        self.draw_point(img,self.seam_top(),color)
-        self.draw_point(img,self.seam_bottom(),color)
-        self.draw_line(img,self.seam_top(),self.seam_bottom(),color)
+        self.draw_point(img,self.seam_top_left(),color)
+        self.draw_point(img,self.seam_bottom_left(),color)
+        self.draw_line(img,self.seam_top_left(),self.seam_bottom_left(),color)
 
     def structural_penalty(self):
         penalty = 0
@@ -1162,9 +1186,14 @@ class Model_Bunch(Model_Sock_Generic):
             penalty += 1
         if self.seam_distance() >= pt_distance(self.left_center(),self.right_center()):
             penalty += 1
+        if self.sock_width_left() / self.sock_width_right() > 1.2:
+            penalty += 1
+        if self.sock_width_right() / self.sock_width_left() > 1.2:
+            penalty += 1
         return penalty
 
-
+    def landmark_service(self,set):
+        return "landmark_service_node_bunched_%d"%set
 
 class Model_Bunch_Locate_Seam(Model_Bunch):
 
@@ -1179,28 +1208,45 @@ class Model_Bunch_Locate_Seam(Model_Bunch):
         return res.response
 
 class Model_Bunch_Locate_Inside_Out(Model_Bunch):
-
+    def preferred_delta(self):
+        return 1000
+    def left_inside(self):
+        return True
+    
     def appearance_model(self,set=1):
         return "/home/stephen/socks_data/model/bunch_model/model_CHI_%d.txt"%set
 
     def appearance_type(self):
-        return 0
+        return 1
 
     def appearance_mode(self):
         return LoadImageRequest.INSIDE
     
     def appearance_score(self,image=None):
-        vals = [0,0]
-        val_left = 0
-        val_right = 0
-        vertical_axis = pt_diff(self.right_center(), self.left_center())
-        for ltr in (True,False):
-            for p in patch_responses:
-                if dot_prod((p.x,p.y),line_vector(self.horiz_axis()))  < dot_prod(self.seam_location(),line_vector(self.horiz_axis())):
-                    vals[0 if ltr else 1] += p.responses[0 if ltr else 1]
-                else:
-                    vals[0 if ltr else 1] += p.responses[1 if ltr else 0]
-        return 1 - max(vals)/len(patch_responses)
+        val = 0
+        wrong_dists = 0
+        nwrong = 0
+        for p in patch_responses:
+            if dot_prod((p.x,p.y),line_vector(self.horiz_axis()))  < dot_prod(self.seam_location(),line_vector(self.horiz_axis())):
+                val += p.responses[0 if not self.left_inside() else 1]
+                wrong = p.responses[0 if not self.left_inside() else 1] < 0.5
+            else:
+                val += p.responses[1 if not self.left_inside() else 0]
+                wrong = p.responses[1 if not self.left_inside() else 0] < 0.5
+            if wrong:
+                wrong_dist = abs(dot_prod((p.x,p.y),normalize(line_vector(self.horiz_axis()))) - dot_prod(self.seam_location(),normalize(line_vector(self.horiz_axis()))))
+                wrong_dists += wrong_dist
+                nwrong += 1
+        app_score = 1 - val/len(patch_responses)
+        wrong_dists /= len(patch_responses)*max(self.image_size)
+        gamma = 0.1 
+        #print "%f*%f + %f*%f"%(gamma,app_score,1-gamma,wrong_dist)
+        #print "%d wrong of %d patches"%(nwrong,len(patch_responses))
+        return gamma*app_score + (1-gamma)*wrong_dists
+
+class Model_Bunch_Locate_Inside_Out_Flipped(Model_Bunch_Locate_Inside_Out):
+    def left_inside(self):
+        return False
 
 class Model_Towel(Point_Model_Variable_Symm):
     def polygon_vertices(self):

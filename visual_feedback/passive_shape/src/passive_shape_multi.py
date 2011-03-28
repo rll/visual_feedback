@@ -83,9 +83,17 @@ def main(args):
         savefile.write("%f\t%f\t%f\n"%(appearance_score,contour_score,score))
         savefile.close()
         scores.append(score)
-        #Save the annotated image
+        #Save the annotated image at 1024
         img_path = root_path + "/classified.png"
-        cv.SaveImage(img_path,image_out)
+        scale = 640.0 / image_out.width
+        if scale < 1:
+            new_width = 640
+            new_height = int(scale * image_out.height)
+            resized_img = cv.CreateImage((new_width,new_height),8,3)
+            cv.Resize(image_out,resized_img)
+        else:
+            resized_img = image_out
+        cv.SaveImage(img_path,resized_img)
         appearance_scores.append(appearance_score)
         contour_scores.append(contour_score)
         #appearance_responses.append(final_model.appearance_responses())
@@ -115,8 +123,17 @@ def main(args):
         model_dest.close()
     #Optionally save the image      
     if SAVE_IMAGE:
-        savepath = root_path + "/classified.png"
-        cv.SaveImage(savepath,image_out)
+        #Save the annotated image
+        img_path = root_path + "/classified.png"
+        scale = 1024.0 / image_out.width
+        if scale < 1:
+            new_width = 1024
+            new_height = int(scale * image_out.height)
+            resized_img = cv.CreateImage((new_width,new_height),8,3)
+            cv.Resize(image_out,resized_img)
+        else:
+            resized_img = image_out
+        cv.SaveImage(img_path,resized_img)
     
 if __name__ == '__main__':
     args = sys.argv[1:]
