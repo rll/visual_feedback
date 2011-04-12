@@ -1,8 +1,0 @@
-sensor_msgs/Image image
-sensor_msgs/CameraInfo info
-sensor_msgs/Image image2
----
-float64[] pts_x
-float64[] pts_y
-float64[] params
-sensor_msgs/Image image_annotated

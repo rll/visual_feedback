@@ -1,6 +1,0 @@
-string camera
----
-geometry_msgs/PointStamped[] pts3d
-float64[] params
-string[] param_names
-sensor_msgs/Image image_annotated
