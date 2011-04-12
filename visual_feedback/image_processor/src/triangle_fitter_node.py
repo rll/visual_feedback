@@ -14,7 +14,7 @@ from visual_feedback_utils import Vector2D
 import tf
 from geometry_msgs.msg import PointStamped
 from image_processor_node import ImageProcessor
-from shape_fitting_utils import *
+from visual_feedback_utils.shape_fitting_utils import *
 import image_geometry
 from visual_feedback_utils import thresholding
 from visual_feedback_utils import shape_fitting

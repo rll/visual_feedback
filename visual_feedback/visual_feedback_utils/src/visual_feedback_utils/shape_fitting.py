@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
-##    @package snapshotter
-#    This module provides basic functionality for taking a 'snapshot' of an image, and either pulling it for OpenCV
-#   information, or saving it
-
+##    @package visual_feedback_utils
+# 	  Where all model fitting is done (see Miller, ICRA2011)
 import roslib
 import sys
 roslib.load_manifest("visual_feedback_utils")
@@ -14,30 +12,35 @@ import math
 import cv
 import os.path
 import pickle
-from shape_window import Geometry2D
 from visual_feedback_utils import Vector2D
 from clothing_models import Models
-import annotator
-from visual_feedback_utils import thresholding
-import shape_fitting_utils
-import random
 
-SHOW_CONTOURS = True
-SHOW_UNSCALED_MODEL = False
-SHOW_SCALED_MODEL = False
-SHOW_ITER = False
-SHOW_SYMM_MODEL = False
-SHOW_OPT = True
-SAVE_ITERS = False
-SHOW_FITTED = False
-SHOW_INIT_PTS = False
+SHOW_CONTOURS = True 			# Draw the contours to the annotated image?
+SHOW_INIT_PTS = False 			# Draw the center and top points to the image?
+SHOW_UNSCALED_MODEL = False 	# Draw the model (pre-initial scaling) on the annotated image?
+SHOW_SCALED_MODEL = False 		# Draw the model (post-initial scaling) on the annotated image?
+SHOW_SYMM_MODEL = False 		# Draw the symmetric model (post fitting) on the annotated image?
+SHOW_FITTED = False 			# Draw the model whose points are snapped to the contour to the image?
 
-(BOUNDING, AXIS) = range(2)
-SCALE_METHOD = BOUNDING
+SAVE_ITERS = False 				# Save the iteration annotations to png files? (fairly expensive)?
 
+(BOUNDING, AXIS) = range(2) 	# Determines the method used to compute scale. Can either compute the size of the bounding box, or
+SCALE_METHOD = BOUNDING			# The distance from the center of gravity to the nearest contour
 
+#Class responsible for fitting shapes. Initialize with desired parameters, then call fit() to fit to contour
+#@arg DIST_FXN distance metric to use (l1 or l2)
+#@arg INITIALIZE Whether or not to run the initialization procedure
+#@arg ROTATE Whether or not to adjust rotation 
+#@arg ORIENT_OPT Whether or not to perform the orientation optimization step 
+#@arg SYMM_OPT Whether or not to perform the symmetric optimization step
+#@arg FINE_TUNE Whether or not to perform the fine tuning optimization step
+#@arg HIGH_EXPLORATION Makes us jump more drastically after improved iterations
+#@arg SHOW Visualize the iterations while they are being performed in a CvNamedWindow
+#@arg SILENT Do not print debugging information during the iterations
+#@arg num_iters Number of iterations at which the optimization will be forced to end (may end sooner if converged)
+#@arg INIT_APPEARANCE Not really used right now; when we are caching images, this forces us to NOT use the cache
 class ShapeFitter:
-    def __init__(self,DIST_FXN="l2",SYMM_OPT=False,FINE_TUNE=False,ORIENT_OPT=True,INITIALIZE=True,HIGH_EXPLORATION=False,ROTATE=True, SHOW=True,SILENT=False,num_iters=100,INIT_APPEARANCE=True):
+    def __init__(self,DIST_FXN="l2",INITIALIZE=True,ROTATE=True,ORIENT_OPT=True,SYMM_OPT=False,FINE_TUNE=False,HIGH_EXPLORATION=False, SHOW=True,SILENT=False,num_iters=100):
         if DIST_FXN == "l1":
             self.dist_fxn = l1_norm
         elif DIST_FXN == "l2":
@@ -53,18 +56,12 @@ class ShapeFitter:
         self.ROTATE=ROTATE
         self.SHOW=SHOW
         self.SILENT = SILENT
-        self.INIT_APPEARANCE = INIT_APPEARANCE
         self.flann = pyflann.FLANN()
         
     
 
     #Returns the nearest points, the model, and the fitted model
     def fit(self,model,contour,img_annotated=None,img=None):
-        #infuriating fix
-        x = 0
-        cv.NamedWindow("Result",1)
-        cv.CreateTrackbar( "Threshold", "Result2", x, 255, lambda n: n )
-        
         assert not model.illegal()
         if not img_annotated:
             xs = [x for (x,y) in contour]
@@ -100,11 +97,8 @@ class ShapeFitter:
                 cv.ShowImage("Top",top_img)
                 cv.WaitKey()
             
-            self.printout(model_theta)
-            self.printout(real_theta)
             angle = model_theta - real_theta
             self.printout(angle)
-            #angle = pi/8.0 #FIXME
             if self.ORIENT_OPT:
                 angle = 0
             scale = real_scale/float(model_scale)
@@ -128,27 +122,21 @@ class ShapeFitter:
             if SHOW_SCALED_MODEL:
                 model.draw_to_image(img_annotated,cv.CV_RGB(0,0,255))
     
-            #Energy calculation
-        self.printout("Energy is: %f"%self.energy_fxn(model,shape_contour))
+        self.printout("Energy is: %f"%model.score(shape_contour))
         self.printout("Shape contour has %d points"%(len(shape_contour)))
         sparse_shape_contour = make_sparse(shape_contour,1000)
             
         #Optimize
         if self.ORIENT_OPT:
             init_model = Models.Orient_Model(model,pi/2)
-            orient_model_finished = self.black_box_opt(model=init_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = self.num_iters,delta=init_model.preferred_delta(),epsilon = 0.01,mode="orient",image=img) 
+            orient_model_finished = self.black_box_opt(model=init_model,contour=shape_contour,num_iters = self.num_iters,delta=init_model.preferred_delta(),epsilon = 0.01,mode="orient",image=img) 
             model_oriented = orient_model_finished.transformed_model()
         else:
             model_oriented = model
        
-        #FIXME
-        if self.INIT_APPEARANCE:
-            if model_oriented.beta() < 1:
-                model_oriented.initialize_appearance(img)
-
         if self.SYMM_OPT:
            self.printout("SYMMETRIC OPTIMIZATION")
-           new_model_symm = self.black_box_opt(model=model_oriented,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters = self.num_iters,delta=model.preferred_delta(),epsilon = 0.01,mode="symm",image=img)
+           new_model_symm = self.black_box_opt(model=model_oriented,contour=shape_contour,num_iters = self.num_iters,delta=model.preferred_delta(),epsilon = 0.01,mode="symm",image=img)
         else:
             new_model_symm = model_oriented    
         if SHOW_SYMM_MODEL:
@@ -158,12 +146,12 @@ class ShapeFitter:
             exp_factor = 3.0
         else:
             exp_factor = 1.5
-        new_model_asymm = self.black_box_opt(model=model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=self.num_iters,delta=model.preferred_delta(),exploration_factor=exp_factor,fine_tune=False,mode="asymm",image=img)
+        new_model_asymm = self.black_box_opt(model=model,contour=shape_contour,num_iters=self.num_iters,delta=model.preferred_delta(),exploration_factor=exp_factor,fine_tune=False,mode="asymm",image=img)
         
         if self.FINE_TUNE:
             #tunable_model = model_oriented.make_tunable()
             tunable_model = new_model_asymm.make_tunable()
-            final_model = self.black_box_opt(model=tunable_model,contour=shape_contour,energy_fxn=self.energy_fxn,num_iters=self.num_iters,delta=5.0,exploration_factor=1.5,fine_tune=False,image=img)
+            final_model = self.black_box_opt(model=tunable_model,contour=shape_contour,num_iters=self.num_iters,delta=5.0,exploration_factor=1.5,fine_tune=False,image=img)
             final_model = final_model.final()
         else:
             final_model = new_model_asymm
@@ -181,90 +169,9 @@ class ShapeFitter:
         return (nearest_pts,final_model,fitted_model)
     
 
-    def energy_fxn(self,model,contour):
-        model_dist_param = 0.5
-        contour_dist_param = 0.5
-        sparse_contour = make_sparse(contour,1000)
-        num_model_pts = 30*len(model.sides())
         
-        nn=self.nearest_neighbors_fast
-        extra_sparse_contour = make_sparse(contour,num_model_pts)
-        model_contour = model.vertices_dense(constant_length=False,density=30)#was 30
         
-        nn_model = nn(model_contour,sparse_contour)
-        model_dist_energy = sum([self.dist_fxn(dist) for dist in nn_model]) / float(len(nn_model))
-        #Normalize
-        model_dist_energy /= float(self.dist_fxn(max(model.image.width,model.image.height)))
-    
-        nn_contour = nn(extra_sparse_contour,model_contour)
-        contour_dist_energy = sum([self.dist_fxn(dist) for dist in nn_contour]) / float(len(nn_contour))
-        #Normalize
-        contour_dist_energy /= float(self.dist_fxn(max(model.image.width,model.image.height)))
-        
-        energy = model_dist_param * model_dist_energy + contour_dist_param * contour_dist_energy
-        penalty = model.structural_penalty()
-        energy += penalty
-        return energy
-        
-    def nearest_neighbors_fast(self,model_contour,sparse_contour):
-        model_arr = array(model_contour)
-        contour_arr = array(sparse_contour)
-        result,dists = self.flann.nn(sparse_contour,model_contour, num_neighbors=1,algorithm="kmeans",branching=32, iterations=3, checks=16);
-        return [sqrt(dist) for dist in dists]
-            
-    def nearest_neighbors_local(self,model_contour,sparse_contour):
-        num_subdivisions = 10
-        overlap = 2
-        model_len = len(model_contour)
-        match_len = len(sparse_contour)
-        #Compute one matching point
-        sparse_index = min(range(len(sparse_contour)),key=lambda i: Vector2D.pt_distance(sparse_contour[i],model_contour[0]))
-        shifted_contour = list(sparse_contour[sparse_index:])
-        shifted_contour.extend(list(sparse_contour[:sparse_index]))
-        if Vector2D.pt_distance(model_contour[1],shifted_contour[1]) > Vector2D.pt_distance(model_contour[1],shifted_contour[-1]):
-            shifted_contour.reverse()
-        
-        distances = []
-        for subdiv in range(num_subdivisions):
-            model_center = model_len*(subdiv)/float(num_subdivisions)
-            match_center = match_len*(subdiv)/float(num_subdivisions)
-            #double overlap
-            model_window_size = int(overlap * model_len / float(num_subdivisions))
-            match_window_size = int(overlap * match_len / float(num_subdivisions))
-            model_start = int(model_center-model_window_size/2.0)
-            model_end = int(model_center+model_window_size/2.0)
-            match_start = int(match_center-match_window_size/2.0)
-            match_end = int(match_center+match_window_size/2.0)
-            if match_start < 0:
-                match_sub = shifted_contour[match_len + match_start:]
-                match_sub += shifted_contour[:match_end]
-            elif match_end > match_len:
-                match_sub = shifted_contour[match_start:]
-                match_sub += shifted_contour[:match_end%match_len]
-            else:
-                match_sub = shifted_contour[match_start:match_end]
-            if model_start < 0:
-                model_sub = model_contour[model_len + model_start:]
-                model_sub += model_contour[:model_end]
-            elif model_end > model_len:
-                model_sub = model_contour[model_start:]
-                model_sub += model_contour[:model_end%model_len]
-            else:
-                model_sub = model_contour[model_start:model_end]
-            sub_distances = self.nearest_neighbors_fast(model_sub,match_sub)
-            distances.extend(sub_distances[int(0.25*model_window_size):int(0.75*model_window_size)])
-        return distances
-        
-    def nearest_neighbors_dtw(self,model_contour,sparse_contour):
-        model_x = array([x for (x,y) in model_contour])
-        model_y = array([y for (x,y) in model_contour])
-        sparse_x = array([x for (x,y) in sparse_contour])
-        sparse_y = array([y for (x,y) in sparse_contour])
-        dtw = mlpy.Dtw(onlydist=False)
-        score_x = dtw.compute(model_x,sparse_x)
-        score_y = dtw.compute(model_y,sparse_y)
-        
-    def black_box_opt(self,model,contour, energy_fxn,delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5,fine_tune=False,num_fine_tunes=0,mode="asymm",image=None):
+    def black_box_opt(self,model,contour, delta = 0.1, num_iters = 100, epsilon = 0.001,exploration_factor=1.5,fine_tune=False,num_fine_tunes=0,mode="asymm",image=None):
     
         epsilon = 0.001
         score = -1 * model.score(contour,image)
@@ -350,20 +257,6 @@ def get_top(shape,center,theta):
         angle = theta
         scale = 0
         (r_x,r_y,r_w,r_h) = cv.BoundingRect(shape)
-       # #If initially outside, go twice
-       # if(cv.PointPolygonTest(shape,pt,0) <= 0):
-       #     while(cv.PointPolygonTest(shape,pt,0) <= 0):
-       #         (x,y) = pt
-       #         new_x = x + EPSILON*sin(angle)
-       #         new_y = y - EPSILON*cos(angle)
-       #         pt = (new_x,new_y)
-       #         scale += EPSILON
-       #     while(cv.PointPolygonTest(shape,pt,0) > 0):
-       #         (x,y) = pt
-       #         new_x = x + EPSILON*sin(angle)
-       #         new_y = y - EPSILON*cos(angle)
-       #         pt = (new_x,new_y)
-       #         scale += EPSILON
         if SCALE_METHOD == AXIS:
             top_pt = center
             best_scale = 1
