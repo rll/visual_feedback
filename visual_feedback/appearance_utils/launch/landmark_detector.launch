@@ -1,5 +1,0 @@
-<launch>
-  <node pkg="appearance_utils" type="landmark_service" name="landmark_service_node" output="screen" >
-    <param name="model_file" value="/home/stephen/socks_data/models/model_io.txt" />
-  </node>
-</launch>
