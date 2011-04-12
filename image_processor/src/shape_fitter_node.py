@@ -10,7 +10,7 @@ import cv
 import os.path
 import pickle
 import Geometry2D
-import clothing_models.Vector2D
+import visual_feedback_utils.Vector2D
 import tf
 from geometry_msgs.msg import PointStamped
 from image_processor_node import ImageProcessor
@@ -19,7 +19,7 @@ import image_geometry
 import thresholding
 import shape_fitting
 import pickle
-import Models
+import clothing_models.Models
 
 SHOW_CONTOURS = False
 SHOW_UNSCALED_MODEL = False
