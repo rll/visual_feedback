@@ -11,11 +11,11 @@
 	</node>
 
 
-    <node pkg="passive_shape" type="furthest_corner_node.py" name="furthest_corner_node" output="screen" >
+    <node pkg="clothing_models" type="furthest_corner_node.py" name="furthest_corner_node" output="screen" >
         <param name="input" value="input_towels" />
         <param name="output" value="output_towel_corners" />
         <param name="threshold" value="90" />
         <param name="left_to_right" value="true" />
-        <param name="model" value="$(find passive_shape)/towel_model.pickle" />
+        <param name="model" value="$(find clothing_models)/towel_model.pickle" />
     </node>
 </launch>

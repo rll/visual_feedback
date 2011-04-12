@@ -12,7 +12,7 @@ import pyflann
 import math
 import cv
 import Geometry2D
-import Vector2D
+import clothing_models.Vector2D
 import Models
 import tf
 from geometry_msgs.msg import PointStamped

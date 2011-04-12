@@ -9,16 +9,16 @@
 		<param name="output" value="snapshot_right_output" />
 	</node>
 	
-	<node pkg="passive_shape" type="furthest_corner_node.py" name="furthest_corner_left_node" output="screen">
+	<node pkg="clothing_models" type="furthest_corner_node.py" name="furthest_corner_left_node" output="screen">
 	    <param name="input" value="snapshot_left_output" />
-	    <param name="model" value="~/stephen_sandbox/visual_feedback/passive_shape/towel_model.pickle" />
+	    <param name="model" value="~/stephen_sandbox/visual_feedback/clothing_models/towel_model.pickle" />
 	    <param name="threshold" value="85" />
 	    <param name="output" value="left_processing" />
 	</node>
 	
-    <node pkg="passive_shape" type="furthest_corner_node.py" name="furthest_corner_right_node" output="screen">
+    <node pkg="clothing_models" type="furthest_corner_node.py" name="furthest_corner_right_node" output="screen">
 	    <param name="input" value="snapshot_right_output" />
-	    <param name="model" value="~/stephen_sandbox/visual_feedback/passive_shape/towel_model.pickle" />
+	    <param name="model" value="~/stephen_sandbox/visual_feedback/clothing_models/towel_model.pickle" />
 	    <param name="threshold" value="85" />
 	    <param name="output" value="right_processing" />
 	</node>

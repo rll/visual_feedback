@@ -5,9 +5,9 @@
 	</node>
 	
 	
-	<node pkg="passive_shape" type="furthest_corner_node.py" name="furthest_corner_node" output="screen">
+	<node pkg="clothing_models" type="furthest_corner_node.py" name="furthest_corner_node" output="screen">
 	    <param name="input" value="snapshot_output" />
-	    <param name="model" value="~/stephen_sandbox/visual_feedback/passive_shape/towel_model.pickle" />
+	    <param name="model" value="~/stephen_sandbox/visual_feedback/clothing_models/towel_model.pickle" />
 	    <param name="threshold" value="85" />
 	    <param name="output" value="processing" />
 	    <param name="left_to_right" value="false" />

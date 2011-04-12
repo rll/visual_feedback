@@ -6,7 +6,7 @@
 
 import roslib
 import sys
-roslib.load_manifest("passive_shape")
+roslib.load_manifest("clothing_models")
 import rospy
 from numpy import *
 import pyflann
@@ -15,7 +15,7 @@ import cv
 import os.path
 import pickle
 import Geometry2D
-import Vector2D
+import clothing_models.Vector2D
 import Models
 import annotator
 import thresholding

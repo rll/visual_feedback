@@ -3,7 +3,7 @@ import random
 from numpy import *
 import math
 import cv
-from Vector2D import *
+from clothing_models.Vector2D import *
 import inspect
 import pyflann
 import rospy
