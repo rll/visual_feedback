@@ -6,7 +6,7 @@
 
 import roslib
 import sys
-roslib.load_manifest("passive_shape")
+roslib.load_manifest("clothing_models")
 import rospy
 from numpy import *
 import math
@@ -14,7 +14,7 @@ import cv
 import os.path
 import pickle
 import thresholding
-import Vector2D
+import clothing_models.Vector2D
 import shape_fitting
 import random
 

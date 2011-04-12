@@ -4,11 +4,11 @@
 #    This module provides basic functionality for taking a 'snapshot' of an image, and either pulling it for OpenCV
 #   information, or saving it
 import roslib
-roslib.load_manifest('passive_shape')
+roslib.load_manifest('clothing_models')
 import annotator
 import os
 import re
-import Vector2D
+import clothing_models.Vector2D
 import Models
 import sys
 from numpy import *

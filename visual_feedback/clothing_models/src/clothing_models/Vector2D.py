@@ -1,7 +1,6 @@
 import math
 import random
 from numpy import *
-import cv
 
 def pt_x(pt):
     return pt[0]
