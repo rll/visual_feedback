@@ -9,17 +9,17 @@ import math
 import cv
 import os.path
 import pickle
-import Geometry2D
-import visual_feedback_utils.Vector2D
+from shape_window import Geometry2D
+from visual_feedback_utils import Vector2D
 import tf
 from geometry_msgs.msg import PointStamped
 from image_processor_node import ImageProcessor
 from shape_fitting_utils import *
 import image_geometry
-import visual_feedback_utils.thresholding
-import visual_feedback_utils.shape_fitting
+from visual_feedback_utils import thresholding
+from visual_feedback_utils import shape_fitting
 import pickle
-import clothing_models.Models
+from clothing_models import Models
 
 import cvgreyc.features.lbp as lbp
 import cvgreyc.features.sift as sift

@@ -11,7 +11,7 @@ from image_processor.srv import *
 from image_processor_node import ImageProcessor
 from sensor_msgs.msg import Image
 from dynamic_reconfigure.client import Client as ReconfigureClient
-import visual_feedback_utils.TopicUtils
+from visual_feedback_utils import TopicUtils
 from time import strftime
 
 class CPPBridgeNode(ImageProcessor):

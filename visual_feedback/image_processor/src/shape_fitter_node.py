@@ -9,17 +9,17 @@ import math
 import cv
 import os.path
 import pickle
-import Geometry2D
-import visual_feedback_utils.Vector2D
+from shape_window import Geometry2D
+from visual_feedback_utils import Vector2D
 import tf
 from geometry_msgs.msg import PointStamped
 from image_processor_node import ImageProcessor
 from shape_fitting_utils import *
 import image_geometry
-import visual_feedback_utils.thresholding
-import visual_feedback_utils.shape_fitting
+from visual_feedback_utils import thresholding
+from visual_feedback_utils import shape_fitting
 import pickle
-import clothing_models.Models
+from clothing_models import Models
 
 SHOW_CONTOURS = False
 SHOW_UNSCALED_MODEL = False
@@ -82,11 +82,6 @@ class ShapeFitterNode(ImageProcessor):
         else:
             fitter = shape_fitting.ShapeFitter(SYMM_OPT=False,ORIENT_OPT=False,FINE_TUNE=False,num_iters=self.num_iters)
         image_anno = cv.CloneImage(cv_image)
-        """
-        if self.mode == "folded":
-            self.model.draw_to_image(image_anno,cv.CV_RGB(255,0,0))
-            return ([self.model.fold_bottom(),self.model.fold_top()],{},image_anno)
-        """
         (nearest_pts, final_model, fitted_model) = fitter.fit(self.model,shape_contour,image_anno)
         pts = nearest_pts
         
@@ -105,19 +100,12 @@ class ShapeFitterNode(ImageProcessor):
             return_pts = pts
         elif self.mode == "tee" or self.mode == "sweater":
             return_pts = pts[0:5]+pts[8:]
-            #return_pts[0] = (return_pts[0][0],return_pts[0][1]-10)
-            #return_pts[9] = (return_pts[9][0],return_pts[9][1]-10)
             params = {}
         elif self.mode == "folded":
             return_pts = [final_model.fold_bottom(),final_model.fold_top()]
         else:
             return_pts = pts
             params = {}
-        """    
-        if self.mode != "triangles":
-            for pt in return_pts:
-                self.highlight_pt(pt,cv.CV_RGB(255,255,255),image_anno)
-        """
         if self.transform:
             H_inv = cv.CloneMat(H)
             cv.Invert(H,H_inv)
@@ -137,9 +125,6 @@ class ShapeFitterNode(ImageProcessor):
             model_pts = final_model.vertices_full()
             new_model = Models.Point_Model_Contour_Only_Asymm(*model_pts)
             pickle.dump(new_model,open("%s/last_model.pickle"%self.save_dir,'w'))
-        #Ignore nearest
-        #if self.mode == "tee" or self.mode == "sweater":
-        #    return_pts = final_model.vertices_full()[0:5] + final_model.vertices_full()[8:]
         score = fitter.energy_fxn(final_model,shape_contour)
         params["score"] = score
         return (return_pts,params,image_anno)
