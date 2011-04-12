@@ -18,8 +18,8 @@ import Geometry2D
 import visual_feedback_utils.Vector2D
 import clothing_models.Models
 import annotator
-import thresholding
-import shape_fitting
+import visual_feedback_utils.thresholding
+import visual_feedback_utils.shape_fitting
 
 
 SAVE_IMAGE = True

@@ -10,7 +10,7 @@ from stereo_click.msg import ClickPoint
 from stereo_click.srv import *
 from geometry_msgs.msg import PointStamped
 from image_processor.srv import *
-import topic_utils
+import visual_feedback_utils.TopicUtils
 
 
 class ImageProcessor:
@@ -43,8 +43,8 @@ class ImageProcessor:
         if self.ignore_first_picture:
             image = None
         else:
-            image = topic_utils.get_next_message(image_topic,Image)
-        info = topic_utils.get_next_message(info_topic,CameraInfo)
+            image = TopicUtils.get_next_message(image_topic,Image)
+        info = TopicUtils.get_next_message(info_topic,CameraInfo)
         (click_points,params,param_names,image_annotated) = self.unpack_and_process(image,info)
         #Publish annotated image stream
         self.anno_pub.publish(image_annotated)
@@ -62,10 +62,10 @@ class ImageProcessor:
         info_topic_left = "%s/left/camera_info"%req.camera
         image_topic_right = "/%s/right/image_rect_color"%req.camera
         info_topic_right = "%s/right/camera_info"%req.camera
-        image_left = topic_utils.get_next_message(image_topic_left,Image)
-        info_left = topic_utils.get_next_message(info_topic_left,CameraInfo)
-        image_right = topic_utils.get_next_message(image_topic_right,Image)
-        info_right = topic_utils.get_next_message(info_topic_right,CameraInfo)
+        image_left = TopicUtils.get_next_message(image_topic_left,Image)
+        info_left = TopicUtils.get_next_message(info_topic_left,CameraInfo)
+        image_right = TopicUtils.get_next_message(image_topic_right,Image)
+        info_right = TopicUtils.get_next_message(info_topic_right,CameraInfo)
         (click_points_left,params,param_names,image_annotated_left) = self.unpack_and_process(image_left,info_left)
         (click_points_right,params,param_names,image_annotated_right) = self.unpack_and_process(image_right,info_right)
         #Publish annotated image stream

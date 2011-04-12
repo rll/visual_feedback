@@ -20,8 +20,8 @@ from snapshotter.srv import *
 from snapshotter.msg import *
 import time
 import os.path
-from pickle_utils import *
-import TopicUtils
+from visual_feedback_utils.pickle_utils import *
+import visual_feedback_utils.TopicUtils
 
 ## Snapshotter documentation
 #

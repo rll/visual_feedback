@@ -19,7 +19,7 @@ import time
 import re
 import os.path
 import pickle
-from pickle_utils import *
+from visual_feedback_utils.pickle_utils import *
 
 class SnapshotSaver:
 

@@ -16,8 +16,8 @@ from geometry_msgs.msg import PointStamped
 from image_processor_node import ImageProcessor
 from shape_fitting_utils import *
 import image_geometry
-import thresholding
-import shape_fitting
+import visual_feedback_utils.thresholding
+import visual_feedback_utils.shape_fitting
 import pickle
 import clothing_models.Models
 

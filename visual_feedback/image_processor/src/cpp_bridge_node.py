@@ -11,7 +11,7 @@ from image_processor.srv import *
 from image_processor_node import ImageProcessor
 from sensor_msgs.msg import Image
 from dynamic_reconfigure.client import Client as ReconfigureClient
-import topic_utils
+import visual_feedback_utils.TopicUtils
 from time import strftime
 
 class CPPBridgeNode(ImageProcessor):
@@ -29,11 +29,11 @@ class CPPBridgeNode(ImageProcessor):
         print "Changing the exposure of camera to 0.2"
         self.client.update_configuration({'exposure':0.2})
         rospy.sleep(0.1)
-        image1 = topic_utils.get_next_message(image_topic,Image)
+        image1 = TopicUtils.get_next_message(image_topic,Image)
         print "Changing the exposure of camera to 0.4"
         self.client.update_configuration({'exposure':0.4})
         rospy.sleep(0.1)
-        image2 = topic_utils.get_next_message(image_topic,Image)
+        image2 = TopicUtils.get_next_message(image_topic,Image)
         
 
         

@@ -18,7 +18,7 @@ import Geometry2D
 import visual_feedback_utils.Vector2D
 import clothing_models.Models
 import annotator
-import thresholding
+import visual_feedback_utils.thresholding
 import shape_fitting_utils
 import random
 
