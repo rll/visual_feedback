@@ -1,0 +1,32 @@
+<package>
+  <description brief="image_processor">
+
+     image_processor
+
+  </description>
+  <author>Stephen Miller</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/image_processor</url>
+  <depend package="rospy"/>
+  <depend package="roscpp"/>
+  <depend package="tf"/>
+  <depend package="opencv2"/>
+  <depend package="cv_bridge"/>
+  <depend package="sensor_msgs"/>
+  <depend package="std_msgs"/>
+  <depend package="std_srvs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="image_geometry"/>
+  <depend package="roscpp"/>
+  <depend package="image_transport"/>
+  <depend package="dynamic_reconfigure" />
+  <depend package="shape_window"/>
+  <depend package="folding_gui"/>
+  <depend package="stereo_click"/>
+  <depend package="snapshotter" />
+  <depend package="passive_shape" />
+  <depend package="visual_feedback_utils" />
+</package>
+
+
