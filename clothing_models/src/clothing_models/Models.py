@@ -7,8 +7,8 @@ from clothing_models.Vector2D import *
 import inspect
 import pyflann
 import rospy
-import ImageUtils
-import RosUtils
+from rll_utils import ImageUtils
+from rll_utils import RosUtils
 nn_solver = pyflann.FLANN()
 
 def make_sparse(contour,num_pts = 1000):

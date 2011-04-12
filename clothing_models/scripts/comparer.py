@@ -8,8 +8,8 @@ roslib.load_manifest('clothing_models')
 import annotator
 import os
 import re
-import visual_feedback_utils.Vector2D
-import clothing_models.Models
+from visual_feedback_utils import Vector2D
+from clothing_models import Models
 import sys
 from numpy import *
 import pickle

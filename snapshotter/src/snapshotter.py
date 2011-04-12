@@ -21,7 +21,7 @@ from snapshotter.msg import *
 import time
 import os.path
 from visual_feedback_utils.pickle_utils import *
-import visual_feedback_utils.TopicUtils
+from visual_feedback_utils import TopicUtils
 
 ## Snapshotter documentation
 #

@@ -10,7 +10,7 @@ from stereo_click.msg import ClickPoint
 from stereo_click.srv import *
 from geometry_msgs.msg import PointStamped
 from image_processor.srv import *
-import visual_feedback_utils.TopicUtils
+from visual_feedback_utils import TopicUtils
 
 
 class ImageProcessor:

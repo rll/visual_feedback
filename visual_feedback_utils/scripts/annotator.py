@@ -12,7 +12,7 @@ from numpy import *
 import math
 import cv
 import os.path
-import visual_feedback_utils.thresholding
+from visual_feedback_utils import thresholding
 
 SNAP = False
 

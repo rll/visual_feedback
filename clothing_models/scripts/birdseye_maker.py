@@ -8,7 +8,7 @@ roslib.load_manifest("clothing_models")
 import annotator
 import os
 import re
-import visual_feedback_utils.Vector2D
+from visual_feedback_utils import Vector2D
 import sys
 import cv
 import os

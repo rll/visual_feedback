@@ -11,9 +11,9 @@ from numpy import *
 import pyflann
 import math
 import cv
-import Geometry2D
-import visual_feedback_utils.Vector2D
-import clothing_models.Models
+from shape_window import Geometry2D
+from visual_feedback_utils import Vector2D
+from clothing_models import Models
 import tf
 from geometry_msgs.msg import PointStamped
 from shape_fitting_utils import *
