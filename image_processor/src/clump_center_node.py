@@ -16,7 +16,7 @@ from geometry_msgs.msg import PointStamped
 from image_processor_node import ImageProcessor
 from shape_fitting_utils import *
 import image_geometry
-import thresholding
+import visual_feedback_utils.thresholding
 
 SHOW_CONTOURS = True
 SHOW_UNSCALED_MODEL = False
