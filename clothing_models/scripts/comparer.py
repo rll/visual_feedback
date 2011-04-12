@@ -9,7 +9,7 @@ import annotator
 import os
 import re
 import clothing_models.Vector2D
-import Models
+import clothing_models.Models
 import sys
 from numpy import *
 import pickle
