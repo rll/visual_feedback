@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
-##    @package snapshotter
-#    This module provides basic functionality for taking a 'snapshot' of an image, and either pulling it for OpenCV
-#   information, or saving it
-
+##    @package cloth_models 
+# 	  Define shape models by hand.
 import roslib
 import sys
 roslib.load_manifest("clothing_models")
@@ -13,19 +11,19 @@ import math
 import cv
 import os.path
 from shape_window.ShapeWindow import *
-from shape_window import ShapeWindowUtils
 from shape_window import Geometry2D
 import pickle
 from visual_feedback_utils import Vector2D
 from clothing_models import Models
 
-ASYMM = 0
-SYMM = 1
-SKEL = 2
-PANTS_SKEL = 3
-TEE_SKEL = 4
-SOCK_SKEL = 5
-TYPE = SOCK_SKEL
+ASYMM = 0 			# Asymmetric polygon model
+SYMM = 1 			# Symmetric polygon model
+SWEATER_SKEL = 2 	# Sweater model
+TEE_SKEL = 3 		# Tee model
+PANTS_SKEL = 4 		# Pants model
+SOCK_SKEL = 5 		# Sock model
+
+TYPE = SWEATER_SKEL 	#Adjust to change which type of model is being created
 
 class ModelMaker(ShapeWindow):
     
@@ -46,7 +44,7 @@ class ModelMaker(ShapeWindow):
             self.has_symmline = False
             self.symmline = None
             self.symmpts = []
-        if TYPE == SKEL or TYPE == TEE_SKEL:
+        if TYPE == SWEATER_SKEL or TYPE == TEE_SKEL:
             self.mode = 0
             self.spine_bottom = None
             self.spine_top = None
@@ -90,7 +88,7 @@ class ModelMaker(ShapeWindow):
                 return self.symmPolyDrawer(event,x,y,flags,param)
         elif TYPE==ASYMM:
             return self.polyDrawer(event,x,y,flags,param)
-        elif TYPE==SKEL or TYPE==TEE_SKEL:
+        elif TYPE==SWEATER_SKEL or TYPE==TEE_SKEL:
             return self.skelDrawer(event,x,y,flags,param)
         elif TYPE==PANTS_SKEL:
             return self.pantsSkelDrawer(event,x,y,flags,param)
@@ -448,7 +446,7 @@ class ModelMaker(ShapeWindow):
             model = self.getModelAsymm()
         if TYPE==SYMM:
             model = self.getModelSymm()
-        elif TYPE==SKEL:
+        elif TYPE==SWEATER_SKEL:
             model = self.getModelSkel()
         elif TYPE==TEE_SKEL:
             model = self.getModelTee()
@@ -468,9 +466,6 @@ class ModelMaker(ShapeWindow):
         vertices = poly.vertices()
         tuple_vertices = tuple([v.toTuple() for v in vertices])
         model = Models.Point_Model_Contour_Only_Asymm(*tuple_vertices)
-        #model = Models.Model_Pants_Contour_Only(*tuple_vertices)
-        #print len(tuple_vertices)
-        #model = Models.Model_Towel(True,*tuple_vertices)
         return model
     
     def getModelSymm(self):
@@ -482,25 +477,6 @@ class ModelMaker(ShapeWindow):
         return model
         
     def getModelSkel(self):
-        #Parameters: spine_bottom,spine_top,collar,shoulder_joint,shoulder_top,sleeve_center,sleeve_top
-        """
-        return Models.Model_Shirt_Skel_New(True,
-            self.spine_bottom.toTuple(), self.spine_top.toTuple(),
-            self.collar.toTuple(), self.shoulder_joint.toTuple(),
-            self.shoulder_top.toTuple(), self.sleeve_node.toTuple(),self.sleeve_top.toTuple(),self.bottom_left.toTuple()
-            )
-        """
-        #More
-        
-        #left_sleeve_angle = pi/4
-        #left_sleeve_length = Geometry2D.distance(self.sleeve_node,self.shoulder_joint)
-        #left_sleeve_width = Geometry2D.distance(self.sleeve_top,self.sleeve_node)*2
-        #return Models.Model_Shirt_Skel_Restricted(True,
-        #    self.spine_bottom.toTuple(), self.spine_top.toTuple(),
-        #    self.collar.toTuple(), self.shoulder_joint.toTuple(),
-        #    self.shoulder_top.toTuple(),self.bottom_left.toTuple(),
-        #    left_sleeve_length,left_sleeve_width,left_sleeve_angle
-        #    )
         
         left_sleeve_width = Geometry2D.distance(self.sleeve_top,self.sleeve_node)*2
         return Models.Model_Shirt_Skel_Less_Restricted(True,
@@ -517,26 +493,8 @@ class ModelMaker(ShapeWindow):
             self.collar.toTuple(), self.shoulder_joint.toTuple(),
             self.shoulder_top.toTuple(), self.sleeve_node.toTuple(),self.bottom_left.toTuple(),left_sleeve_width
             )
-        """    
-        return Models.Model_Tee_Skel(True,
-            self.spine_bottom.toTuple(), self.spine_top.toTuple(),
-            self.collar.toTuple(), self.shoulder_joint.toTuple(),
-            self.shoulder_top.toTuple(), self.sleeve_node.toTuple(),self.sleeve_top.toTuple(),self.bottom_left.toTuple()
-            )
-        """ 
     def getModelPantsSkel(self):
         #Parameters: mid_center,top_center,mid_left,left_leg_center,left_leg_left
-        """
-        return Models.Model_Pants_Skel(True,
-            self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
-            self.left_leg_center.toTuple(), self.left_leg_left.toTuple()
-        )
-        
-        return Models.Model_Pants_Skel_Extended(True,
-            self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
-            self.left_leg_center.toTuple(), self.left_leg_left.toTuple(),self.top_left.toTuple()
-        )
-        """
         width = Geometry2D.distance(self.left_leg_left,self.left_leg_right)
         return Models.Model_Pants_Skel_New(True,
             self.mid_center.toTuple(), self.top_center.toTuple(), self.mid_left.toTuple(),
@@ -547,12 +505,17 @@ class ModelMaker(ShapeWindow):
         return Models.Model_Sock_Skel(True,
             self.ankle_center.toTuple(),self.ankle_joint.toTuple(),self.toe_center.toTuple(),self.sock_width,self.sock_width/2)
 
+def usage():
+	print "model_maker.py input_image output_model"
+	exit()
     
 def main(args):
-    corrected_filepath = args[0]
-    corrected_modelpath = args[1]
+	if len(args) != 2:
+		usage()
+    imagepath = args[0]
+    modelpath = args[1]
 
-    mm = ModelMaker(corrected_filepath,corrected_modelpath)
+    mm = ModelMaker(imagepath,modelpath)
     while(not mm.isClosed()):
         rospy.sleep(0.05)
     return

@@ -16,7 +16,7 @@ from visual_feedback_utils import Vector2D
 from clothing_models import Models
 import tf
 from geometry_msgs.msg import PointStamped
-from shape_fitting_utils import *
+from visual_feedback_utils.shape_fitting_utils import *
 import image_geometry
 
 (WHITE_BG,GREEN_BG,YELLOW_BG) = range(3)
