@@ -14,7 +14,7 @@ import cv
 import os.path
 import pickle
 import thresholding
-import clothing_models.Vector2D
+import visual_feedback_utils.Vector2D
 import shape_fitting
 import random
 

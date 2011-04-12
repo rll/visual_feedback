@@ -15,7 +15,7 @@ import cv
 import os.path
 import pickle
 import Geometry2D
-import clothing_models.Vector2D
+import visual_feedback_utils.Vector2D
 import clothing_models.Models
 import annotator
 import thresholding
