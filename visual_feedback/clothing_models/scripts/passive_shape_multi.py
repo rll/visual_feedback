@@ -16,7 +16,7 @@ import os.path
 import pickle
 import Geometry2D
 import clothing_models.Vector2D
-import Models
+import clothing_models.Models
 import annotator
 import thresholding
 import shape_fitting

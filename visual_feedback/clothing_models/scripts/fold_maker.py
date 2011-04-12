@@ -17,7 +17,7 @@ import ShapeWindowUtils
 import Geometry2D
 import pickle
 import clothing_models.Vector2D
-import Models
+import clothing_models.Models
 import time
 
 
