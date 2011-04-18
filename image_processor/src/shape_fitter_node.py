@@ -125,7 +125,7 @@ class ShapeFitterNode(ImageProcessor):
             model_pts = final_model.vertices_full()
             new_model = Models.Point_Model_Contour_Only_Asymm(*model_pts)
             pickle.dump(new_model,open("%s/last_model.pickle"%self.save_dir,'w'))
-        score = fitter.energy_fxn(final_model,shape_contour)
+        score = final_model.score(shape_contour) #fitter.energy_fxn(final_model,shape_contour)
         params["score"] = score
         return (return_pts,params,image_anno)
         
