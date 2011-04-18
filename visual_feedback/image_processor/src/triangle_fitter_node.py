@@ -223,6 +223,7 @@ class TriangleFitterNode(ImageProcessor):
         return lst_avg(values)
     
     def load_model(self,filepath):
+        rospy.loginfo('About to load model %s'%filepath)
         self.model = pickle.load(open(filepath))
         
     def highlight_pt(self,pt,color,image):
