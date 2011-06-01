@@ -24,7 +24,6 @@
   <depend package="shape_window"/>
   <depend package="folding_geometry"/>
   <depend package="stereo_click"/>
-  <depend package="snapshotter" />
   <depend package="clothing_models" />
   <depend package="visual_feedback_utils" />
 </package>

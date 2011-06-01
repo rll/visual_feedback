@@ -5,13 +5,12 @@
 #   information, or saving it
 import roslib
 roslib.load_manifest("clothing_models")
-import annotator
 import os
 import re
-from visual_feedback_utils import Vector2D
 import sys
 import cv
-import os
+
+from visual_feedback_utils import Vector2D
         
 
 def main(args):

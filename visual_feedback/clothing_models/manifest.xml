@@ -7,7 +7,7 @@
   <author>Stephen Miller</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/snapshotter</url>
+  <url>http://ros.org/wiki/clothing_models</url>
   <depend package="rospy"/>
   <depend package="tf"/>
   <depend package="opencv2"/>
@@ -22,7 +22,7 @@
   <depend package="shape_window"/>
   <depend package="folding_geometry"/>
   <depend package="stereo_click"/>
-  <depend package="snapshotter" />
+  <depend package="visual_feedback_utils" /> 
   <depend package="rll_utils" /> 
 </package>
 

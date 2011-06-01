@@ -5,10 +5,9 @@
 #   information, or saving it
 import roslib
 roslib.load_manifest('clothing_models')
-import annotator
 import os
 import re
-from visual_feedback_utils import Vector2D
+from visual_feedback_utils import Vector2D, Annotating
 from clothing_models import Models
 import sys
 from numpy import *
@@ -26,8 +25,8 @@ MODELS = {  TOWEL:'/home/stephen/snapshots/models/towel_model.pickle',
             SWEATER:'/home/stephen/snapshots/models/sweater_model.pickle'}
 
 def score(testfile,correctfile):
-    test_pts = annotator.read_anno(testfile)
-    correct_pts = annotator.read_anno(correctfile)
+    test_pts = Annotating.read_anno(testfile)
+    correct_pts = Annotating.read_anno(correctfile)
     net_error = 0.0
     max_error = 0.0
     rel_pts = []

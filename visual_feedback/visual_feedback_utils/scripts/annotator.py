@@ -8,11 +8,9 @@ import roslib
 import sys
 roslib.load_manifest("visual_feedback_utils")
 import rospy
-from numpy import *
-import math
 import cv
 import os.path
-from visual_feedback_utils import thresholding
+from visual_feedback_utils import thresholding, Annotating
 
 SNAP = False
 
@@ -110,30 +108,7 @@ class Annotator:
         self.img = cv.CloneImage(self.background)
         
     def writeAnno(self):
-        write_anno(self.pts,self.anno_path)
-        
-def write_anno(pts,filename):
-    output = open(filename,'w')
-    xs = [x for (x,y) in pts]
-    ys = [y for (x,y) in pts]
-    output.write("%d\n"%len(pts))
-    for i in range(len(pts)):
-        output.write("%f\n"%xs[i])
-        output.write("%f\n"%ys[i])
-    output.close()
-    
-def read_anno(filename):
-    anno_input = open(filename,'r')
-    num_pts = int(anno_input.readline())
-    pts = []
-    for i in range(num_pts):
-        x = float(anno_input.readline())
-        y = float(anno_input.readline())
-        pts.append((x,y))
-    anno_input.close()
-    return pts
-        
-    
+        Annotating.write_anno(self.pts,self.anno_path)
 def main(args):
     filepath = args[0]
     num_pts = int(args[1])

@@ -26,7 +26,8 @@ def make_sparse(contour,num_pts = 1000):
 
 #Abstract model class        
 class Model:
-
+    def name(semf):
+        abstract
     def preferred_delta(self):
         return 35.0
 
@@ -362,6 +363,9 @@ class Point_Model_Contour_Only_Asymm(Point_Model):
         vertices = list(vertices_and_params)
         self.num_variable_pts = len(vertices)
         Point_Model.__init__(self,*vertices_and_params)
+
+    def name(self):
+        return "Contour_Only"
         
     def variable_pt_names(self):
         return ["pt_%d"%i for i in range(self.num_variable_pts)]
@@ -382,7 +386,10 @@ class Orient_Model(Point_Model):
         self.initial_model = initial_model
         self.image = initial_model.image
         Point_Model.__init__(self,*params)
-        
+    
+    def name(self):
+        return "Orient_Model"
+
     def polygon_vertices(self):
         return self.transformed_model().polygon_vertices()
     
@@ -430,6 +437,9 @@ class Point_Model_Folded(Point_Model):
         self.initial_model = initial_model
         self.image = None
         Point_Model.__init__(self,*pts)
+
+    def name(self):
+        return "Folded " + self.initial_model.name()
         
    # def variable_param_names(self):
    #     return ["fold_angle","fold_displ"]
@@ -644,6 +654,10 @@ class Point_Model_Variable_Symm(Point_Model):
 
 
 class Model_Towel(Point_Model_Variable_Symm):
+    
+    def name(self):
+        return "Towel"
+
     def polygon_vertices(self):
         return [self.bottom_left(),self.top_left(),self.top_right(),self.bottom_right()]
         
@@ -653,7 +667,13 @@ class Model_Towel(Point_Model_Variable_Symm):
     def axis_of_symmetry(self):
         return make_ln_from_pts(pt_scale(pt_sum(self.bottom_left(),self.bottom_right()),0.5),pt_scale(pt_sum(self.top_left(),self.top_right()),0.5))
 
+
+
 class Model_Pants_Generic(Point_Model_Variable_Symm):
+    
+    def name(self):
+        return "Pants"
+
     def polygon_vertices(self):
         return [self.left_leg_right(),self.left_leg_left(),self.top_left(),self.top_right(),self.right_leg_right(),self.right_leg_left(),self.crotch()]
 
@@ -693,9 +713,6 @@ class Model_Pants_Generic(Point_Model_Variable_Symm):
         
 
 class Model_Pants_Skel(Model_Pants_Generic):
-
-        
-    
         
     def symmetric_variable_pt_names(self):
         return ["mid_center","top_center","mid_left","left_leg_center","left_leg_left"]
@@ -719,21 +736,14 @@ class Model_Pants_Skel(Model_Pants_Generic):
         
     def structural_penalty(self):
         penalty = Point_Model_Variable_Symm.structural_penalty(self)
-        """
-        penalty += self.constrain(pt_distance(self.mid_left(),self.mid_right()),pt_distance(self.top_left(),self.top_right()),UPPER,0.0)
-        if seg_intercept(make_seg(self.top_left(),self.left_leg_left()),make_seg(self.mid_left(),self.mid_right())):
-            penalty += 1
-        if seg_intercept(make_seg(self.top_right(),self.right_leg_right()),make_seg(self.mid_left(),self.mid_right())):
-            penalty += 1
-        """
-        print "blah"
         if self.crotch_length() / ((self.left_leg_length() + self.right_leg_length())/2.0) > 0.5:
             penalty += 1
         
-
-        
       
 class Model_Pants_Contour_Only(Point_Model_Contour_Only_Asymm):
+
+    def name(self):
+        return "Pants Contour Only"
 
     def variable_pt_names(self):
         #return ["pt_%d"%i for i in range(self.num_variable_pts)]
@@ -821,20 +831,6 @@ class Model_Pants_Skel_New(Model_Pants_Generic):
         penalty = Model_Pants_Generic.structural_penalty(self)
         #penalty += self.constrain(pt_distance(self.mid_left(),self.mid_right()),pt_distance(self.top_left(),self.top_right()),UPPER,0.0)  
         skel_sides = [make_seg(self.mid_left(),self.mid_right())]
-        """
-        for s in skel_sides:
-            for side in self.sides():
-                if seg_intercept(s,side):
-                    penalty += 1
-        #penalty += self.constrain(
-        #    abs(angle_between(pt_diff(self.mid_left(),self.mid_right()),pt_diff(self.top_center(),self.crotch())) - pi/2), pi/5, UPPER,0.0)
-        penalty += self.constrain(pt_distance(self.top_center(),self.crotch())/pt_distance(self.top_left(),self.top_right()),0.25,LOWER,0.0)
-        
-        if seg_intercept(make_seg(self.mid_left(),self.mid_right()),make_seg(self.top_left(),self.left_leg_left())):
-            penalty += 1
-        if seg_intercept(make_seg(self.mid_left(),self.mid_right()),make_seg(self.top_right(),self.right_leg_right())):
-            penalty += 1
-        """
         if seg_intercept(self.left_leg_axis(),self.right_leg_axis()):
             penalty += 1
 
@@ -971,6 +967,10 @@ class Model_Shirt_Generic(Point_Model_Variable_Symm):
         return Point_Model_Variable_Symm.illegal(self)
 
 class Model_Tee_Generic(Model_Shirt_Generic):
+    
+    def name(self):
+        return "Short-Sleeved Shirt"
+
     def structural_penalty(self):
         penalty = 0
         penalty += Model_Shirt_Generic.structural_penalty(self)
@@ -1041,7 +1041,7 @@ class Model_Tee_Generic(Model_Shirt_Generic):
         penalty += self.constrain(vect_length(l_shoulder_axis),0.75*vect_length(l_sleeve_side),LOWER,DOT_PROD_SIGMA)
         penalty += self.constrain(vect_length(r_shoulder_axis),0.75*vect_length(r_sleeve_side),LOWER,DOT_PROD_SIGMA)
 
-        #Make the center be roughtly...well...centered
+        #Make the center be roughly...well...centered
         penalty += self.constrain(pt_distance(self.left_shoulder_top(),self.spine_top()) / pt_distance(self.right_shoulder_top(),self.spine_top()),0.5,LOWER,PROPORTIONAL_SIGMA)
         penalty += self.constrain(pt_distance(self.left_shoulder_top(),self.spine_top()) / pt_distance(self.right_shoulder_top(),self.spine_top()),1.5,UPPER,PROPORTIONAL_SIGMA)
         
@@ -1055,7 +1055,12 @@ class Model_Tee_Generic(Model_Shirt_Generic):
             penalty += 1
         return penalty
 
+
 class Model_Long_Shirt_Generic(Model_Shirt_Generic):
+
+    def name(self):
+        return "Long-Sleeved Shirt"
+
     def structural_penalty(self):
         penalty = 0
         penalty += Model_Shirt_Generic.structural_penalty(self)
@@ -1438,22 +1443,6 @@ class Model_Shirt_Skel_Less_Restricted(Model_Long_Shirt_Generic):
     def allow_flipping(self):
         return False
     
-    """    
-    def illegal(self):
-        sides = self.sides()
-        for i in range(len(sides)):
-            for j in range(i,len(sides)):
-                if i != j:
-                    if seg_intercept(sides[i],sides[j]) != None:
-                        if i==1 and j==3 or i ==10 and j ==12:
-                            #print "Sleeve intersection"
-                            pass
-                        else:
-                            #print "Self intersection!"
-                            return True
-                
-        return False
-    """ 
     
     def bottom_right(self):
         return self.__getattr__("bottom_right")()
