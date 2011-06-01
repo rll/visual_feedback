@@ -14,11 +14,8 @@ import cv
 import os.path
 import pickle
 from shape_window import Geometry2D
-from visual_feedback_utils import Vector2D
+from visual_feedback_utils import Vector2D, Annotating, thresholding, shape_fitting
 from clothing_models import Models
-import annotator
-from visual_feedback_utils import thresholding
-from visual_feedback_utils import shape_fitting
 
 
 SAVE_IMAGE = True  		#Save an annotated image?
@@ -66,7 +63,7 @@ def main(args):
     #Optionally save the nearest points in a .anno file, for comparison with my own annotations
     if ANNOTATE:
         anno_path = imagepath[0:len(imagepath)-4]+"_classified.anno"
-        annotator.write_anno(nearest_pts,anno_path)
+        Annotating.write_anno(nearest_pts,anno_path)
     #Optionally save the model, for reuse later
     if SAVE_MODEL:
         #Remove the image to make pickling possible

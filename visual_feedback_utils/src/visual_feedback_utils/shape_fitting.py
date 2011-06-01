@@ -33,6 +33,7 @@ SCALE_METHOD = BOUNDING			# The distance from the center of gravity to the neare
 #@arg ROTATE Whether or not to adjust rotation 
 #@arg ORIENT_OPT Whether or not to perform the orientation optimization step 
 #@arg SYMM_OPT Whether or not to perform the symmetric optimization step
+#@arg ASYMM_OPT Whether or not to perform the symmetric optimization step
 #@arg FINE_TUNE Whether or not to perform the fine tuning optimization step
 #@arg HIGH_EXPLORATION Makes us jump more drastically after improved iterations
 #@arg SHOW Visualize the iterations while they are being performed in a CvNamedWindow
@@ -40,7 +41,11 @@ SCALE_METHOD = BOUNDING			# The distance from the center of gravity to the neare
 #@arg num_iters Number of iterations at which the optimization will be forced to end (may end sooner if converged)
 #@arg INIT_APPEARANCE Not really used right now; when we are caching images, this forces us to NOT use the cache
 class ShapeFitter:
-    def __init__(self,DIST_FXN="l2",INITIALIZE=True,ROTATE=True,ORIENT_OPT=True,SYMM_OPT=False,FINE_TUNE=False,HIGH_EXPLORATION=False, SHOW=True,SILENT=False,num_iters=100):
+    def __init__(self,
+                 DIST_FXN="l2",     INITIALIZE=True,    ROTATE=True,
+                 ORIENT_OPT=True,   SYMM_OPT=False,     ASYMM_OPT=True,     FINE_TUNE=False,
+                 HIGH_EXPLORATION=False,                SHOW=True,          SILENT=False,
+                 num_iters=100):
         if DIST_FXN == "l1":
             self.dist_fxn = l1_norm
         elif DIST_FXN == "l2":
@@ -48,8 +53,9 @@ class ShapeFitter:
         else:
             self.dist_fxn = l2_norm
         self.num_iters = num_iters
-        self.SYMM_OPT = SYMM_OPT
         self.ORIENT_OPT = ORIENT_OPT
+        self.SYMM_OPT = SYMM_OPT
+        self.ASYMM_OPT = ASYMM_OPT
         self.FINE_TUNE = FINE_TUNE   
         self.INITIALIZE=INITIALIZE
         self.HIGH_EXPLORATION = HIGH_EXPLORATION
@@ -98,13 +104,11 @@ class ShapeFitter:
                 cv.WaitKey()
             
             angle = model_theta - real_theta
-            self.printout(angle)
             if self.ORIENT_OPT:
                 angle = 0
             scale = real_scale/float(model_scale)
             if scale < 0.25:
                 scale = 1
-            print "%f = %f/%f"%(scale,real_scale,model_scale) 
             model_trans = translate_poly(model.polygon_vertices(),displ)
             model_rot = rotate_poly(model_trans,-1*angle,real_center)
             model_scaled = scale_poly(model_rot,scale,real_center)
@@ -146,7 +150,10 @@ class ShapeFitter:
             exp_factor = 3.0
         else:
             exp_factor = 1.5
-        new_model_asymm = self.black_box_opt(model=model,contour=shape_contour,num_iters=self.num_iters,delta=model.preferred_delta(),exploration_factor=exp_factor,fine_tune=False,mode="asymm",image=img)
+        if self.ASYMM_OPT:
+            new_model_asymm = self.black_box_opt(model=model,contour=shape_contour,num_iters=self.num_iters,delta=model.preferred_delta(),exploration_factor=exp_factor,fine_tune=False,mode="asymm",image=img)
+        else:
+            new_model_asymm = model
         
         if self.FINE_TUNE:
             #tunable_model = model_oriented.make_tunable()
