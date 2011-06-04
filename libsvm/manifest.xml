@@ -1,0 +1,18 @@
+<package>
+  <description brief="libsvm">
+
+     Libsvm is a Support Vector Machine Library. Berkeley has simply ported it to ROS.
+
+  </description>
+  <author>Chih-Chung Chang and Chih-Jen Lin</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/libsvm</url>
+  <export>
+    <python path="${prefix}/python"/>
+    <!-- <python path="${prefix}/tools"/> -->
+    <cpp cflags="-I${prefix}/include" lflags="L${prefix}/lib -Wl, -rpath,-L${prefix}/lib -lsvm"/>
+  </export>
+</package>
+
+
