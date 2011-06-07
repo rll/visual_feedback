@@ -65,18 +65,24 @@ class LabelWindow (ZoomWindow):
         elif char_str == 's':
             self.save()
             self.quit()
-            go_on = False
+            return False
         elif char_str == 'q':
             self.quit()
             go_on = False
+        elif char_str == 'i':
+            self.zoom_in_more()
+        elif char_str == 'o':
+            self.zoom_out_more()
         return go_on
 
     def increment_brush_size(self):
         self.brush_size += 1
+        print "Brush size: %d"%self.brush_size
 
     def decrement_brush_size(self):
         if self.brush_size > 1:
             self.brush_size -= 1
+            print "Brush size: %d"%self.brush_size
 
     def set_label(self, label):
         if label in self.params.label_set.get_labels():

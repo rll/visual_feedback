@@ -68,5 +68,12 @@ class ZoomWindow:
             return False
         return True
 
+    def zoom_in_more(self):
+        if self.zoom_out >= 2:
+            self.zoom_out /= 2
+
+    def zoom_out_more(self):
+        self.zoom_out *= 2
+
     def handleEvents( self, event, x, y, flags, param ):
         pass
