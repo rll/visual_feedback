@@ -10,6 +10,9 @@
   <url>http://ros.org/wiki/patch_vision</url>
   <depend package="opencv2"/>
   <depend package="rospy"/>
+  <export>
+      <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -Wl, -rpath, -L${prefix}/lib -lpatch_vision"/>
+  </export>
 
 </package>
 
