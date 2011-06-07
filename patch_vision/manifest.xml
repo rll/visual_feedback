@@ -1,0 +1,16 @@
+<package>
+  <description brief="patch_vision">
+
+     patch_vision
+
+  </description>
+  <author>Stephen Miller</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/patch_vision</url>
+  <depend package="opencv2"/>
+  <depend package="rospy"/>
+
+</package>
+
+
