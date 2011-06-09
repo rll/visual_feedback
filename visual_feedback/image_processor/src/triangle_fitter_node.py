@@ -53,7 +53,7 @@ class TriangleFitterNode(ImageProcessor):
         self.matrix_location = "%s/H.yaml"%self.config_dir
         self.modelpath = "%s/%s.pickle"%(self.load_dir,modelname)
         self.filter_pr2 = True
-        self.num_iters = rospy.get_param("~num_iters",None)
+        self.num_iters = rospy.get_param("~num_iters",100)
         if self.filter_pr2:
             self.listener = tf.TransformListener()
     
