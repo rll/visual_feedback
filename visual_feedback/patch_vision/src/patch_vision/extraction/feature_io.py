@@ -28,9 +28,10 @@ class FeatureMap:
         for pt in self.get_feature_points():
             f.write("%f %f"%(pt[0],pt[1]))
             f.write("\t")
-            f.write("%f %f"%self.patch_size )
+            f.write("%f %f"%(self.patch_size, self.patch_size) )
             f.write("\t")
             feature = self.get_feature(pt)
+            f.write( "%d "%len(feature))
             for val in feature:
                 f.write("%f "%val)
             f.write("\n")
@@ -43,7 +44,9 @@ class FeatureMap:
             pt = (vals[0],vals[1])
             patch_size = (vals[2], vals[3])
             self.set_patch_size(patch_size)
-            feature = vals[4:]
+            num_features = vals[4];
+            feature = vals[5:]
+            assert len(feature) == num_features
             self.add_feature(pt, feature)
         f.close()
 

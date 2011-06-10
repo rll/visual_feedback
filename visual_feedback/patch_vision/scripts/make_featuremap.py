@@ -5,10 +5,16 @@ import cv
 import os
 import os.path
 import sys
+from subprocess import call,STDOUT
 from patch_vision.extraction.descriptors_common import RawBWDescriptor, RawColorDescriptor, LBPDescriptor
 from patch_vision.extraction.feature_io import FeatureMap
 from patch_vision.slicing.patch_makers_common import SlidingWindowPatchMaker
 import rospy
+
+
+PACKAGE_NAME = "patch_vision"
+CPP_DESCRIPTORS = ['LBP']
+PYTHON_DESCRIPTORS = ['RAW_BW','RAW_COLOR']
 
 def parse():
     import argparse
@@ -18,7 +24,7 @@ def parse():
                             required=True,
                             help='the image to make a featuremap of' )
     parser.add_argument(    '-f','--feature_type',dest='feature_type', type=str,   
-                            required=True, choices=['LBP','RAW_BW','RAW_COLOR'],
+                            required=True, choices=CPP_DESCRIPTORS + PYTHON_DESCRIPTORS,
                             help='What descriptor to use' )
     parser.add_argument(    '-d','--output-directory',  dest='output_directory', type=str,
                             default=None,
@@ -52,6 +58,17 @@ def main(args):
     else:
         prefix = os.path.splitext(os.path.basename(args.input_image))[0]
         print "No output prefix selected. Defaulting to %s"%prefix
+    output_file = "%s/%s.fm"%(directory,prefix)
+    if not args.patch_step:
+        args.patch_step = args.patch_size
+    
+    if args.feature_type in CPP_DESCRIPTORS:
+        cmd = "rosrun %s make_featuremap -i %s -o %s -f %s -p %d -s %d"%(
+                PACKAGE_NAME, args.input_image, output_file, args.feature_type, 
+                args.patch_size, args.patch_step)
+        print "Calling %s"%cmd
+        return call( cmd, shell=True);
+    
     if args.feature_type == 'LBP':
         descriptor = LBPDescriptor(args.patch_size)
     elif args.feature_type == 'RAW_BW':
@@ -60,8 +77,6 @@ def main(args):
         descriptor = RawColorDescriptor(args.patch_size)
     else:
         raise Exception("Invalid feature!")
-    if not args.patch_step:
-        args.patch_step = args.patch_size
     input_image = cv.LoadImage( args.input_image )
     patch_maker = SlidingWindowPatchMaker( args.patch_size, args.patch_step)
     features, patch_centers = descriptor.process_image( input_image, patch_maker, args.verbose )
