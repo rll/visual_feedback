@@ -21,7 +21,7 @@ class Descriptor:
                  self.required_channels() == 1 and 
                  image.nChannels == 3):
                 bwimage = cv.CreateImage( (image.width,image.height), image.depth, 1 )
-                cv.CvtColor(image, bwimage, cv.CV_RGB2GRAY)
+                cv.CvtColor(image, bwimage, cv.CV_BGR2GRAY)
                 image = bwimage
             else:
                 raise Exception("The %s descriptor requires a %d channel image." %
