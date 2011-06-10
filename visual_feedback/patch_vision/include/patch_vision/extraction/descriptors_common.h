@@ -20,6 +20,7 @@
 
 #include <patch_vision/extraction/descriptor.h>
 #include <patch_vision/thirdparty/LBP.h>
+
 class LBPDescriptor : public Descriptor{
     public:
 
