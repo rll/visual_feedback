@@ -41,8 +41,8 @@ class Descriptor{
         //Descriptor();
         //~Descriptor();
 
-        virtual void process_patch( const Mat &patch, vector<double> &feature ) = 0;
-        //virtual void process_patch( const Mat &image, pair<double,double> &center, vector<double> &feature ) = 0;
+        virtual void process_patch( const Mat &patch, vector<float> &feature ) = 0;
+        //virtual void process_patch( const Mat &image, pair<float,float> &center, vector<float> &feature ) = 0;
         virtual string name( ) const = 0;
         virtual int descriptor_size( ) const = 0;
         virtual int patch_size( ) const = 0;
@@ -50,9 +50,9 @@ class Descriptor{
         virtual int required_channels( ) const { return 0; };
         virtual ColorMode required_color_mode( ) const { return BW; };
         
-        void process_image( const Mat &image, vector<vector<double> > &features, 
+        void process_image( const Mat &image, vector<vector<float> > &features, 
                             vector< PatchDefinition* > &patch_definitions, bool verbose=false );
-        virtual void process_image( const Mat &image, vector<vector<double> > &features, 
+        virtual void process_image( const Mat &image, vector<vector<float> > &features, 
                             vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm,
                             bool verbose=false );
 

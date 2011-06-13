@@ -27,18 +27,18 @@ FeatureMap :: FeatureMap( ){
 
 FeatureMap :: ~FeatureMap( ){ }
 
-void FeatureMap :: add_feature( const PatchDefinition* patch_definition, const vector<double> &feature ){
+void FeatureMap :: add_feature( const PatchDefinition* patch_definition, const vector<float> &feature ){
     add_feature( patch_definition->center(), feature );
 }
 
-void FeatureMap :: add_feature( const pair< double, double> ctr, const vector<double> &feature ){
+void FeatureMap :: add_feature( const pair< float, float> ctr, const vector<float> &feature ){
     FeatureMapItem item;
-    item.ctr = pair<double, double>( ctr );
-    item.feature = vector<double> ( feature );
+    item.ctr = pair<float, float>( ctr );
+    item.feature = vector<float> ( feature );
     _items.push_back( item ); 
 }
 
-void FeatureMap :: get_feature_points( vector< pair<double, double> > &pts) const{
+void FeatureMap :: get_feature_points( vector< pair<float, float> > &pts) const{
     for( size_t i = 0; i < _items.size(); i++ ){
         pts.push_back( _items[i].ctr );
     }
@@ -75,12 +75,12 @@ void FeatureMap :: read_from_file( string filename ){
     size_t num_features;
     input_file >> num_features;
     for ( size_t i = 0; i < num_features; i++ ){
-        pair<double, double> ctr;
+        pair<float, float> ctr;
         input_file >> ctr.first >> ctr.second;
         input_file >> _patch_size >> _patch_size;
         size_t feature_size;
         input_file >> feature_size;
-        vector<double> feature(feature_size);
+        vector<float> feature(feature_size);
         for( size_t j = 0; j < feature_size; j++ ){
             input_file >> feature[j];
         }

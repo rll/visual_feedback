@@ -25,6 +25,14 @@ using std::min;
 using cv::split;
 using cv::cvtColor;
 using cv::KeyPoint;
+using cv::Size;
+using cv::Point2f;
+using cv::getRotationMatrix2D;
+using cv::warpAffine;
+
+//////////////////////////////////////////
+//          LBP DESCRIPTOR              //
+//////////////////////////////////////////
 
 LBPDescriptor :: LBPDescriptor( int patch_size ){
     _patch_size = patch_size;
@@ -32,7 +40,7 @@ LBPDescriptor :: LBPDescriptor( int patch_size ){
 
 LBPDescriptor :: ~LBPDescriptor( ){ }
 
-void LBPDescriptor :: process_patch( const Mat &patch, vector<double> &feature ){
+void LBPDescriptor :: process_patch( const Mat &patch, vector<float> &feature ){
    calculate_points();
    int results[256];
    int height = patch.size().height;
@@ -76,8 +84,48 @@ ColorMode LBPDescriptor :: required_color_mode() const{
     return BW;
 }
 
+//////////////////////////////////////////
+//          HOG DESCRIPTOR              //
+//////////////////////////////////////////
 
-StackedDescriptor :: StackedDescriptor( vector<Descriptor*> descriptors, vector<double> weights ){
+HOGDescriptor :: HOGDescriptor( int patch_size ){
+    _patch_size = patch_size;
+    int nearest8 = (((patch_size/2)/8)*8)*2;
+    _descriptor = new HOGDescriptor_cv( Size(nearest8/2, nearest8), Size(16,16), 
+                                        Size(8,8), Size(8,8), 9 );
+}
+
+HOGDescriptor :: ~HOGDescriptor( ){ 
+    delete _descriptor;
+}
+
+void HOGDescriptor :: process_patch( const Mat &patch, vector<float> &feature ){
+    _descriptor->compute(patch, feature);
+
+}
+
+string HOGDescriptor :: name( ) const{
+    return "HOG";
+}
+
+int HOGDescriptor :: descriptor_size( ) const{
+    return _descriptor->getDescriptorSize();
+}
+
+int HOGDescriptor :: patch_size( ) const{
+    return _patch_size;
+}
+
+ColorMode HOGDescriptor :: required_color_mode() const{
+    return BW;
+}
+
+
+//////////////////////////////////////////
+//          STACKED DESCRIPTOR          //
+//////////////////////////////////////////
+
+StackedDescriptor :: StackedDescriptor( vector<Descriptor*> descriptors, vector<float> weights ){
     assert (descriptors.size() == weights.size());
     _descriptors = descriptors;
     _weights = weights;
@@ -89,7 +137,7 @@ StackedDescriptor :: ~StackedDescriptor( ){
     }
 }
 
-void StackedDescriptor :: process_patch( const Mat &patch, vector<double> &feature ){
+void StackedDescriptor :: process_patch( const Mat &patch, vector<float> &feature ){
     //Must make sure the patch is in the proper color
     for (size_t i = 0; i < _descriptors.size(); i++){
         Mat converted_patch;
@@ -100,13 +148,13 @@ void StackedDescriptor :: process_patch( const Mat &patch, vector<double> &featu
 }
 
 //For speed, also do this at the image level
-void StackedDescriptor :: process_image( const Mat &image, vector<vector<double> > &features,
+void StackedDescriptor :: process_image( const Mat &image, vector<vector<float> > &features,
                                          vector< PatchDefinition* > &patch_definitions,
                                          const PatchMaker &pm, bool verbose ){
 
-    vector<vector<vector<double> > > features_unflattened;
+    vector<vector<vector<float> > > features_unflattened;
     for (size_t d = 0; d < _descriptors.size(); d++){
-        vector<vector<double> > desc_features;
+        vector<vector<float> > desc_features;
         vector< PatchDefinition* >* patch_def_ptr;
         if (d == 0){
             patch_def_ptr = &patch_definitions;
@@ -165,6 +213,10 @@ ColorMode StackedDescriptor :: required_color_mode( ) const{
 }
 
 
+//////////////////////////////////////////
+//          COLORED DESCRIPTOR          //
+//////////////////////////////////////////
+
 ColoredDescriptor :: ColoredDescriptor( Descriptor* bw_descriptor, ColorMode color_mode ){
     _bw_descriptor = bw_descriptor;
     _color_mode = color_mode;
@@ -175,7 +227,7 @@ ColoredDescriptor :: ~ColoredDescriptor( ){
     delete _bw_descriptor;
 }
 
-void ColoredDescriptor :: process_patch( const Mat &patch, vector<double> &feature ){
+void ColoredDescriptor :: process_patch( const Mat &patch, vector<float> &feature ){
     vector<Mat> channels;
     split(patch, channels);
     for (size_t i = 0; i < channels.size(); i++){
@@ -201,6 +253,52 @@ ColorMode ColoredDescriptor :: required_color_mode() const{
     return _color_mode;
 }
 
+//////////////////////////////////////////
+//          COLORED DESCRIPTOR          //
+//////////////////////////////////////////
+
+RotatedDescriptor :: RotatedDescriptor( Descriptor* bw_descriptor ){
+    _bw_descriptor = bw_descriptor;
+}
+
+
+RotatedDescriptor :: ~RotatedDescriptor( ){
+    delete _bw_descriptor;
+}
+
+void RotatedDescriptor :: process_patch( const Mat &patch, vector<float> &feature ){
+    float ctr_x = (patch.size().width-1)  / 2.;
+    float ctr_y = (patch.size().height-1) / 2.;
+    for (int i = 0; i < 4; i++){
+        Mat r = getRotationMatrix2D( Point2f(ctr_x, ctr_y), 90*i, 1 );
+        Mat rotated_patch;
+        warpAffine( patch, rotated_patch, r, patch.size() );
+        _bw_descriptor->process_patch( rotated_patch, feature );
+        rotated_patch.release();
+        r.release();
+    }
+
+}
+
+string RotatedDescriptor :: name( ) const{
+    return "Rotated"+_bw_descriptor->name();
+}
+
+int RotatedDescriptor :: descriptor_size( ) const{
+    return 4*_bw_descriptor->descriptor_size();
+}
+
+int RotatedDescriptor :: patch_size( ) const{
+    return _bw_descriptor->patch_size();
+}
+
+ColorMode RotatedDescriptor :: required_color_mode() const{
+    return _bw_descriptor->required_color_mode();
+}
+
+//////////////////////////////////////////
+//        HUE HISTOGRAM DESCRIPTOR      //
+//////////////////////////////////////////
 
 HueHistogramDescriptor :: HueHistogramDescriptor ( int patch_size, int num_bins ){
     _patch_size = patch_size;
@@ -209,10 +307,10 @@ HueHistogramDescriptor :: HueHistogramDescriptor ( int patch_size, int num_bins 
 
 HueHistogramDescriptor :: ~HueHistogramDescriptor ( ){ };
 
-void HueHistogramDescriptor :: process_patch( const Mat &patch, vector<double> &feature ){
+void HueHistogramDescriptor :: process_patch( const Mat &patch, vector<float> &feature ){
     vector<Mat> hsv;
     split( patch, hsv );
-    vector<double> hues;
+    vector<float> hues;
     //cout << "TYPE: " << hsv[0].type() << endl;
     //cout << "SIZE: " << hsv[0].size().width << ", " << hsv[0].size().height << ", " << hsv[0].channels() << endl;
     //cout << "CV_8U :" << CV_8UC3 << endl;
@@ -251,8 +349,8 @@ ColorMode HueHistogramDescriptor :: required_color_mode( ) const{
 
 
 /* Makes a normalized histogram of values with soft binning */
-void soft_histogram( const vector<double> &values, vector<double> &output, int num_bins, double min_val, double max_val, bool cycle ){
-  output = vector<double>(num_bins);
+void soft_histogram( const vector<float> &values, vector<float> &output, int num_bins, float min_val, float max_val, bool cycle ){
+  output = vector<float>(num_bins);
   if(num_bins == 0){
     return;
   }
@@ -262,10 +360,10 @@ void soft_histogram( const vector<double> &values, vector<double> &output, int n
       return;
     }
   }
-  double step = (max_val - min_val) / num_bins;
+  float step = (max_val - min_val) / num_bins;
   int num_values = (int) values.size();
   for (int i = 0; i < num_values; i++){
-    double val = values[i];
+    float val = values[i];
     if (val < min_val){
       output[0] += 1;
       continue;
@@ -274,9 +372,9 @@ void soft_histogram( const vector<double> &values, vector<double> &output, int n
       output[num_bins - 1] += 1;
       continue;
     }
-    double val_normalized = (val - min_val) / step;
+    float val_normalized = (val - min_val) / step;
     int my_bin = (int) floor(val_normalized);
-    double dist_from_center = val_normalized - (my_bin + 0.5);
+    float dist_from_center = val_normalized - (my_bin + 0.5);
     int nearest_bin;
     if (dist_from_center < 0)
       nearest_bin = my_bin - 1;
@@ -293,7 +391,7 @@ void soft_histogram( const vector<double> &values, vector<double> &output, int n
     output[nearest_bin] += fabs(dist_from_center);
   }
   //Normalize
-  double sum = 0;
+  float sum = 0;
   for (int i = 0; i < num_bins; i++){
     sum += output[i];
   }
@@ -320,6 +418,9 @@ int int_mod(int a, int b){
   return ret_val;
 }
 
+//////////////////////////////////////////
+//        SIFT DESCRIPTOR               //
+//////////////////////////////////////////
 
 SIFTDescriptor :: SIFTDescriptor( int patch_size ){
     _patch_size = patch_size;
@@ -330,7 +431,7 @@ SIFTDescriptor :: ~SIFTDescriptor( ){
     //delete _descriptor_extractor;
 }
 
-void SIFTDescriptor :: process_patch( const Mat &patch, vector<double> &feature ){
+void SIFTDescriptor :: process_patch( const Mat &patch, vector<float> &feature ){
     vector<KeyPoint> keypts;
     float ctr_x =  (patch.size().width -1 ) / 2.;
     float ctr_y = ( patch.size().height-1 ) / 2.;
@@ -344,18 +445,22 @@ void SIFTDescriptor :: process_patch( const Mat &patch, vector<double> &feature 
     }
 }
 
-void SIFTDescriptor :: process_image(    const Mat &image, vector<vector<double> > &features,
+void SIFTDescriptor :: process_image(    const Mat &image, vector<vector<float> > &features,
                                          vector< PatchDefinition* > &patch_definitions,
                                          const PatchMaker &pm, bool verbose ){
     Mat converted_image;
     get_proper_colors( image, converted_image);
     pm.get_patch_definitions ( converted_image, patch_definitions );
     vector<KeyPoint> keypts;
+    if (verbose){
+        cout << "Making keypoints" << endl;
+    }
     for ( size_t i = 0; i < patch_definitions.size(); i++ ){
-        float ctr_x = patch_definitions[i]->center().first; 
-        float ctr_y = patch_definitions[i]->center().second;
-        float size  = patch_definitions[i]->size();
-        keypts.push_back(KeyPoint(ctr_x, ctr_y, size) ); 
+        //float ctr_x = patch_definitions[i]->center().first; 
+        //float ctr_y = patch_definitions[i]->center().second;
+        //float size  = patch_definitions[i]->size();
+        //keypts.push_back(KeyPoint(ctr_x, ctr_y, size) ); 
+        keypts.push_back(patch_definitions[i]->get_keypoint() ); 
     }
     Mat descriptors;
     _descriptor_extractor->compute( converted_image, keypts, descriptors );
@@ -363,7 +468,7 @@ void SIFTDescriptor :: process_image(    const Mat &image, vector<vector<double>
         if (verbose){
             cout << "On patch " << p+1 << " of " << descriptors.size().height << endl;
         }
-        vector<double> feature;
+        vector<float> feature;
         float* feature_vals = descriptors.ptr<float>(p);
         for( int i = 0; i < descriptors.size().width; i++ ){
             feature.push_back( feature_vals[i] );

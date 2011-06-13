@@ -21,9 +21,12 @@
 #include <patch_vision/thirdparty/LBP.h>
 #include <iostream>
 #include <opencv2/features2d/features2d.hpp>
+#include <opencv2/objdetect/objdetect.hpp>
 
 using cv::Ptr;
 using cv::DescriptorExtractor;
+//using cv::HOGDescriptor;
+typedef cv::HOGDescriptor HOGDescriptor_cv;
 
 class LBPDescriptor : public Descriptor{
     public:
@@ -31,7 +34,7 @@ class LBPDescriptor : public Descriptor{
         LBPDescriptor( int patch_size );
         ~LBPDescriptor( );
 
-        void process_patch( const Mat &patch, vector<double> &feature );
+        void process_patch( const Mat &patch, vector<float> &feature );
         string name( ) const;
         int descriptor_size( ) const;
         int patch_size( ) const;
@@ -42,15 +45,33 @@ class LBPDescriptor : public Descriptor{
         int _patch_size;
 };
 
+class HOGDescriptor : public Descriptor{
+    public:
+
+        HOGDescriptor( int patch_size );
+        ~HOGDescriptor( );
+
+        void process_patch( const Mat &patch, vector<float> &feature );
+        string name( ) const;
+        int descriptor_size( ) const;
+        int patch_size( ) const;
+
+        ColorMode required_color_mode( ) const;
+        
+    private:
+        int _patch_size;
+        HOGDescriptor_cv* _descriptor;
+};
+
 
 class StackedDescriptor : public Descriptor{
     public:
         
-        StackedDescriptor( vector<Descriptor*> descriptors, vector<double> weights );
+        StackedDescriptor( vector<Descriptor*> descriptors, vector<float> weights );
         ~StackedDescriptor( );
 
-        void process_patch( const Mat &patch, vector<double> &feature );
-        void process_image( const Mat &image, vector<vector<double> > &features, 
+        void process_patch( const Mat &patch, vector<float> &feature );
+        void process_image( const Mat &image, vector<vector<float> > &features, 
                             vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm, 
                             bool verbose=false );
         string name( ) const;
@@ -61,7 +82,7 @@ class StackedDescriptor : public Descriptor{
 
     private:
         vector<Descriptor*> _descriptors;
-        vector<double> _weights;
+        vector<float> _weights;
 };
 
 class ColoredDescriptor : public Descriptor{
@@ -70,7 +91,7 @@ class ColoredDescriptor : public Descriptor{
         ColoredDescriptor( Descriptor* bw_descriptor, ColorMode color_mode );
         ~ColoredDescriptor( );
 
-        void process_patch( const Mat &patch, vector<double> &feature );
+        void process_patch( const Mat &patch, vector<float> &feature );
         string name( ) const;
         int descriptor_size( ) const;
         int patch_size( ) const;
@@ -83,13 +104,31 @@ class ColoredDescriptor : public Descriptor{
 
 };
 
+class RotatedDescriptor : public Descriptor{
+    public:
+        
+        RotatedDescriptor( Descriptor* bw_descriptor );
+        ~RotatedDescriptor( );
+
+        void process_patch( const Mat &patch, vector<float> &feature );
+        string name( ) const;
+        int descriptor_size( ) const;
+        int patch_size( ) const;
+
+        ColorMode required_color_mode( ) const;
+
+    private:
+        Descriptor* _bw_descriptor;
+
+};
+
 class HueHistogramDescriptor : public Descriptor{
     public:
 
         HueHistogramDescriptor( int patch_size, int num_bins );
         ~HueHistogramDescriptor( );
 
-        void process_patch( const Mat &patch, vector<double> &feature );
+        void process_patch( const Mat &patch, vector<float> &feature );
         string name( ) const;
         int descriptor_size( ) const;
         int patch_size( ) const;
@@ -102,7 +141,7 @@ class HueHistogramDescriptor : public Descriptor{
 
 };
 
-void soft_histogram( const vector<double> &values, vector<double> &output, int num_bins, double min_val, double max_val, bool cycle );
+void soft_histogram( const vector<float> &values, vector<float> &output, int num_bins, float min_val, float max_val, bool cycle );
 
 float float_mod(float a, float b);
 int int_mod(int a, int b);
@@ -112,8 +151,8 @@ class SIFTDescriptor : public Descriptor{
         SIFTDescriptor( int patch_size );
         ~SIFTDescriptor( );
 
-        void process_patch( const Mat &patch, vector<double> &feature );
-        void process_image( const Mat &image, vector<vector<double> > &features, 
+        void process_patch( const Mat &patch, vector<float> &feature );
+        void process_image( const Mat &image, vector<vector<float> > &features, 
                             vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm, 
                             bool verbose=false );
         string name( ) const;
