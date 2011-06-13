@@ -66,6 +66,10 @@ class ZoomWindow:
         if char_str == 'q':
             self.quit()
             return False
+        elif char_str == 'i':
+            self.zoom_in_more()
+        elif char_str == 'o':
+            self.zoom_out_more()
         return True
 
     def zoom_in_more(self):

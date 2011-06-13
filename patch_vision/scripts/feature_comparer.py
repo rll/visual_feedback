@@ -132,7 +132,6 @@ def main(args):
     compared_featuremap.read_from_file( args.compared_features )
     reference_featuremap = FeatureMap()
     reference_featuremap.read_from_file( args.reference_features )
-
     compare_window = ClickWindow( compared_image, args.compare_zoom_out)
     reference_window = ReferenceWindow( reference_image, args.reference_zoom_out,
                                         reference_featuremap.get_patch_size())

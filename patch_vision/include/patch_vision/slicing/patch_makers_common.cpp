@@ -18,6 +18,7 @@
 
 #include <patch_vision/slicing/patch_makers_common.h>
 
+using std::min;
 using cv::Range;
 using cv::Size_;
 
@@ -38,7 +39,8 @@ pair<double, double> RectangularPatch :: center( ) const{
 }
 
 int RectangularPatch :: size( ) const{
-    return _width * _height;
+    //return _width * _height;
+    return min(_height, _width);
 }
 
 void RectangularPatch :: extract_from_image(const Mat &image, Mat &patch) const{

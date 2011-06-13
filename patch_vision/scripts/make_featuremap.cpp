@@ -35,7 +35,12 @@ using cv::imread;
 enum FeatureT{
     RAW_BW,
     RAW_COLOR,
-    LBP
+    LBP,
+    RGB_LBP,
+    HSV_LBP,
+    SIFT,
+    HUE_HISTOGRAM,
+    LBP_PLUS_HUE_HISTOGRAM
 };
 
 struct Options
@@ -91,12 +96,28 @@ int options(int ac, char ** av, Options& opts)
     else if ( !strcmp(opts.feature_name.c_str(), "LBP") ){
         opts.feature = LBP;
     }
+    else if ( !strcmp(opts.feature_name.c_str(), "SIFT") ){
+        opts.feature = SIFT;
+    }
+    else if ( !strcmp(opts.feature_name.c_str(), "RGB_LBP") ){
+        opts.feature = RGB_LBP;
+    }
+    else if ( !strcmp(opts.feature_name.c_str(), "HSV_LBP") ){
+        opts.feature = HSV_LBP;
+    }
+    else if ( !strcmp(opts.feature_name.c_str(), "HUE_HISTOGRAM") ){
+        opts.feature = HUE_HISTOGRAM;
+    }
+    else if ( !strcmp(opts.feature_name.c_str(), "LBP+HUE_HISTOGRAM") ){
+        opts.feature = LBP_PLUS_HUE_HISTOGRAM;
+    }
     else{
         cout << opts.feature_name << " is not a valid descriptor" << endl;
         return 1;
     }
     return 0;
 }
+
 
 int main(int argc, char** argv) {
     Options opts;
@@ -121,10 +142,37 @@ int main(int argc, char** argv) {
         case LBP:
             descriptor = new LBPDescriptor( opts.patch_size );
             break;
+        case SIFT:
+            descriptor = new SIFTDescriptor( opts.patch_size );
+            break;
+        case RGB_LBP:
+            {Descriptor* bw_descriptor = new LBPDescriptor( opts.patch_size );
+            descriptor = new ColoredDescriptor( bw_descriptor, RGB );
+            break;}
+        
+        case HSV_LBP:
+            {Descriptor* bw_descriptor = new LBPDescriptor( opts.patch_size );
+            descriptor = new ColoredDescriptor( bw_descriptor, HSV );
+            break;}
+
+        case HUE_HISTOGRAM:
+            descriptor = new HueHistogramDescriptor( opts.patch_size, 20 );
+            break;
+        case LBP_PLUS_HUE_HISTOGRAM:
+            {
+            vector<Descriptor*> descriptors;
+            vector<double> weights;
+            descriptors.push_back( new LBPDescriptor( opts.patch_size ) );
+            weights.push_back(1.0);
+            descriptors.push_back( new HueHistogramDescriptor( opts.patch_size, 20 ) );
+            weights.push_back(1.0);
+            descriptor = new StackedDescriptor( descriptors, weights);
+            break;
+            }
     }
     vector< vector<double> > features;
     vector< PatchDefinition* > patch_definitions;
-    descriptor->process_image( image, features, patch_definitions, *pm );
+    descriptor->process_image( image, features, patch_definitions, *pm, opts.verbose );
     // Save the featuremap
     FeatureMap fm;
     fm.set_patch_size( opts.patch_size );

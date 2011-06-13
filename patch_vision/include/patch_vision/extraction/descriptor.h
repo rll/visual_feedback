@@ -32,6 +32,9 @@ using std::pair;
 using std::string;
 using cv::Mat;
 
+enum ColorMode{
+    ANY_COLOR, BW, RGB, HSV, Opponent
+};
 
 class Descriptor{
     public:
@@ -45,14 +48,16 @@ class Descriptor{
         virtual int patch_size( ) const = 0;
 
         virtual int required_channels( ) const { return 0; };
-        virtual bool auto_grayscale( ) const { return true; };
+        virtual ColorMode required_color_mode( ) const { return BW; };
         
         void process_image( const Mat &image, vector<vector<double> > &features, 
-                            vector< PatchDefinition* > &patch_definitions );
-        void process_image( const Mat &image, vector<vector<double> > &features, 
-                            vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm );
+                            vector< PatchDefinition* > &patch_definitions, bool verbose=false );
+        virtual void process_image( const Mat &image, vector<vector<double> > &features, 
+                            vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm,
+                            bool verbose=false );
 
         virtual PatchMaker* get_default_patch_maker( );
+        void get_proper_colors( const Mat &image, Mat &converted_image );
 };
 
 #endif
