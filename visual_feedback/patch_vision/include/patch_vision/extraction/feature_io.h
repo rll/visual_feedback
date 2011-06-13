@@ -25,8 +25,8 @@
 using std::string;
 
 typedef struct FeatureMapItem{
-    pair<double, double> ctr;
-    vector<double> feature;
+    pair<float, float> ctr;
+    vector<float> feature;
 } FeatureMapItem;
 
 class FeatureMap{
@@ -34,9 +34,9 @@ class FeatureMap{
         FeatureMap();
         ~FeatureMap();
 
-        void add_feature( const PatchDefinition *patch_definition, const vector<double> &feature );
-        void add_feature( const pair<double, double> ctr, const vector<double> &feature );
-        void get_feature_points( vector< pair<double, double> > &pts) const;
+        void add_feature( const PatchDefinition *patch_definition, const vector<float> &feature );
+        void add_feature( const pair<float, float> ctr, const vector<float> &feature );
+        void get_feature_points( vector< pair<float, float> > &pts) const;
         void set_patch_size( int patch_size );
         int get_patch_size( ) const;
         void save_to_file( string filename ) const;

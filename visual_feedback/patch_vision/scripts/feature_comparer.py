@@ -34,6 +34,7 @@ class ReferenceWindow( ZoomWindow ):
         self.distance_layer = cv.CreateImage( (image.width, image.height), image.depth, 3)
         self.view_image = cv.CreateImage( (image.width, image.height), image.depth, 3)
         self.nn = None
+        self.knn = None
         self.show_gradient = False
         self.log_scale = True
         self.gamma = 0.1
@@ -68,10 +69,18 @@ class ReferenceWindow( ZoomWindow ):
             v1,v2 = get_rect_vertices(self.nn, self.patch_size[0], self.patch_size[1])
             cv.Rectangle( self.view_image, 
                           v1, v2, cv.RGB(0,255,0), 1 )
+        if self.knn and not self.show_gradient:
+            for i,pt in enumerate(self.knn):
+                factor = 1 - i / float(len(self.knn))
+                cv.Circle( self.view_image, pt, 5*self.zoom_out, cv.RGB(factor*255,0,0), -1 )
+                
         return self.view_image
 
     def set_nn( self, pt ):
         self.nn = pt
+
+    def set_knn( self, knn ):
+        self.knn = knn
 
     def set_distance_map( self, distance_map):
         self.distance_map = distance_map
@@ -150,11 +159,13 @@ def main(args):
             compared_feature = compared_featuremap.get_feature( closest_pt )
             distance_map = {}
             for pt in reference_featuremap.get_feature_points():
-                distance_map[pt] = l2_dist( compared_feature,
+                distance_map[pt] = chi2_dist( compared_feature,
                                               reference_featuremap.get_feature(pt) )
-            nearest_neighbor = min( distance_map.keys(),
-                                    key = lambda pt: distance_map[pt] )
-            reference_window.set_nn( nearest_neighbor )
+            ##nearest_neighbor = min( distance_map.keys(),
+            ##                        key = lambda pt: distance_map[pt] )
+            ##reference_window.set_nn( nearest_neighbor )
+            knn = compute_knn( distance_map.keys(), lambda pt: distance_map[pt], 20 )
+            reference_window.set_knn( knn )
             reference_window.set_distance_map( distance_map )
             compare_window.update_nn = False
 
@@ -176,6 +187,19 @@ def chi2_dist(v1, v2):
     dist = np.dot(diff,diff)
     return dist
 
+
+def compute_knn( comparisons, key, n ):
+    knn = []
+    for i in range(len(comparisons)):
+        dist = key( comparisons[i] )
+        if len(knn) < n:
+            knn.append( comparisons[i] )
+        elif dist < key( knn[n-1] ):
+            knn[n-1] = comparisons[i]
+        else:
+            continue
+        knn.sort(key = key)
+    return knn    
 
         
 if __name__ == '__main__':

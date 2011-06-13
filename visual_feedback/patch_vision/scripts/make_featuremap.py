@@ -13,8 +13,10 @@ import rospy
 
 
 PACKAGE_NAME = "patch_vision"
-CPP_DESCRIPTORS = [ 'LBP', 'HSV_LBP', 'RGB_LBP', 'SIFT', 
-                    'HUE_HISTOGRAM', 'LBP+HUE_HISTOGRAM']
+CPP_DESCRIPTORS = [ 'LBP', 'HSV_LBP', 'RGB_LBP', 'SIFT', 'HOG', 'HUE_HISTOGRAM', 
+                    'LBP+HUE_HISTOGRAM', 'LBP+SIFT', 'LBP+SIFT+HUE_HISTOGRAM', 
+                    'ROTATED_LBP+HUE_HISTOGRAM', 'ROTATED_LBP+SIFT', 'ROTATED_LBP+SIFT+HUE_HISTOGRAM', 
+                    'ROTATED_LBP']
 PYTHON_DESCRIPTORS = ['RAW_BW','RAW_COLOR']
 
 def parse():
@@ -39,6 +41,9 @@ def parse():
     parser.add_argument(    '-s','--patch-step',   dest='patch_step', type=int,   
                             default = None,
                             help='Amount to step from one patch to the next' )
+    parser.add_argument(    '-D','--keypoint-detector', dest='detector', type=str,
+                            default = "DENSE", choices=["DENSE","SIFT"],
+                            help="Keypoint detector to use" );
     parser.add_argument(    '-v','--verbose',   dest='verbose', action='store_true',
                             default=False,
                             help='Print debugging information' )
@@ -64,9 +69,9 @@ def main(args):
         args.patch_step = args.patch_size
     
     if args.feature_type in CPP_DESCRIPTORS:
-        cmd = "rosrun %s make_featuremap -i %s -o %s -f %s -p %d -s %d %s"%(
+        cmd = "rosrun %s make_featuremap -i %s -o %s -f %s -p %d -s %d -D %s %s"%(
                 PACKAGE_NAME, args.input_image, output_file, args.feature_type, 
-                args.patch_size, args.patch_step, "-v" if args.verbose else "")
+                args.patch_size, args.patch_step, args.detector, "-v" if args.verbose else "")
         print "Calling %s"%cmd
         return call( cmd, shell=True);
     

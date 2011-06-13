@@ -39,8 +39,20 @@ enum FeatureT{
     RGB_LBP,
     HSV_LBP,
     SIFT,
+    HOG,
     HUE_HISTOGRAM,
-    LBP_PLUS_HUE_HISTOGRAM
+    LBP_PLUS_HUE_HISTOGRAM,
+    LBP_PLUS_SIFT,
+    LBP_PLUS_SIFT_PLUS_HUE_HISTOGRAM,
+    ROTATED_LBP,
+    ROTATED_LBP_PLUS_HUE_HISTOGRAM,
+    ROTATED_LBP_PLUS_SIFT,
+    ROTATED_LBP_PLUS_SIFT_PLUS_HUE_HISTOGRAM
+};
+
+enum DetectorT{
+    DENSE_DETECTOR,
+    SIFT_DETECTOR
 };
 
 struct Options
@@ -48,7 +60,9 @@ struct Options
     string image_file;
     string output_file;
     string feature_name;
+    string detector_name;
     FeatureT feature;
+    DetectorT detector;
 
     int patch_size;
     int step_size;
@@ -70,6 +84,7 @@ int options(int ac, char ** av, Options& opts)
       ("feature_type,f" , po::value<string>(&opts.feature_name),  "descriptor to use")
       ("patch_size,p"   , po::value<int>(&opts.patch_size),     "patch size")
       ("step_size,s"    , po::value<int>(&opts.step_size),      "step size")
+      ("detector,D"    , po::value<string>(&opts.detector_name),      "detector to use")
       ("verbose,v", "Whether to print out debugging statements")
       ;
     po::variables_map vm;
@@ -99,6 +114,9 @@ int options(int ac, char ** av, Options& opts)
     else if ( !strcmp(opts.feature_name.c_str(), "SIFT") ){
         opts.feature = SIFT;
     }
+    else if ( !strcmp(opts.feature_name.c_str(), "HOG") ){
+        opts.feature = HOG;
+    }
     else if ( !strcmp(opts.feature_name.c_str(), "RGB_LBP") ){
         opts.feature = RGB_LBP;
     }
@@ -111,13 +129,49 @@ int options(int ac, char ** av, Options& opts)
     else if ( !strcmp(opts.feature_name.c_str(), "LBP+HUE_HISTOGRAM") ){
         opts.feature = LBP_PLUS_HUE_HISTOGRAM;
     }
+    else if ( !strcmp(opts.feature_name.c_str(), "LBP+SIFT") ){
+        opts.feature = LBP_PLUS_SIFT;
+    }
+    else if ( !strcmp(opts.feature_name.c_str(), "LBP+SIFT+HUE_HISTOGRAM") ){
+        opts.feature = LBP_PLUS_SIFT_PLUS_HUE_HISTOGRAM;
+    }
+    else if ( !strcmp(opts.feature_name.c_str(), "ROTATED_LBP") ){
+        opts.feature = ROTATED_LBP;
+    }
+    else if ( !strcmp(opts.feature_name.c_str(), "ROTATED_LBP+HUE_HISTOGRAM") ){
+        opts.feature = ROTATED_LBP_PLUS_HUE_HISTOGRAM;
+    }
+    else if ( !strcmp(opts.feature_name.c_str(), "ROTATED_LBP+SIFT") ){
+        opts.feature = ROTATED_LBP_PLUS_SIFT;
+    }
+    else if ( !strcmp(opts.feature_name.c_str(), "ROTATED_LBP+SIFT+HUE_HISTOGRAM") ){
+        opts.feature = ROTATED_LBP_PLUS_SIFT_PLUS_HUE_HISTOGRAM;
+    }
     else{
         cout << opts.feature_name << " is not a valid descriptor" << endl;
         return 1;
     }
+    
+    if ( !strcmp(opts.detector_name.c_str(), "DENSE") ){
+        opts.detector = DENSE_DETECTOR;
+    }
+    else if ( !strcmp(opts.detector_name.c_str(), "SIFT") ){
+        opts.detector = SIFT_DETECTOR;
+    }
+    else{
+        cout << opts.detector_name << " is not a valid detector" << endl;
+        throw;
+    }
     return 0;
 }
 
+Descriptor* getRotated( Descriptor* init_descriptor ){
+    return new RotatedDescriptor( init_descriptor );
+}
+
+Descriptor* getColored( Descriptor* bw_descriptor, ColorMode color_mode ){
+    return new ColoredDescriptor( bw_descriptor, color_mode );
+}
 
 int main(int argc, char** argv) {
     Options opts;
@@ -127,7 +181,16 @@ int main(int argc, char** argv) {
     // Read in the image
     Mat image = imread(opts.image_file);
     // Create the Patch Maker
-    SlidingWindowPatchMaker* pm = new SlidingWindowPatchMaker(opts.patch_size, opts.patch_size, opts.step_size, opts.step_size );
+    PatchMaker* pm;
+    switch ( opts.detector ){
+        case DENSE_DETECTOR:
+            pm = new SlidingWindowPatchMaker(opts.patch_size, opts.patch_size, opts.step_size, opts.step_size );
+            break;
+        
+        case SIFT_DETECTOR:
+            pm = new SIFTPatchMaker( );
+            break;
+    }
     // Create the descriptor
     Descriptor* descriptor;
     switch ( opts.feature ){
@@ -142,26 +205,28 @@ int main(int argc, char** argv) {
         case LBP:
             descriptor = new LBPDescriptor( opts.patch_size );
             break;
+        case ROTATED_LBP:
+            descriptor = getRotated( new LBPDescriptor( opts.patch_size ) );
+            break;
         case SIFT:
             descriptor = new SIFTDescriptor( opts.patch_size );
             break;
+        case HOG:
+            descriptor = new HOGDescriptor( opts.patch_size );
+            break;
         case RGB_LBP:
-            {Descriptor* bw_descriptor = new LBPDescriptor( opts.patch_size );
-            descriptor = new ColoredDescriptor( bw_descriptor, RGB );
-            break;}
-        
+            descriptor = getColored( new LBPDescriptor (opts.patch_size), RGB );
+            break; 
         case HSV_LBP:
-            {Descriptor* bw_descriptor = new LBPDescriptor( opts.patch_size );
-            descriptor = new ColoredDescriptor( bw_descriptor, HSV );
-            break;}
-
+            descriptor = getColored( new LBPDescriptor (opts.patch_size), HSV );
+            break; 
         case HUE_HISTOGRAM:
             descriptor = new HueHistogramDescriptor( opts.patch_size, 20 );
             break;
         case LBP_PLUS_HUE_HISTOGRAM:
             {
             vector<Descriptor*> descriptors;
-            vector<double> weights;
+            vector<float> weights;
             descriptors.push_back( new LBPDescriptor( opts.patch_size ) );
             weights.push_back(1.0);
             descriptors.push_back( new HueHistogramDescriptor( opts.patch_size, 20 ) );
@@ -169,8 +234,67 @@ int main(int argc, char** argv) {
             descriptor = new StackedDescriptor( descriptors, weights);
             break;
             }
+        case LBP_PLUS_SIFT:
+            {
+            vector<Descriptor*> descriptors;
+            vector<float> weights;
+            descriptors.push_back( new LBPDescriptor( opts.patch_size ) );
+            weights.push_back(1.0);
+            descriptors.push_back( new SIFTDescriptor( opts.patch_size ) );
+            weights.push_back(1.0);
+            descriptor = new StackedDescriptor( descriptors, weights);
+            break;
+            }
+        case LBP_PLUS_SIFT_PLUS_HUE_HISTOGRAM:
+            {
+            vector<Descriptor*> descriptors;
+            vector<float> weights;
+            descriptors.push_back( new LBPDescriptor( opts.patch_size ) );
+            weights.push_back(1.0);
+            descriptors.push_back( new SIFTDescriptor( opts.patch_size ) );
+            weights.push_back(1.0);
+            descriptors.push_back( new HueHistogramDescriptor( opts.patch_size, 20 ) );
+            weights.push_back(1.0);
+            descriptor = new StackedDescriptor( descriptors, weights);
+            break;
+            }
+        case ROTATED_LBP_PLUS_HUE_HISTOGRAM:
+            {
+            vector<Descriptor*> descriptors;
+            vector<float> weights;
+            descriptors.push_back( getRotated( new LBPDescriptor( opts.patch_size ) ) );
+            weights.push_back(1.0);
+            descriptors.push_back( new HueHistogramDescriptor( opts.patch_size, 20 ) );
+            weights.push_back(1.0);
+            descriptor = new StackedDescriptor( descriptors, weights);
+            break;
+            }
+        case ROTATED_LBP_PLUS_SIFT:
+            {
+            vector<Descriptor*> descriptors;
+            vector<float> weights;
+            descriptors.push_back( getRotated( new LBPDescriptor( opts.patch_size ) ) );
+            weights.push_back(1.0);
+            descriptors.push_back( new SIFTDescriptor( opts.patch_size ) );
+            weights.push_back(1.0);
+            descriptor = new StackedDescriptor( descriptors, weights);
+            break;
+            }
+        case ROTATED_LBP_PLUS_SIFT_PLUS_HUE_HISTOGRAM:
+            {
+            vector<Descriptor*> descriptors;
+            vector<float> weights;
+            descriptors.push_back( getRotated( new LBPDescriptor( opts.patch_size ) ) );
+            weights.push_back(1.0);
+            descriptors.push_back( new SIFTDescriptor( opts.patch_size ) );
+            weights.push_back(1.0);
+            descriptors.push_back( new HueHistogramDescriptor( opts.patch_size, 20 ) );
+            weights.push_back(1.0);
+            descriptor = new StackedDescriptor( descriptors, weights);
+            break;
+            }
     }
-    vector< vector<double> > features;
+    vector< vector<float> > features;
     vector< PatchDefinition* > patch_definitions;
     descriptor->process_image( image, features, patch_definitions, *pm, opts.verbose );
     // Save the featuremap

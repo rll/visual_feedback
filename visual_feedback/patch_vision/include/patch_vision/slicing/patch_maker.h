@@ -22,11 +22,13 @@
 #include <vector>
 
 #include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
 
 using std::vector;
 using std::pair;
 using std::string;
 using cv::Mat;
+using cv::KeyPoint;
 
 class PatchDefinition{
     public:
@@ -34,6 +36,7 @@ class PatchDefinition{
         virtual pair<double, double> center() const=0;
         virtual int size() const=0;
         virtual void extract_from_image(const Mat &image, Mat &patch) const=0; 
+        virtual KeyPoint get_keypoint( ) const=0;
 };
 
 class PatchMaker{

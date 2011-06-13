@@ -23,13 +23,13 @@ using std::cout;
 using std::endl;
 using cv::cvtColor;
 
-void Descriptor::process_image( const Mat &image, vector<vector<double> > &features, 
+void Descriptor::process_image( const Mat &image, vector<vector<float> > &features, 
                                 vector< PatchDefinition* > &patch_definitions, bool verbose ){
     PatchMaker* pm = get_default_patch_maker( );
     process_image( image, features, patch_definitions, *pm, verbose );
 }
 
-void Descriptor::process_image( const Mat &image, vector<vector<double> > &features, 
+void Descriptor::process_image( const Mat &image, vector<vector<float> > &features, 
                                 vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm, bool verbose ){
     Mat converted_image;
     get_proper_colors( image, converted_image);
@@ -39,7 +39,7 @@ void Descriptor::process_image( const Mat &image, vector<vector<double> > &featu
         if (verbose){
             cout << "On patch " << i+1 << " of " << patches.size() << endl;
         }
-        vector<double> feature;
+        vector<float> feature;
         process_patch( patches[i], feature );
         features.push_back( feature );
     }
@@ -52,9 +52,8 @@ PatchMaker* Descriptor::get_default_patch_maker(  ){
 void Descriptor::get_proper_colors( const Mat &image, Mat &converted_image ){
     
     if (image.channels() == 1 && required_color_mode() != BW){
-        cerr << "Must give a colored image" << endl;
-        cout << "BLAH" << endl;
-        return;
+        cout << "Must give a colored image" << endl;
+        throw;
     }
     switch (required_color_mode()){
         case BW:
