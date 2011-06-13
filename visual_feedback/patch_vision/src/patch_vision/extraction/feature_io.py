@@ -25,6 +25,7 @@ class FeatureMap:
 
     def save_to_file(self, filename):
         f = open(filename,'w')
+        f.write("%d\n"%len(self.get_feature_points()))
         for pt in self.get_feature_points():
             f.write("%f %f"%(pt[0],pt[1]))
             f.write("\t")
@@ -39,7 +40,9 @@ class FeatureMap:
 
     def read_from_file(self, filename):
         f = open(filename,'r')
-        for ln in f.readlines():
+        for i,ln in enumerate(f.readlines()):
+            if i == 0:
+                continue
             vals = [float(val_str) for val_str in ln.split()]
             pt = (vals[0],vals[1])
             patch_size = (vals[2], vals[3])

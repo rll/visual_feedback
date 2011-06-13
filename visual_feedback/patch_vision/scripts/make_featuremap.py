@@ -13,7 +13,8 @@ import rospy
 
 
 PACKAGE_NAME = "patch_vision"
-CPP_DESCRIPTORS = ['LBP']
+CPP_DESCRIPTORS = [ 'LBP', 'HSV_LBP', 'RGB_LBP', 'SIFT', 
+                    'HUE_HISTOGRAM', 'LBP+HUE_HISTOGRAM']
 PYTHON_DESCRIPTORS = ['RAW_BW','RAW_COLOR']
 
 def parse():
@@ -63,9 +64,9 @@ def main(args):
         args.patch_step = args.patch_size
     
     if args.feature_type in CPP_DESCRIPTORS:
-        cmd = "rosrun %s make_featuremap -i %s -o %s -f %s -p %d -s %d"%(
+        cmd = "rosrun %s make_featuremap -i %s -o %s -f %s -p %d -s %d %s"%(
                 PACKAGE_NAME, args.input_image, output_file, args.feature_type, 
-                args.patch_size, args.patch_step)
+                args.patch_size, args.patch_step, "-v" if args.verbose else "")
         print "Calling %s"%cmd
         return call( cmd, shell=True);
     
