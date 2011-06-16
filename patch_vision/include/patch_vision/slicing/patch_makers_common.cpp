@@ -20,25 +20,21 @@
 
 using std::min;
 using std::max;
-using cv::Range;
 using std::cout;
 
+using cv::Range;
+using cv::circle;
+using cv::Point2f;
+
+////////////////////////////////
+//      RectangularPatch      //
+////////////////////////////////
 
 RectangularPatch :: RectangularPatch ( int x, int y, int width, int height ){
     _x = x;
     _y = y;
     _width = width;
     _height = height;
-}
- RectangularPatch :: RectangularPatch ( const KeyPoint &kp ){
-    double ctr_x = kp.pt.x;
-    double ctr_y = kp.pt.y;
-    double size = kp.size;
-    _x = ctr_x - (size-1)/2.;
-    _y = ctr_y - (size-1)/2.;
-    _width = size;
-    _height = size;
-    //cout << "Made patch at " << _x << ", " << _y << " of size " << size << "x" << size << endl;
 }
 
 RectangularPatch :: ~RectangularPatch ( ){ };
@@ -55,21 +51,56 @@ int RectangularPatch :: size( ) const{
     return min(_height, _width);
 }
 
-void RectangularPatch :: extract_from_image(const Mat &image, Mat &patch) const{
-    float start_x = max(_x, 0);
-    float start_y = max(_y, 0);
-    float end_x = min(_x + _width, image.size().width);
-    float end_y = min(_y + _height, image.size().height);
+void RectangularPatch :: extract_from_image(const Mat &image, Mat &patch, Mat &mask) const{
+    int start_x = max(_x, 0);
+    int start_y = max(_y, 0);
+    int end_x = min(_x + _width, image.size().width);
+    int end_y = min(_y + _height, image.size().height);
     patch = image( Range(start_y, end_y), Range(start_x, end_x) );
+    mask = Mat::ones( patch.size().height, patch.size().width, CV_8UC1 );
 }
 
-KeyPoint RectangularPatch :: get_keypoint( ) const{
-    float ctr_x =  center().first;
-    float ctr_y =  center().second;
-    float sz    =   size();
-    return KeyPoint( ctr_x, ctr_y, sz );
-    
+
+////////////////////////////////
+//      CircularPatch         //
+////////////////////////////////
+
+CircularPatch :: CircularPatch ( int x, int y, int diameter ){
+    _x = x;
+    _y = y;
+    _diameter = diameter;
 }
+
+CircularPatch :: ~CircularPatch ( ){ };
+
+pair<double, double> CircularPatch :: center( ) const{
+    pair<double, double> ctr;
+    ctr.first = _x +  (_diameter - 1)/2.;
+    ctr.second = _y + (_diameter - 1)/2.;
+    return ctr;
+}
+
+int CircularPatch :: size( ) const{
+    //return _width * _height;
+    return _diameter;
+}
+
+void CircularPatch :: extract_from_image(const Mat &image, Mat &patch, Mat &mask) const{
+    int start_x = max(_x, 0);
+    int start_y = max(_y, 0);
+    int end_x = min(_x + _diameter, image.size().width);
+    int end_y = min(_y + _diameter, image.size().height);
+    patch = image( Range(start_y, end_y), Range(start_x, end_x) );
+    mask = Mat::zeros( patch.size().height, patch.size().width, CV_8UC1 );
+    Point2f ctr = Point2f( (patch.size().width - 1) / 2., (patch.size().height - 1) / 2. );
+    circle( mask, ctr, _diameter/2., 1, -1 );
+}
+
+
+////////////////////////////////
+//      KeyPointPatch         //
+////////////////////////////////
+
 
  KeyPointPatch :: KeyPointPatch ( KeyPoint &kp ){
     _kp = kp;
@@ -89,12 +120,15 @@ int KeyPointPatch :: size( ) const{
     return _kp.size;
 }
 
-void KeyPointPatch :: extract_from_image(const Mat &image, Mat &patch) const{
+void KeyPointPatch :: extract_from_image(const Mat &image, Mat &patch, Mat &mask) const{
     float start_x = max(_kp.pt.x-(_kp.size-1)/2., 0.);
     float start_y = max(_kp.pt.y-(_kp.size-1)/2., 0.);
     float end_x = min(_kp.pt.x + (_kp.size-1)/2., (double) image.size().width);
     float end_y = min(_kp.pt.y + (_kp.size-1)/2., (double) image.size().height);
     patch = image( Range(start_y, end_y), Range(start_x, end_x) );
+    mask = Mat::zeros( patch.size().height, patch.size().width, CV_8UC1 );
+    Point2f ctr = Point2f( (patch.size().width - 1) / 2., (patch.size().height - 1) / 2. );
+    circle( mask, ctr, size()/2., 1, -1 );
 }
 
 KeyPoint KeyPointPatch :: get_keypoint( ) const{
@@ -118,6 +152,24 @@ void SlidingWindowPatchMaker :: get_patch_definitions( const Mat &image, vector<
     for( int i = 0; i < image_width - _width + 1; i += _step_x ){
         for( int j = 0; j < image_height - _height + 1; j += _step_y ){
             patch_definitions.push_back( new RectangularPatch(i, j, _width, _height) );
+        }
+    }
+}
+
+SlidingCirclePatchMaker :: SlidingCirclePatchMaker ( int diameter, int step_x, int step_y ){
+    _diameter = diameter;
+    _step_x = step_x;
+    _step_y = step_y;
+}
+
+SlidingCirclePatchMaker :: ~SlidingCirclePatchMaker ( ){ };
+
+void SlidingCirclePatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const{
+    int image_width = image.size().width;
+    int image_height = image.size().height;
+    for( int i = 0; i < image_width - _diameter + 1; i += _step_x ){
+        for( int j = 0; j < image_height - _diameter + 1; j += _step_y ){
+            patch_definitions.push_back( new CircularPatch(i, j, _diameter) );
         }
     }
 }

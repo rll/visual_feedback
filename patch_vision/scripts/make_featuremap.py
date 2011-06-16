@@ -42,7 +42,7 @@ def parse():
                             default = None,
                             help='Amount to step from one patch to the next' )
     parser.add_argument(    '-D','--keypoint-detector', dest='detector', type=str,
-                            default = "DENSE", choices=["DENSE","SIFT"],
+                            default = "DENSE_SQUARE", choices=["DENSE_SQUARE","DENSE_CIRCLE","SIFT"],
                             help="Keypoint detector to use" );
     parser.add_argument(    '-v','--verbose',   dest='verbose', action='store_true',
                             default=False,

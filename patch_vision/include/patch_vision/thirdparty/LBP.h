@@ -65,6 +65,6 @@ typedef struct
 void calculate_points(void);
 inline double interpolate_at_ptr(int* upperLeft, int i, int columns);
 int* lbp_histogram(int* img, int rows, int columns, int* result, int interpolated,
-                   IplImage *mask=NULL, IplImage *lbp_image=NULL);
+                   const IplImage *mask=NULL, IplImage *lbp_image=NULL);
 
 #endif
