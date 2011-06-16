@@ -186,7 +186,7 @@ def main(args):
             shape_map = {}
             size_map = {}
             for pt in reference_featuremap.get_feature_points():
-                distance_map[pt] = chi2_dist( compared_feature,
+                distance_map[pt] = l2_dist( compared_feature,
                                               reference_featuremap.get_feature(pt) )
                 shape_map[pt] = reference_featuremap.get_shape(pt)
                 size_map[pt] = reference_featuremap.get_size(pt)
