@@ -38,6 +38,7 @@ enum FeatureT{
     LBP,
     RGB_LBP,
     HSV_LBP,
+    LUV_LBP,
     SIFT,
     HOG,
     HUE_HISTOGRAM,
@@ -124,6 +125,9 @@ int options(int ac, char ** av, Options& opts)
     else if ( !strcmp(opts.feature_name.c_str(), "HSV_LBP") ){
         opts.feature = HSV_LBP;
     }
+    else if ( !strcmp(opts.feature_name.c_str(), "LUV_LBP") ){
+        opts.feature = LUV_LBP;
+    }
     else if ( !strcmp(opts.feature_name.c_str(), "HUE_HISTOGRAM") ){
         opts.feature = HUE_HISTOGRAM;
     }
@@ -156,7 +160,7 @@ int options(int ac, char ** av, Options& opts)
     if ( !strcmp(opts.detector_name.c_str(), "DENSE_SQUARE") ){
         opts.detector = DENSE_SQUARE_DETECTOR;
     }
-    if ( !strcmp(opts.detector_name.c_str(), "DENSE_CIRCLE") ){
+    else if ( !strcmp(opts.detector_name.c_str(), "DENSE_CIRCLE") ){
         opts.detector = DENSE_CIRCLE_DETECTOR;
     }
     else if ( !strcmp(opts.detector_name.c_str(), "SIFT") ){
@@ -226,6 +230,9 @@ int main(int argc, char** argv) {
             break; 
         case HSV_LBP:
             descriptor = getColored( new LBPDescriptor ( ), HSV );
+            break; 
+        case LUV_LBP:
+            descriptor = getColored( new LBPDescriptor ( ), LUV );
             break; 
         case HUE_HISTOGRAM:
             descriptor = new HueHistogramDescriptor( 20 );
@@ -306,7 +313,6 @@ int main(int argc, char** argv) {
     descriptor->process_image( image, features, patch_definitions, *pm, opts.verbose );
     // Save the featuremap
     FeatureMap fm;
-    fm.set_patch_size( opts.patch_size );
     for( size_t i = 0; i < features.size(); i++ ){
       fm.add_feature( patch_definitions[i], features[i] );
     }

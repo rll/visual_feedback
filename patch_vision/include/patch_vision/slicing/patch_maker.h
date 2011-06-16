@@ -30,10 +30,18 @@ using std::string;
 using cv::Mat;
 using cv::KeyPoint;
 
+enum PatchShape{
+    SQUARE, CIRCLE, INVALID
+};
+
+string shape_to_name( PatchShape shape );
+PatchShape name_to_shape( const string name);
+
 class PatchDefinition{
     public:
 
         virtual pair<double, double> center() const=0;
+        virtual PatchShape shape() const=0;
         virtual int size() const=0;
         virtual void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const=0; 
         virtual KeyPoint get_keypoint( ) const;

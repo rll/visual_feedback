@@ -33,7 +33,7 @@ using std::string;
 using cv::Mat;
 
 enum ColorMode{
-    ANY_COLOR, BW, RGB, HSV, Opponent
+    ANY_COLOR, BW, RGB, HSV, Opponent, LUV
 };
 
 class Descriptor{

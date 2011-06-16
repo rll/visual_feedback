@@ -63,6 +63,9 @@ void Descriptor::get_proper_colors( const Mat &image, Mat &converted_image ){
             converted_image.create(image.size().height, image.size().width, CV_32FC3);
             cvtColor(image, converted_image, CV_BGR2HSV);
             break;
+        case LUV:
+            cvtColor(image, converted_image, CV_BGR2Luv);
+            break;
         default:
             image.copyTo(converted_image);
             break;

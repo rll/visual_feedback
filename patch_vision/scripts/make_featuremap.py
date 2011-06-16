@@ -13,7 +13,7 @@ import rospy
 
 
 PACKAGE_NAME = "patch_vision"
-CPP_DESCRIPTORS = [ 'LBP', 'HSV_LBP', 'RGB_LBP', 'SIFT', 'HOG', 'HUE_HISTOGRAM', 
+CPP_DESCRIPTORS = [ 'LBP', 'HSV_LBP', 'RGB_LBP', 'LUV_LBP', 'SIFT', 'HOG', 'HUE_HISTOGRAM', 
                     'LBP+HUE_HISTOGRAM', 'LBP+SIFT', 'LBP+SIFT+HUE_HISTOGRAM', 
                     'ROTATED_LBP+HUE_HISTOGRAM', 'ROTATED_LBP+SIFT', 'ROTATED_LBP+SIFT+HUE_HISTOGRAM', 
                     'ROTATED_LBP']

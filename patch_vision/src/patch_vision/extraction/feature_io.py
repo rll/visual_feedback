@@ -1,27 +1,38 @@
 #!/usr/bin/env python
 
+SHAPES = ["SQUARE", "CIRCLE"]
 
 class FeatureMap:
     def __init__(self):
         self.patch_size = None
+        self.shapes = {}
+        self.sizes = {}
         self.features = {}
+        
 
-    def add_feature(self, location, feature):
+    def add_feature(self, location, shape, size, feature):
+        self.shapes[location] = shape
+        self.sizes[location] = size
         self.features[location] = feature
 
+    def get_shape(self, location):
+        if not location in self.get_feature_points():
+            raise Exception("That location has no associated feature")
+        return self.shapes[location]
+        
+    def get_size(self, location):
+        if not location in self.get_feature_points():
+            raise Exception("That location has no associated feature")
+        return self.sizes[location]
+    
     def get_feature(self, location):
         if not location in self.get_feature_points():
             raise Exception("That location has no associated feature")
         return self.features[location]
 
+
     def get_feature_points(self):
         return self.features.keys()
-
-    def set_patch_size(self, patch_size):
-        self.patch_size = patch_size
-
-    def get_patch_size(self):
-        return self.patch_size
 
     def save_to_file(self, filename):
         f = open(filename,'w')
@@ -29,7 +40,10 @@ class FeatureMap:
         for pt in self.get_feature_points():
             f.write("%f %f"%(pt[0],pt[1]))
             f.write("\t")
-            f.write("%f %f"%(self.patch_size, self.patch_size) )
+            shape = self.get_shape(pt)
+            f.write("%s"%shape)
+            size = self.get_size(pt)
+            f.write("%f %f"%(size[0], size[1]) )
             f.write("\t")
             feature = self.get_feature(pt)
             f.write( "%d "%len(feature))
@@ -43,13 +57,13 @@ class FeatureMap:
         for i,ln in enumerate(f.readlines()):
             if i == 0:
                 continue
-            vals = [float(val_str) for val_str in ln.split()]
-            pt = (vals[0],vals[1])
-            patch_size = (vals[2], vals[3])
-            self.set_patch_size(patch_size)
-            num_features = vals[4];
-            feature = vals[5:]
+            str_vals = ln.split()
+            pt = (float(str_vals[0]),float(str_vals[1]))
+            shape = str_vals[2]
+            patch_size = (float(str_vals[3]), float(str_vals[4]))
+            num_features = float(str_vals[5]);
+            feature = [float(val) for val in str_vals[6:]]
             assert len(feature) == num_features
-            self.add_feature(pt, feature)
+            self.add_feature(pt, shape, patch_size, feature)
         f.close()
 

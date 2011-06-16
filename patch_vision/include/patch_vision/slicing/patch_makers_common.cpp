@@ -46,6 +46,10 @@ pair<double, double> RectangularPatch :: center( ) const{
     return ctr;
 }
 
+PatchShape RectangularPatch :: shape( ) const{
+    return SQUARE;
+}
+
 int RectangularPatch :: size( ) const{
     //return _width * _height;
     return min(_height, _width);
@@ -78,6 +82,10 @@ pair<double, double> CircularPatch :: center( ) const{
     ctr.first = _x +  (_diameter - 1)/2.;
     ctr.second = _y + (_diameter - 1)/2.;
     return ctr;
+}
+
+PatchShape CircularPatch :: shape( ) const{
+    return CIRCLE;
 }
 
 int CircularPatch :: size( ) const{
@@ -113,6 +121,11 @@ pair<double, double> KeyPointPatch :: center( ) const{
     ctr.first = _kp.pt.x;
     ctr.second = _kp.pt.y;
     return ctr;
+}
+
+
+PatchShape KeyPointPatch :: shape( ) const{
+    return CIRCLE;
 }
 
 int KeyPointPatch :: size( ) const{
