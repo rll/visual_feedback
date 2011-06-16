@@ -35,14 +35,14 @@ class PatchDefinition{
 
         virtual pair<double, double> center() const=0;
         virtual int size() const=0;
-        virtual void extract_from_image(const Mat &image, Mat &patch) const=0; 
-        virtual KeyPoint get_keypoint( ) const=0;
+        virtual void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const=0; 
+        virtual KeyPoint get_keypoint( ) const;
 };
 
 class PatchMaker{
     public:
 
-        void get_patches( const Mat &image, vector<Mat> &patches, vector<PatchDefinition* > &patch_definitions ) const;
+        void get_patches( const Mat &image, vector<Mat> &patches, vector<Mat> &masks, vector<PatchDefinition* > &patch_definitions ) const;
 
         virtual void get_patch_definitions( const Mat &image, vector<PatchDefinition* > &patch_definitions) const = 0;
 };

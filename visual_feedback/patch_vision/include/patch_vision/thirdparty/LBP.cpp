@@ -158,7 +158,7 @@ void calculate_uniform_mapping(void) {
  * return value: result
  */
 int* lbp_histogram(int* img, int rows, int columns, int* result, int interpolated,
-                    IplImage *mask, IplImage *lbp_image) {
+                   const IplImage* mask, IplImage *lbp_image) {
     int leap = columns*predicate;
     /*Set up a circularly indexed neighborhood using nine pointers.*/
     int

@@ -28,28 +28,46 @@ using cv::KeyPoint;
 
 class RectangularPatch : public PatchDefinition{
     public:
+        /* Create a rectangular of size (width, height) whose
+         * top left point is at (x,y) */
         RectangularPatch( int x, int y, int width, int height );
-        RectangularPatch( const KeyPoint &kp );
         ~RectangularPatch( );
 
         pair<double, double> center() const;
         int size() const;
-        void extract_from_image(const Mat &image, Mat &patch) const;
-        KeyPoint get_keypoint( ) const;
+        void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const;
 
     private:
         int _x, _y, _width, _height;
         
 };
 
+class CircularPatch : public PatchDefinition{
+    public:
+        /* Create a circular patch inscribed in a square
+           of size (diameter,diameter) whose top left point is at (x,y) */
+        CircularPatch( int x, int y, int diameter );
+        CircularPatch( const KeyPoint &kp );
+        ~CircularPatch( );
+
+        pair<double, double> center() const;
+        int size() const;
+        void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const;
+
+    private:
+        int _x, _y, _diameter;
+        
+};
+
 class KeyPointPatch : public PatchDefinition{
     public:
+        /* Create a patch based on a CV keypoint */
         KeyPointPatch( KeyPoint &kp );
         ~KeyPointPatch( );
 
         pair<double, double> center() const;
         int size() const;
-        void extract_from_image(const Mat &image, Mat &patch) const;
+        void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const;
         
         KeyPoint get_keypoint( ) const;
 
@@ -69,6 +87,17 @@ class SlidingWindowPatchMaker : public PatchMaker{
 
     private:
        int _width, _height, _step_x, _step_y;
+};
+
+class SlidingCirclePatchMaker : public PatchMaker{
+    public:
+       SlidingCirclePatchMaker( int diameter, int step_x, int step_y );
+       ~SlidingCirclePatchMaker( );
+
+       void get_patch_definitions( const Mat &image, vector<PatchDefinition* > &patch_definitions ) const;
+
+    private:
+       int _diameter, _step_x, _step_y;
 };
 
 class SIFTPatchMaker : public PatchMaker{

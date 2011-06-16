@@ -23,30 +23,27 @@ using std::cout;
 using std::endl;
 using cv::cvtColor;
 
-void Descriptor::process_image( const Mat &image, vector<vector<float> > &features, 
-                                vector< PatchDefinition* > &patch_definitions, bool verbose ){
-    PatchMaker* pm = get_default_patch_maker( );
-    process_image( image, features, patch_definitions, *pm, verbose );
+void Descriptor::process_patch( const Mat &patch, vector<float> &feature ){
+    Mat mask = Mat::ones ( patch.size().height, patch.size().width, CV_8UC1 );
+    process_patch( patch, feature, mask );
 }
 
 void Descriptor::process_image( const Mat &image, vector<vector<float> > &features, 
-                                vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm, bool verbose ){
+                                vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm, 
+                                bool verbose ){
     Mat converted_image;
     get_proper_colors( image, converted_image);
     vector<Mat> patches;
-    pm.get_patches ( converted_image, patches, patch_definitions );
+    vector<Mat> masks;
+    pm.get_patches ( converted_image, patches, masks, patch_definitions );
     for ( size_t i = 0; i < patches.size(); i++ ){
         if (verbose){
             cout << "On patch " << i+1 << " of " << patches.size() << endl;
         }
         vector<float> feature;
-        process_patch( patches[i], feature );
+        process_patch( patches[i], feature, masks[i] );
         features.push_back( feature );
     }
-}
-
-PatchMaker* Descriptor::get_default_patch_maker(  ){
-  return new SlidingWindowPatchMaker( patch_size(), patch_size(), patch_size(), patch_size() ); 
 }
 
 void Descriptor::get_proper_colors( const Mat &image, Mat &converted_image ){
