@@ -36,13 +36,13 @@ class ReferenceWindow( ZoomWindow ):
         self.distance_layer = cv.CreateImage( (image.width, image.height), image.depth, 3)
         self.view_image = cv.CreateImage( (image.width, image.height), image.depth, 3)
         self.knn = None
-        self.knn_shapes = None
-        self.knn_sizes = None
         self.show_patch = None
         self.view_mode = NN
         self.log_scale = True
         self.gamma = 0.1
         self.distance_map = None
+        self.shape_map = None
+        self.size_map = None
         ZoomWindow.__init__(self,"Reference",-1,zoom_out)
 
     def image_to_show( self ):
@@ -60,35 +60,46 @@ class ReferenceWindow( ZoomWindow ):
             transparency = 0.8
             for i,pt in enumerate(pts):
                 dist = distances[i]
+                shape = self.shape_map[pt]
+                size = self.size_map[pt]
                 pct = 1 - (dist - min_distance) /  (max_distance - min_distance)
                 color = tuple( transparency * ((1-pct)*start_from + pct*end_at) )
-                v1,v2 = get_rect_vertices(pt, self.patch_size[0]/2, self.patch_size[1]/2)
-                cv.Rectangle( self.distance_layer, 
-                              v1, v2, color, -1 )
+                draw_patch( self.distance_layer, pt, shape, size, color, True )
             cv.ScaleAdd(self.view_image, 1 - transparency, self.distance_layer, self.view_image)
 
         if self.view_mode == NN and self.knn:
-            cv.Circle( self.view_image, self.knn[0], 5*self.zoom_out, cv.RGB(0,255,0), -1 )
+            color = cv.RGB(0,255,0)
+            pt = self.knn[0]
+            cv.Circle( self.view_image, pt, 5*self.zoom_out, color, -1 )
             if self.show_patch:
-                draw_patch( self.view_image, self.knn[0], self.knn_shape[0], self.knn_size[0], color)
+                shape = self.shape_map[pt]
+                size = self.size_map[pt]
+                draw_patch( self.view_image, pt, shape, size, color)
         if self.view_mode == KNN and self.knn:
             for i,pt in enumerate(self.knn):
                 factor = 1 - i / float(len(self.knn))
-                cv.Circle( self.view_image, pt, 5*self.zoom_out, cv.RGB(factor*255,0,0), -1 )
+                color = cv.RGB(factor*255,0,0)
+                cv.Circle( self.view_image, pt, 5*self.zoom_out, color, -1 )
                 if self.show_patch:
-                    draw_patch( self.view_image, pt, self.knn_shape[i], self.knn_size[i], color )
+                    shape = self.shape_map[pt]
+                    size = self.size_map[pt]
+                    draw_patch( self.view_image, pt, shape, size, color )
                 
                 
         return self.view_image
 
 
-    def set_knn( self, knn, shapes, sizes ):
+    def set_knn( self, knn ):
         self.knn = knn
-        self.knn_shapes = shapes
-        self.knn_sizes = sizes
 
     def set_distance_map( self, distance_map):
         self.distance_map = distance_map
+
+    def set_shape_map( self, shape_map):
+        self.shape_map = shape_map
+    
+    def set_size_map( self, size_map):
+        self.size_map = size_map
 
     def toggle_mode(self):
         self.view_mode = (self.view_mode + 1) % len(VIEW_MODES);
@@ -116,13 +127,12 @@ def get_rect_vertices(center, width, height):
     y = center[1] - (height + 1)/2.0
     return (x,y),(x+width,y+height)
 
-def draw_patch( image, ctr, shape, size, color ):
-    if shape == SQUARE:
+def draw_patch( image, ctr, shape, size, color, filled = False ):
+    if shape == "SQUARE":
         v1,v2 = get_rect_vertices(ctr, size[0], size[1])
-        cv.Rectangle( self.view_image, 
-                      v1, v2, color, 1 )
-    elif shape == CIRCLE:
-        cv.Circle( self.view_image, ctr, size[0], color, 1 )
+        cv.Rectangle( image, v1, v2, color, -1 if filled else 1 )
+    elif shape == "CIRCLE":
+        cv.Circle( image, ctr, size[0]/2., color, -1 if filled else 1 )
     
 
 def parse():
@@ -173,17 +183,19 @@ def main(args):
                               key = lambda pt: l2_dist(pt,click_pt) )
             compared_feature = compared_featuremap.get_feature( closest_pt )
             distance_map = {}
+            shape_map = {}
+            size_map = {}
             for pt in reference_featuremap.get_feature_points():
                 distance_map[pt] = chi2_dist( compared_feature,
                                               reference_featuremap.get_feature(pt) )
-            ##nearest_neighbor = min( distance_map.keys(),
-            ##                        key = lambda pt: distance_map[pt] )
-            ##reference_window.set_nn( nearest_neighbor )
+                shape_map[pt] = reference_featuremap.get_shape(pt)
+                size_map[pt] = reference_featuremap.get_size(pt)
+            
             knn = compute_knn( distance_map.keys(), lambda pt: distance_map[pt], 20 )
-            shapes = [reference_window.get_shape(pt) for pt in knn]
-            sizes = [reference_window.get_size(pt) for pt in knn]
-            reference_window.set_knn( knn, shapes, sizes )
+            reference_window.set_knn( knn  )
             reference_window.set_distance_map( distance_map )
+            reference_window.set_shape_map( shape_map )
+            reference_window.set_size_map( size_map )
             compare_window.update_nn = False
 
 def l2_dist(v1, v2):
