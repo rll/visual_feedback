@@ -34,6 +34,7 @@ class RectangularPatch : public PatchDefinition{
         ~RectangularPatch( );
 
         pair<double, double> center() const;
+        PatchShape shape() const;
         int size() const;
         void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const;
 
@@ -51,6 +52,7 @@ class CircularPatch : public PatchDefinition{
         ~CircularPatch( );
 
         pair<double, double> center() const;
+        PatchShape shape() const;
         int size() const;
         void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const;
 
@@ -66,6 +68,7 @@ class KeyPointPatch : public PatchDefinition{
         ~KeyPointPatch( );
 
         pair<double, double> center() const;
+        PatchShape shape() const;
         int size() const;
         void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const;
         

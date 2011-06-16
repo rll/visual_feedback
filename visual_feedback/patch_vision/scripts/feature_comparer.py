@@ -6,7 +6,7 @@ import os.path
 import sys
 import rospy
 import numpy as np
-from patch_vision.extraction.feature_io import FeatureMap
+from patch_vision.extraction.feature_io import FeatureMap, SHAPES
 from patch_vision.labelling.zoom_window import ZoomWindow
 
 class ClickWindow( ZoomWindow ):
@@ -28,23 +28,26 @@ class ClickWindow( ZoomWindow ):
             self.click_pt = (x,y)
             self.update_nn = True
 
+VIEW_MODES = [NN, KNN, GRADIENT] = range(3);
+
 class ReferenceWindow( ZoomWindow ):
-    def __init__(self, image, zoom_out, patch_size):
+    def __init__(self, image, zoom_out):
         self.image = image
         self.distance_layer = cv.CreateImage( (image.width, image.height), image.depth, 3)
         self.view_image = cv.CreateImage( (image.width, image.height), image.depth, 3)
-        self.nn = None
         self.knn = None
-        self.show_gradient = False
+        self.knn_shapes = None
+        self.knn_sizes = None
+        self.show_patch = None
+        self.view_mode = NN
         self.log_scale = True
         self.gamma = 0.1
         self.distance_map = None
-        self.patch_size = patch_size
         ZoomWindow.__init__(self,"Reference",-1,zoom_out)
 
     def image_to_show( self ):
         cv.Copy( self.image, self.view_image )
-        if self.distance_map and self.show_gradient:
+        if self.view_mode == GRADIENT and self.distance_map:
             pts = self.distance_map.keys()
             if self.log_scale:
                 distances = [np.log(dist) for dist in self.distance_map.values()]
@@ -64,30 +67,32 @@ class ReferenceWindow( ZoomWindow ):
                               v1, v2, color, -1 )
             cv.ScaleAdd(self.view_image, 1 - transparency, self.distance_layer, self.view_image)
 
-        if self.nn:
-            cv.Circle( self.view_image, self.nn, 5*self.zoom_out, cv.RGB(0,255,0), -1 )
-            v1,v2 = get_rect_vertices(self.nn, self.patch_size[0], self.patch_size[1])
-            cv.Rectangle( self.view_image, 
-                          v1, v2, cv.RGB(0,255,0), 1 )
-        if self.knn and not self.show_gradient:
+        if self.view_mode == NN and self.knn:
+            cv.Circle( self.view_image, self.knn[0], 5*self.zoom_out, cv.RGB(0,255,0), -1 )
+            if self.show_patch:
+                draw_patch( self.view_image, self.knn[0], self.knn_shape[0], self.knn_size[0], color)
+        if self.view_mode == KNN and self.knn:
             for i,pt in enumerate(self.knn):
                 factor = 1 - i / float(len(self.knn))
                 cv.Circle( self.view_image, pt, 5*self.zoom_out, cv.RGB(factor*255,0,0), -1 )
+                if self.show_patch:
+                    draw_patch( self.view_image, pt, self.knn_shape[i], self.knn_size[i], color )
+                
                 
         return self.view_image
 
-    def set_nn( self, pt ):
-        self.nn = pt
 
-    def set_knn( self, knn ):
+    def set_knn( self, knn, shapes, sizes ):
         self.knn = knn
+        self.knn_shapes = shapes
+        self.knn_sizes = sizes
 
     def set_distance_map( self, distance_map):
         self.distance_map = distance_map
 
     def toggle_mode(self):
-        self.show_gradient = not self.show_gradient
-    
+        self.view_mode = (self.view_mode + 1) % len(VIEW_MODES);
+
     def toggle_log_scale(self):
         self.log_scale = not self.log_scale
 
@@ -96,6 +101,8 @@ class ReferenceWindow( ZoomWindow ):
             self.toggle_mode()
         elif char_str == 'l':
             self.toggle_log_scale()
+        elif char_str == 'p':
+            self.show_patch = not self.show_patch
         elif char_str == '=':
             self.gamma *= 2
             print "Gamma = %f"%self.gamma
@@ -108,6 +115,15 @@ def get_rect_vertices(center, width, height):
     x = center[0] - (width + 1)/2.0
     y = center[1] - (height + 1)/2.0
     return (x,y),(x+width,y+height)
+
+def draw_patch( image, ctr, shape, size, color ):
+    if shape == SQUARE:
+        v1,v2 = get_rect_vertices(ctr, size[0], size[1])
+        cv.Rectangle( self.view_image, 
+                      v1, v2, color, 1 )
+    elif shape == CIRCLE:
+        cv.Circle( self.view_image, ctr, size[0], color, 1 )
+    
 
 def parse():
     import argparse
@@ -142,8 +158,7 @@ def main(args):
     reference_featuremap = FeatureMap()
     reference_featuremap.read_from_file( args.reference_features )
     compare_window = ClickWindow( compared_image, args.compare_zoom_out)
-    reference_window = ReferenceWindow( reference_image, args.reference_zoom_out,
-                                        reference_featuremap.get_patch_size())
+    reference_window = ReferenceWindow( reference_image, args.reference_zoom_out)
 
     #nn_solver = pyflann.FLANN()
     while(True):
@@ -165,7 +180,9 @@ def main(args):
             ##                        key = lambda pt: distance_map[pt] )
             ##reference_window.set_nn( nearest_neighbor )
             knn = compute_knn( distance_map.keys(), lambda pt: distance_map[pt], 20 )
-            reference_window.set_knn( knn )
+            shapes = [reference_window.get_shape(pt) for pt in knn]
+            sizes = [reference_window.get_size(pt) for pt in knn]
+            reference_window.set_knn( knn, shapes, sizes )
             reference_window.set_distance_map( distance_map )
             compare_window.update_nn = False
 

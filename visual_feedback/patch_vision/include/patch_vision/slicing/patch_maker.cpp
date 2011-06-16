@@ -19,6 +19,27 @@
 #include <patch_vision/slicing/patch_maker.h>
 #include <cstring>
 
+string shape_to_name( PatchShape shape ){
+    switch (shape){
+        
+        case SQUARE:
+            return "SQUARE";
+            break;
+        case CIRCLE:
+            return "CIRCLE";
+            break;
+    }
+}
+
+PatchShape name_to_shape( const string name ){
+    if (!strcmp (name.c_str(), "SQUARE") )
+        return SQUARE;
+    else if (!strcmp (name.c_str(), "CIRCLE") )
+        return CIRCLE;
+    throw;
+    return INVALID; 
+}
+
 KeyPoint PatchDefinition :: get_keypoint( ) const{
     float ctr_x =  center().first;
     float ctr_y =  center().second;
