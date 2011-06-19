@@ -15,6 +15,7 @@ cvkeymappings[1113939] = 'RIGHT'
 cvkeymappings[1113940] = 'DOWN'
 cvkeymappings[1048621] = '-'
 cvkeymappings[1048637] = '='
+cvkeymappings[1048586] = 'ENTER'
 
 class ZoomWindow:
     def __init__(self, name = "Viewer", update_period = 100, zoom_out = 1):

@@ -21,6 +21,7 @@
 #include <iostream>
 #include <patch_vision/slicing/patch_maker.h>
 #include <opencv2/features2d/features2d.hpp>
+#include <patch_vision/slicing/pt_io.h>
 
 using cv::FeatureDetector;
 using cv::Ptr;
@@ -113,4 +114,25 @@ class SIFTPatchMaker : public PatchMaker{
         Ptr<FeatureDetector> _detector;                
 };
 
+class PointsSquarePatchMaker : public PatchMaker{
+    public:
+        PointsSquarePatchMaker( string input_points_file, int patch_size);
+        ~PointsSquarePatchMaker( );
+       void get_patch_definitions( const Mat &image, vector<PatchDefinition* > &patch_definitions ) const;
+
+    private:
+        PointSet _point_set;
+        int _patch_size;             
+};
+
+class PointsCirclePatchMaker : public PatchMaker{
+    public:
+        PointsCirclePatchMaker( string input_points_file, int patch_size);
+        ~PointsCirclePatchMaker( );
+       void get_patch_definitions( const Mat &image, vector<PatchDefinition* > &patch_definitions ) const;
+
+    private:
+        PointSet _point_set;
+        int _patch_size;             
+};
 #endif

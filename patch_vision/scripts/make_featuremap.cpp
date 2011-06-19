@@ -21,6 +21,7 @@
 #include <patch_vision/extraction/descriptors_common.h>
 #include <patch_vision/extraction/feature_io.h>
 #include <patch_vision/slicing/patch_makers_common.h>
+#include <patch_vision/slicing/pt_io.h>
 
 #include <opencv2/highgui/highgui.hpp>
 
@@ -54,7 +55,9 @@ enum FeatureT{
 enum DetectorT{
     DENSE_SQUARE_DETECTOR,
     DENSE_CIRCLE_DETECTOR,
-    SIFT_DETECTOR
+    SIFT_DETECTOR,
+    POINTS_CIRCLE_DETECTOR,
+    POINTS_SQUARE_DETECTOR
 };
 
 struct Options
@@ -68,6 +71,7 @@ struct Options
 
     int patch_size;
     int step_size;
+    string input_points_file;
 
     bool verbose;
     boost::program_options::options_description desc;
@@ -87,6 +91,7 @@ int options(int ac, char ** av, Options& opts)
       ("patch_size,p"   , po::value<int>(&opts.patch_size),     "patch size")
       ("step_size,s"    , po::value<int>(&opts.step_size),      "step size")
       ("detector,D"    , po::value<string>(&opts.detector_name),      "detector to use")
+      ("input_points,P", po::value<string>(&opts.input_points_file), "input_points")
       ("verbose,v", "Whether to print out debugging statements")
       ;
     po::variables_map vm;
@@ -166,6 +171,12 @@ int options(int ac, char ** av, Options& opts)
     else if ( !strcmp(opts.detector_name.c_str(), "SIFT") ){
         opts.detector = SIFT_DETECTOR;
     }
+    else if ( !strcmp(opts.detector_name.c_str(), "POINTS_SQUARE") ){
+        opts.detector = POINTS_SQUARE_DETECTOR;
+    }
+    else if ( !strcmp(opts.detector_name.c_str(), "POINTS_CIRCLE") ){
+        opts.detector = POINTS_CIRCLE_DETECTOR;
+    }
     else{
         cout << opts.detector_name << " is not a valid detector" << endl;
         throw;
@@ -200,6 +211,12 @@ int main(int argc, char** argv) {
         
         case SIFT_DETECTOR:
             pm = new SIFTPatchMaker( );
+            break;
+        case POINTS_SQUARE_DETECTOR:
+            pm = new PointsSquarePatchMaker(opts.input_points_file, opts.patch_size );
+            break;
+        case POINTS_CIRCLE_DETECTOR:
+            pm = new PointsCirclePatchMaker(opts.input_points_file, opts.patch_size );
             break;
     }
     // Create the descriptor

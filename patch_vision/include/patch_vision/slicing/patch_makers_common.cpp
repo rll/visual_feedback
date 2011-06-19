@@ -204,3 +204,30 @@ void SIFTPatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefi
 }
 
 
+PointsSquarePatchMaker :: PointsSquarePatchMaker ( string input_points_file, int patch_size ){
+    _point_set.read_from_file(input_points_file);
+    _patch_size = patch_size;
+}
+
+PointsSquarePatchMaker :: ~PointsSquarePatchMaker ( ){ };
+
+void PointsSquarePatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const{
+    for( size_t i = 0; i < _point_set.num_points(); i++ ){
+        PointT point = _point_set.get_point(i);
+        patch_definitions.push_back( new RectangularPatch(point.first, point.second, _patch_size, _patch_size ) );
+    }
+}
+
+PointsCirclePatchMaker :: PointsCirclePatchMaker ( string input_points_file, int patch_size ){
+    _point_set.read_from_file(input_points_file);
+    _patch_size = patch_size;
+}
+
+PointsCirclePatchMaker :: ~PointsCirclePatchMaker ( ){ };
+
+void PointsCirclePatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const{
+    for( size_t i = 0; i < _point_set.num_points(); i++ ){
+        PointT point = _point_set.get_point(i);
+        patch_definitions.push_back( new CircularPatch(point.first, point.second, _patch_size ) );
+    }
+}

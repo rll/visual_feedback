@@ -18,6 +18,7 @@ CPP_DESCRIPTORS = [ 'LBP', 'HSV_LBP', 'RGB_LBP', 'LUV_LBP', 'SIFT', 'HOG', 'HUE_
                     'ROTATED_LBP+HUE_HISTOGRAM', 'ROTATED_LBP+SIFT', 'ROTATED_LBP+SIFT+HUE_HISTOGRAM', 
                     'ROTATED_LBP']
 PYTHON_DESCRIPTORS = ['RAW_BW','RAW_COLOR']
+CPP_DETECTORS = ["DENSE_SQUARE","DENSE_CIRCLE","SIFT","POINTS_SQUARE","POINTS_CIRCLE"]
 
 def parse():
     import argparse
@@ -42,8 +43,11 @@ def parse():
                             default = None,
                             help='Amount to step from one patch to the next' )
     parser.add_argument(    '-D','--keypoint-detector', dest='detector', type=str,
-                            default = "DENSE_SQUARE", choices=["DENSE_SQUARE","DENSE_CIRCLE","SIFT"],
+                            default = "DENSE_SQUARE", choices=CPP_DETECTORS,
                             help="Keypoint detector to use" );
+    parser.add_argument(    '-P','--points-file', dest='points_file', type=str,
+                            default = None,
+                            help="Points file (only necessary if using a Point Detector)" );
     parser.add_argument(    '-v','--verbose',   dest='verbose', action='store_true',
                             default=False,
                             help='Print debugging information' )
@@ -69,9 +73,11 @@ def main(args):
         args.patch_step = args.patch_size
     
     if args.feature_type in CPP_DESCRIPTORS:
-        cmd = "rosrun %s make_featuremap -i %s -o %s -f %s -p %d -s %d -D %s %s"%(
+        cmd = "rosrun %s make_featuremap -i %s -o %s -f %s -p %d -s %d -D %s %s %s"%(
                 PACKAGE_NAME, args.input_image, output_file, args.feature_type, 
-                args.patch_size, args.patch_step, args.detector, "-v" if args.verbose else "")
+                args.patch_size, args.patch_step, args.detector,
+                "-P %s"%args.points_file if args.points_file else "",
+                "-v" if args.verbose else "")
         print "Calling %s"%cmd
         return call( cmd, shell=True);
     
