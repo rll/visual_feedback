@@ -51,6 +51,9 @@ def parse():
     parser.add_argument(    '-m','--mask-file', dest='mask_file', type=str,
                             default = None,
                             help="Mask file" );
+    parser.add_argument(    '-l','--label-file', dest='label_file', type=str,
+                            default = None,
+                            help="label file" );
     parser.add_argument(    '-v','--verbose',   dest='verbose', action='store_true',
                             default=False,
                             help='Print debugging information' )
@@ -76,11 +79,12 @@ def main(args):
         args.patch_step = args.patch_size
     
     if args.feature_type in CPP_DESCRIPTORS:
-        cmd = "rosrun %s make_featuremap -i %s -o %s -f %s -p %d -s %d -D %s %s %s %s"%(
+        cmd = "rosrun %s make_featuremap -i %s -o %s -f %s -p %d -s %d -D %s %s %s %s %s"%(
                 PACKAGE_NAME, args.input_image, output_file, args.feature_type, 
                 args.patch_size, args.patch_step, args.detector,
                 "-P %s"%args.points_file if args.points_file else "",
                 "-m %s"%args.mask_file if args.mask_file else "",
+                "-l %s"%args.label_file if args.label_file else "",
                 "-v" if args.verbose else "")
         print "Calling %s"%cmd
         return call( cmd, shell=True);

@@ -29,6 +29,7 @@ typedef struct FeatureMapItem{
     PatchShape shape;
     pair<int, int> size; 
     vector<float> feature;
+    int label;
 } FeatureMapItem;
 
 class FeatureMap{
@@ -36,11 +37,13 @@ class FeatureMap{
         FeatureMap();
         ~FeatureMap();
 
-        void add_feature( const PatchDefinition *patch_definition, const vector<float> &feature );
+        void add_feature( const PatchDefinition *patch_definition, const vector<float> &feature, int label=-1 );
         void add_feature( const pair<float, float> ctr, PatchShape shape, const pair<int, int> size, 
-                          const vector<float> &feature );
+                          const vector<float> &feature, int label=-1 );
         void get_feature_points( vector< pair<float, float> > &pts, vector< PatchShape > &shapes,
                                  vector< pair<int, int> > &sizes) const;
+        void get_labeled_feature_points( vector< pair<float, float> > &pts, vector< PatchShape > &shapes,
+                                 vector< pair<int, int> > &sizes, vector< int > labels) const;
         void save_to_file( string filename ) const;
         void read_from_file( string filename );
 

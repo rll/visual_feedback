@@ -8,12 +8,14 @@ class FeatureMap:
         self.shapes = {}
         self.sizes = {}
         self.features = {}
+        self.labels = {}
         
 
-    def add_feature(self, location, shape, size, feature):
+    def add_feature(self, location, shape, size, feature, label=-1):
         self.shapes[location] = shape
         self.sizes[location] = size
         self.features[location] = feature
+        self.labels[location] = label
 
     def get_shape(self, location):
         if not location in self.get_feature_points():
@@ -30,6 +32,10 @@ class FeatureMap:
             raise Exception("That location has no associated feature")
         return self.features[location]
 
+    def get_label(self, location):
+        if not location in self.get_feature_points():
+            raise Exception("That location has no associated label")
+        return self.labels[location]
 
     def get_feature_points(self):
         return self.features.keys()
@@ -49,6 +55,9 @@ class FeatureMap:
             f.write( "%d "%len(feature))
             for val in feature:
                 f.write("%f "%val)
+            f.write("\t")
+            label = self.get_label(pt)
+            f.write("%d"%label)
             f.write("\n")
         f.close()
 
@@ -61,9 +70,14 @@ class FeatureMap:
             pt = (float(str_vals[0]),float(str_vals[1]))
             shape = str_vals[2]
             patch_size = (float(str_vals[3]), float(str_vals[4]))
-            num_features = float(str_vals[5]);
-            feature = [float(val) for val in str_vals[6:]]
+            num_features = int(str_vals[5]);
+            feature = [float(val) for val in str_vals[6:6+num_features]]
+            #Backwards compatibility -- remove later
+            if len(str_vals) > 6+num_features:
+                label = int(str_vals[6+num_features])
+            else:
+                label = -1
             assert len(feature) == num_features
-            self.add_feature(pt, shape, patch_size, feature)
+            self.add_feature(pt, shape, patch_size, feature, label)
         f.close()
 
