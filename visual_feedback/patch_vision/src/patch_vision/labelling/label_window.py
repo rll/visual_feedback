@@ -37,7 +37,7 @@ class LabelWindow (ZoomWindow):
            label_color = self.params.label_set.get_label_color(self.brush_label)
            label_number = self.brush_label
            if label_color:
-            cv.Circle(self.label_image, (x,y), self.brush_size, label_color, -1)
+               cv.Circle(self.label_image, (x,y), self.brush_size, cv.RGB(label_color[0], label_color[1], label_color[2]), -1)
            cv.Circle(self.label_mat,   (x,y), self.brush_size, label_number, -1)
 
     def image_to_show( self ):
