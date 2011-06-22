@@ -22,6 +22,7 @@
 #include <patch_vision/extraction/feature_io.h>
 #include <patch_vision/slicing/patch_makers_common.h>
 #include <patch_vision/slicing/pt_io.h>
+#include <patch_vision/slicing/label_extraction.h>
 
 #include <opencv2/highgui/highgui.hpp>
 
@@ -75,7 +76,9 @@ struct Options
 
     bool verbose;
     bool use_mask;
+    bool use_label;
     string mask_file;
+    string label_file;
     boost::program_options::options_description desc;
 };
 
@@ -96,6 +99,7 @@ int options(int ac, char ** av, Options& opts)
       ("input_points,P", po::value<string>(&opts.input_points_file), "input_points")
       ("verbose,v",      "Whether to print out debugging statements")
       ("mask,m"         , po::value<string>(&opts.mask_file), "Mask file to use")
+      ("labels,l"       , po::value<string>(&opts.label_file), "Label file to use")
       ;
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);
@@ -111,6 +115,11 @@ int options(int ac, char ** av, Options& opts)
         opts.verbose = true;
     } else{
         opts.verbose = false;
+    }
+    if (vm.count("labels")){
+        opts.use_label = true;
+    } else{
+        opts.use_label = false;
     }
     if (vm.count("mask")){
         opts.use_mask = true;
@@ -342,10 +351,21 @@ int main(int argc, char** argv) {
     else{
         descriptor->process_image( image, features, patch_definitions, *pm, opts.verbose );
     }
+    // Associate labels if necessary
+    vector<int> labels;
+    if (opts.use_label){
+        CvMat* cvlabel_mat = (CvMat*)cvLoad( opts.label_file.c_str() );
+        Mat label_mat(cvlabel_mat);
+        cout << "Made it this far" << endl;
+        compute_labels( label_mat, patch_definitions, labels );
+    }
     // Save the featuremap
     FeatureMap fm;
     for( size_t i = 0; i < features.size(); i++ ){
-      fm.add_feature( patch_definitions[i], features[i] );
+      if (!opts.use_label)
+        fm.add_feature( patch_definitions[i], features[i] );
+      else
+        fm.add_feature( patch_definitions[i], features[i], labels[i] );
     }
     fm.save_to_file( opts.output_file );
     cout << "Successful" << endl;
