@@ -74,6 +74,8 @@ struct Options
     string input_points_file;
 
     bool verbose;
+    bool use_mask;
+    string mask_file;
     boost::program_options::options_description desc;
 };
 
@@ -92,7 +94,8 @@ int options(int ac, char ** av, Options& opts)
       ("step_size,s"    , po::value<int>(&opts.step_size),      "step size")
       ("detector,D"    , po::value<string>(&opts.detector_name),      "detector to use")
       ("input_points,P", po::value<string>(&opts.input_points_file), "input_points")
-      ("verbose,v", "Whether to print out debugging statements")
+      ("verbose,v",      "Whether to print out debugging statements")
+      ("mask,m"         , po::value<string>(&opts.mask_file), "Mask file to use")
       ;
     po::variables_map vm;
     po::store(po::parse_command_line(ac, av, desc), vm);
@@ -108,6 +111,11 @@ int options(int ac, char ** av, Options& opts)
         opts.verbose = true;
     } else{
         opts.verbose = false;
+    }
+    if (vm.count("mask")){
+        opts.use_mask = true;
+    } else{
+        opts.use_mask = false;
     }
     if ( !strcmp(opts.feature_name.c_str(), "RAW_BW") ){
         opts.feature = RAW_BW;
@@ -327,7 +335,13 @@ int main(int argc, char** argv) {
     }
     vector< vector<float> > features;
     vector< PatchDefinition* > patch_definitions;
-    descriptor->process_image( image, features, patch_definitions, *pm, opts.verbose );
+    if(opts.use_mask){
+        Mat mask = imread( opts.mask_file, 0);
+        descriptor->process_image( image, mask, features, patch_definitions, *pm, opts.verbose );
+    }
+    else{
+        descriptor->process_image( image, features, patch_definitions, *pm, opts.verbose );
+    }
     // Save the featuremap
     FeatureMap fm;
     for( size_t i = 0; i < features.size(); i++ ){

@@ -18,6 +18,11 @@
 
 #include <patch_vision/slicing/patch_maker.h>
 #include <cstring>
+#include <iostream>
+
+using cv::sum;
+using std::cout;
+using std::endl;
 
 string shape_to_name( PatchShape shape ){
     switch (shape){
@@ -48,6 +53,24 @@ KeyPoint PatchDefinition :: get_keypoint( ) const{
     
 }
 
+void PatchMaker::get_patches( const Mat &image, const Mat &mask, vector<Mat> &patches, vector<Mat> &masks, vector<PatchDefinition* > &patch_definitions ) const{
+    vector< PatchDefinition* > patch_definitions_unpruned;
+    get_patch_definitions( image, patch_definitions_unpruned );
+    for( size_t i = 0; i < patch_definitions_unpruned.size(); i++ ){
+        Mat image_patch, mask_patch;
+        Mat image_mask, garbage;
+        PatchDefinition* patch_definition = patch_definitions_unpruned[i];
+        patch_definition->extract_from_image(image, image_patch, image_mask);
+        patch_definition->extract_from_image(mask,  mask_patch,  garbage);
+        Mat whole_mask = image_mask & mask_patch;
+        if(! is_blank(whole_mask) ){
+            patches.push_back( image_patch );
+            masks.push_back( whole_mask );
+            patch_definitions.push_back(patch_definition);
+        }
+    }
+}
+
 void PatchMaker::get_patches( const Mat &image, vector<Mat> &patches, vector<Mat> &masks, vector<PatchDefinition* > &patch_definitions ) const{
     get_patch_definitions( image, patch_definitions );
     for( size_t i = 0; i < patch_definitions.size(); i++ ){
@@ -59,3 +82,9 @@ void PatchMaker::get_patches( const Mat &image, vector<Mat> &patches, vector<Mat
     }
 }
 
+/*  Returns true if the mask has no nonzero values */
+bool is_blank( const Mat &mask ){
+    cv::Scalar tot = sum(mask);
+    bool blank = tot == cv::Scalar(0);
+    return blank;
+}
