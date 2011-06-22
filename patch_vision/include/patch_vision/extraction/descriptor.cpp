@@ -28,6 +28,25 @@ void Descriptor::process_patch( const Mat &patch, vector<float> &feature ){
     process_patch( patch, feature, mask );
 }
 
+void Descriptor::process_image( const Mat &image, const Mat &mask, vector<vector<float> > &features, 
+                                vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm, 
+                                bool verbose ){
+    Mat converted_image;
+    get_proper_colors( image, converted_image);
+    vector<Mat> patches;
+    vector<Mat> masks;
+    pm.get_patches ( converted_image, mask, patches, masks, patch_definitions );
+    for ( size_t i = 0; i < patches.size(); i++ ){
+        if (verbose){
+            cout << "On patch " << i+1 << " of " << patches.size() << endl;
+        }
+        vector<float> feature;
+        process_patch( patches[i], feature, masks[i] );
+        features.push_back( feature );
+    }
+    cout << "Done!" << endl;
+}
+
 void Descriptor::process_image( const Mat &image, vector<vector<float> > &features, 
                                 vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm, 
                                 bool verbose ){

@@ -51,8 +51,11 @@ class PatchMaker{
     public:
 
         void get_patches( const Mat &image, vector<Mat> &patches, vector<Mat> &masks, vector<PatchDefinition* > &patch_definitions ) const;
+        void get_patches( const Mat &image, const Mat &mask, vector<Mat> &patches, vector<Mat> &masks, vector<PatchDefinition* > &patch_definitions ) const;
 
         virtual void get_patch_definitions( const Mat &image, vector<PatchDefinition* > &patch_definitions) const = 0;
 };
+
+bool is_blank( const Mat &mask );
 
 #endif

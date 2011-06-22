@@ -49,6 +49,9 @@ class Descriptor{
         virtual int required_channels( ) const { return 0; };
         virtual ColorMode required_color_mode( ) const { return BW; };
         
+        virtual void process_image( const Mat &image, const Mat &mask, vector<vector<float> > &features, 
+                            vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm,
+                            bool verbose=false );
         virtual void process_image( const Mat &image, vector<vector<float> > &features, 
                             vector< PatchDefinition* > &patch_definitions, const PatchMaker &pm,
                             bool verbose=false );
