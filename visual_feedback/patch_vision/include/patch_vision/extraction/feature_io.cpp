@@ -25,7 +25,12 @@ FeatureMap :: FeatureMap( ){
     clear();
 }
 
-FeatureMap :: ~FeatureMap( ){ }
+FeatureMap :: ~FeatureMap( ){
+    //for (size_t i = 0; i < _items.size(); i++){
+    //    _items[i].feature.clear();
+    //}
+    //_items.clear();  
+}
 
 void FeatureMap :: add_feature( const PatchDefinition* patch_definition, const vector<float> &feature, int label ){
     pair<int, int> size;
@@ -60,6 +65,20 @@ void FeatureMap :: get_labeled_feature_points( vector< pair<float, float> > &pts
         shapes.push_back( _items[i].shape );
         sizes.push_back( _items[i].size );
         labels.push_back(_items[i].label );
+    }
+}
+
+void FeatureMap :: get_features( vector< vector<float> > &features ) const{
+    for( size_t i = 0; i < _items.size(); i++){
+        vector<float> feature( _items[i].feature );
+        features.push_back( feature );
+    }
+}
+void FeatureMap :: get_labeled_features( vector< vector<float> > &features, vector<int> &labels ) const{
+    for( size_t i = 0; i < _items.size(); i++){
+        vector<float> feature( _items[i].feature );
+        features.push_back( feature );
+        labels.push_back( _items[i].label );
     }
 }
 
