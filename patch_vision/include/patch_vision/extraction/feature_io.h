@@ -44,6 +44,10 @@ class FeatureMap{
                                  vector< pair<int, int> > &sizes) const;
         void get_labeled_feature_points( vector< pair<float, float> > &pts, vector< PatchShape > &shapes,
                                  vector< pair<int, int> > &sizes, vector< int > labels) const;
+
+        void get_features( vector< vector <float> > &features ) const;
+        void get_labeled_features( vector< vector <float> > &features, vector<int> &labels ) const;
+
         void save_to_file( string filename ) const;
         void read_from_file( string filename );
 
