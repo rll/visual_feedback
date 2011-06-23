@@ -10,7 +10,7 @@
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  Arjun Singh (arjun), arjun@eecs.berkeley.edu
+ *         Author:  Stephen Miller (stephen), sdmiller@eecs.berkeley.edu
  *        Company:  UC Berkeley
  *
  * =====================================================================================
