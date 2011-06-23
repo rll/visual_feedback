@@ -50,6 +50,7 @@ class PatchDefinition{
 class PatchMaker{
     public:
 
+        void get_patches( const Mat &image, const Mat &mask, vector<Mat> &patches, vector<Mat> &masks, vector<PatchDefinition* > &patch_definitions ) const;
         void get_patches( const Mat &image, vector<Mat> &patches, vector<Mat> &masks, vector<PatchDefinition* > &patch_definitions ) const;
         void get_patches( const Mat &image, const Mat &mask, vector<Mat> &patches, vector<Mat> &masks, vector<PatchDefinition* > &patch_definitions ) const;
 
