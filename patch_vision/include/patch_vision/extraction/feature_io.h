@@ -40,13 +40,8 @@ class FeatureMap{
         void add_feature( const PatchDefinition *patch_definition, const vector<float> &feature, int label=-1 );
         void add_feature( const pair<float, float> ctr, PatchShape shape, const pair<int, int> size, 
                           const vector<float> &feature, int label=-1 );
-        void get_feature_points( vector< pair<float, float> > &pts, vector< PatchShape > &shapes,
-                                 vector< pair<int, int> > &sizes) const;
-        void get_labeled_feature_points( vector< pair<float, float> > &pts, vector< PatchShape > &shapes,
-                                 vector< pair<int, int> > &sizes, vector< int > labels) const;
 
-        void get_features( vector< vector <float> > &features ) const;
-        void get_labeled_features( vector< vector <float> > &features, vector<int> &labels ) const;
+        void get_items( vector<FeatureMapItem> &items ) const;
 
         void save_to_file( string filename ) const;
         void read_from_file( string filename );

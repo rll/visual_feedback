@@ -49,36 +49,9 @@ void FeatureMap :: add_feature( const pair< float, float> ctr, PatchShape shape,
     _items.push_back( item ); 
 }
 
-void FeatureMap :: get_feature_points( vector< pair<float, float> > &pts, vector< PatchShape > &shapes,
-                                       vector< pair<int, int> > &sizes) const{
-    for( size_t i = 0; i < _items.size(); i++ ){
-        pts.push_back( _items[i].ctr );
-        shapes.push_back( _items[i].shape );
-        sizes.push_back( _items[i].size );
-    }
-}
-
-void FeatureMap :: get_labeled_feature_points( vector< pair<float, float> > &pts, vector< PatchShape > &shapes,
-                                 vector< pair<int, int> > &sizes, vector< int > labels) const{
-    for( size_t i = 0; i < _items.size(); i++ ){
-        pts.push_back( _items[i].ctr );
-        shapes.push_back( _items[i].shape );
-        sizes.push_back( _items[i].size );
-        labels.push_back(_items[i].label );
-    }
-}
-
-void FeatureMap :: get_features( vector< vector<float> > &features ) const{
+void FeatureMap :: get_items( vector<FeatureMapItem> &items ) const{
     for( size_t i = 0; i < _items.size(); i++){
-        vector<float> feature( _items[i].feature );
-        features.push_back( feature );
-    }
-}
-void FeatureMap :: get_labeled_features( vector< vector<float> > &features, vector<int> &labels ) const{
-    for( size_t i = 0; i < _items.size(); i++){
-        vector<float> feature( _items[i].feature );
-        features.push_back( feature );
-        labels.push_back( _items[i].label );
+        items.push_back(FeatureMapItem( _items[i] ) );
     }
 }
 
