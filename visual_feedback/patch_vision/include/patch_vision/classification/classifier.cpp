@@ -54,16 +54,15 @@ bool Classifier :: is_trained( ) const{
 }
 
 void Classifier :: add_featuremap( const FeatureMap &labeled_featuremap ){
-    vector< vector<float> > features;
-    vector< int > labels;
-    labeled_featuremap.get_labeled_features( features, labels );
-    for (size_t i = 0; i < features.size(); i++){
-        int label = labels[i];
+    vector<FeatureMapItem> items;
+    labeled_featuremap.get_items( items );
+    for (size_t i = 0; i < items.size(); i++){
+        int label = items[i].label;
         if (label < 0)
             continue;
         if (label == 0 && !_include_unlabeled)
             continue;
-        add_labeled_feature( features[i], label );
+        add_labeled_feature( items[i].feature, label );
     }
 }
 
@@ -85,10 +84,10 @@ void Classifier :: train( ){
 }
 
 void Classifier :: predict( const FeatureMap &unlabeled_featuremap, vector<int> &labels) const{
-    vector< vector<float> > features;
-    unlabeled_featuremap.get_features(features);
-    for (size_t i = 0; i < features.size(); i++){
-        labels.push_back ( predict_label ( features[i] ) );
+    vector< FeatureMapItem > items;
+    unlabeled_featuremap.get_items( items );
+    for (size_t i = 0; i < items.size(); i++){
+        labels.push_back ( predict_label ( items[i].feature ) );
     }
 }
 
