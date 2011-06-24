@@ -112,6 +112,9 @@ class Classifier:
     def clear( self ):
         self._labeled_features = []
         self._is_trained = False
+    
+    def name(self):
+        return self.__class__.__name__ 
 
     ###     USER EXTENDED METHODS ###
 
@@ -187,8 +190,6 @@ class Classifier:
 
 
 
-    def name(self):
-        return self.__class__.__name__ 
 
     
 
