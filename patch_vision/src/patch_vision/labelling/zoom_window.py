@@ -43,6 +43,8 @@ class ZoomWindow:
         if keycode in cvkeymappings.keys():
             char_str = cvkeymappings[keycode]
             go_on = self.handle_keypress( char_str )
+        elif keycode in range(0, 128):
+            go_on = self.handle_keypress(chr(keycode))
         return go_on
         
     def show_image(self):
