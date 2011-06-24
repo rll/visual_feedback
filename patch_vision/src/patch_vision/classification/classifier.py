@@ -69,7 +69,7 @@ class Classifier:
         (featuretype, description, include_unlabeled) = f.readline().split()
         self._feature_type = featuretype
         self._description = description
-        self._include_unlabeled = bool(include_unlabeled)
+        self._include_unlabeled = bool( int( include_unlabeled) )
         self._is_trained = bool( int( f.readline().split()[0] ) )
         if not self._is_trained:
             self.read_untrained( f )
@@ -105,6 +105,7 @@ class Classifier:
         output_file.write( "%d\n" % len( self._labeled_features ) )
         for labeled_feature in self._labeled_features:
             output_file.write( "%d\t" % labeled_feature.label )
+            output_file.write( "%d\t" % len(labeled_feature.feature) )
             for val in labeled_feature.feature:
                 output_file.write( "%f " % val )
             output_file.write( "\n" )
@@ -127,9 +128,6 @@ class Classifier:
         return self.__class__.__name__ 
 
     
-
-    
-
 
 
 

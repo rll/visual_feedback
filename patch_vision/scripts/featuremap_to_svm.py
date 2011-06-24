@@ -67,27 +67,6 @@ def main(args):
         f.write("\n")
     f.close()
 
-def compute_label ( labelmat, pt, shape, size ):
-    patch, mat = get_patch( labelmat, pt, shape, size)
-    count = {}
-    total = 0
-    for i in range(patch.width):
-        for j in range(patch.height):
-            if not mat[j,i]:
-                continue
-            total += 1
-            label = labelmat[j,i]
-            if not label in count.keys():
-                print "Making entry for label %d"%label
-                count[label] = 0
-            count[ label ] += 1
-    best_label = max(count.keys(), key = lambda i: count[i] )
-    if count[best_label] / float(total) < 0.5:
-        return best_label
-    else:
-        return -1
-
-    
         
 if __name__ == '__main__':
     args = parse()

@@ -22,7 +22,7 @@
 
 class NNClassifier : public Classifier{
     public:
-        NNClassifier(const string feature_type, const string description, bool include_unlabeled=false) :
+        NNClassifier(const string feature_type="N/A", const string description="N/A", bool include_unlabeled=false) :
             Classifier( feature_type, description, include_unlabeled ){ };
 
         string name( ) const{ return "NNClassifier"; }
@@ -36,5 +36,11 @@ class NNClassifier : public Classifier{
 };
 
 float l2_distance( const vector<float> v1, const vector<float> v2 );
+
+void get_candidate_classifiers( vector<Classifier*> &candidates );
+
+Classifier* instantiate_classifier_by_name( string name );
+
+Classifier* load_classifier_from_file( string filename );
 
 #endif

@@ -44,7 +44,7 @@ class Classifier{
     public:
 
         Classifier(  );
-        Classifier( const string feature_type, const string description, bool include_unlabeled=false );
+        Classifier( const string feature_type="N/A", const string description="N/A", bool include_unlabeled=false );
         virtual ~Classifier( );
      
         virtual string name( ) const = 0;
