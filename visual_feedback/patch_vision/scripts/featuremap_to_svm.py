@@ -8,7 +8,6 @@ import rospy
 import numpy as np
 
 from patch_vision.extraction.feature_io import FeatureMap
-from patch_vision.slicing.patch_extraction import get_patch
 
 
 def parse():
@@ -34,6 +33,8 @@ def main(args):
         directory = args.output_directory
     else:
         directory = os.path.dirname(args.input_features)
+        if directory == "":
+            directory = "."
         print "No output directory specified. Defaulting to %s"%directory
     if not os.path.exists(directory):
         os.makedirs(directory)
