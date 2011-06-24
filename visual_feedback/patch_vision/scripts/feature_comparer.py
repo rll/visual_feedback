@@ -70,7 +70,7 @@ class ReferenceWindow( ZoomWindow ):
         if self.view_mode == NN and self.knn:
             color = cv.RGB(0,255,0)
             pt = self.knn[0]
-            cv.Circle( self.view_image, pt, 5*self.zoom_out, color, -1 )
+            cv.Circle( self.view_image, (int(pt[0]), int(pt[1])), 5*self.zoom_out, color, -1 )
             if self.show_patch:
                 shape = self.shape_map[pt]
                 size = self.size_map[pt]
@@ -79,7 +79,7 @@ class ReferenceWindow( ZoomWindow ):
             for i,pt in enumerate(self.knn):
                 factor = 1 - i / float(len(self.knn))
                 color = cv.RGB(factor*255,0,0)
-                cv.Circle( self.view_image, pt, 5*self.zoom_out, color, -1 )
+                cv.Circle( self.view_image, (int(pt[0]), int(pt[1])), 5*self.zoom_out, color, -1 )
                 if self.show_patch:
                     shape = self.shape_map[pt]
                     size = self.size_map[pt]
@@ -103,6 +103,7 @@ class ReferenceWindow( ZoomWindow ):
 
     def toggle_mode(self):
         self.view_mode = (self.view_mode + 1) % len(VIEW_MODES);
+        print "switched to mode %d" % self.view_mode
 
     def toggle_log_scale(self):
         self.log_scale = not self.log_scale
