@@ -5,20 +5,23 @@ import numpy as np
 
 class NNClassifier ( Classifier ):
 
+
+    def train_impl( self ):
+        #No need to train anything with a NN Classifier
+        return
+    
     def predict_label( self, feature ):
         nn = min( self._labeled_features,
                   key = lambda lf: self.dist(feature, lf.feature ) )
         return nn.label
 
-    def train_impl( self ):
-        #No need to train anything with a NN Classifier
-        return
-
+    def save_trained ( self, output_file ):
+        # I need to store the same data an untrained classifier needs: the labeled features
+        self.save_untrained( output_file )
+    
     def read_trained ( self, input_file ):
         self.read_untrained( input_file )
 
-    def save_trained ( self, output_file ):
-        self.save_untrained( output_file )
 
     def dist( self, v1, v2 ):
         #Hard coded for now, make dist fxn variable later
