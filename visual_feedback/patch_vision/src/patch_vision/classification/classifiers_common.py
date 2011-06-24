@@ -42,3 +42,18 @@ def chi2_dist(v1, v2):
     dist = np.dot(diff,diff)
     return dist
 
+def get_classifier_name( input_file ):
+    f = open( input_file,'r' )
+    name = f.readline().split()[0]
+    f.close( )
+    return name
+
+def instantiate_classifier_by_name( name, *args, **keywords ):
+    return globals()[name](*args, **keywords) 
+    
+
+def load_classifier_from_file( input_file ):
+    name = get_classifier_name (input_file)
+    classif = instantiate_classifier_by_name( name )
+    classif.read_from_file( input_file )
+    return classif

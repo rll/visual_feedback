@@ -6,7 +6,7 @@ import os.path
 import sys
 import rospy
 import numpy as np
-from patch_vision.extraction.feature_io import FeatureMap, SHAPES
+from patch_vision.extraction.feature_io import FeatureMap, draw_patch
 from patch_vision.labelling.zoom_window import ZoomWindow
 
 class ClickWindow( ZoomWindow ):
@@ -127,13 +127,6 @@ def get_rect_vertices(center, width, height):
     y = center[1] - (height + 1)/2.0
     return (x,y),(x+width,y+height)
 
-def draw_patch( image, ctr, shape, size, color, filled = False ):
-    if shape == "SQUARE":
-        v1,v2 = get_rect_vertices(ctr, size[0], size[1])
-        cv.Rectangle( image, v1, v2, color, -1 if filled else 1 )
-    elif shape == "CIRCLE":
-        cv.Circle( image, ctr, size[0]/2., color, -1 if filled else 1 )
-    
 
 def parse():
     import argparse
