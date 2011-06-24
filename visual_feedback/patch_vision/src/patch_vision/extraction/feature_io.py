@@ -10,7 +10,7 @@ def draw_patch( image, ctr, shape, size, color, filled = False ):
         v1,v2 = get_rect_vertices(ctr, size[0], size[1])
         cv.Rectangle( image, v1, v2, color, -1 if filled else 1 )
     elif shape == "CIRCLE":
-        cv.Circle( image, ctr, size[0]/2., color, -1 if filled else 1 )
+        cv.Circle( image, (int(ctr[0]),int(ctr[1])), int(size[0])/2, color, -1 if filled else 1 )
 
 class FeatureMap:
     def __init__(self):
