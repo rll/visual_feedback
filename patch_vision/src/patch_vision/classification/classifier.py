@@ -34,6 +34,11 @@ class Classifier:
         return self._is_trained
 
     def add_featuremap ( self, labeled_featuremap ):
+        """ 
+            add_featuremap ( self, labeled_featuremap )
+            Adds all features from a labeled featuremap to the
+            training set
+        """
         for pt in labeled_featuremap.get_feature_points( ):
             feature = labeled_featuremap.get_feature( pt )
             label = labeled_featuremap.get_label( pt )
@@ -54,16 +59,21 @@ class Classifier:
         self._is_trained = True
 
     def predict( self, unlabeled_featuremap ):
-        labels = []
+        """
+            Given an unlabeled featuremap, return a dictionary
+            of patch centers to predicted labels
+        """
+        labels = {}
         for pt in unlabeled_featuremap.get_feature_points( ):
             feature = unlabeled_featuremap.get_feature( pt )
-            labels.append( self.predict_label( feature ) )
+            labels[pt] = self.predict_label( feature )
         return labels
 
-    def predict_label( self, feature ):
-        abstract
-
     def read_from_file( self, filename ):
+        """
+            Populate the classifier from a .cls file
+        """
+        self.clear()
         f = open(filename,'r')
         name = f.readline().split()[0]
         (featuretype, description, include_unlabeled) = f.readline().split()
@@ -78,6 +88,9 @@ class Classifier:
         f.close()
 
     def save_to_file( self, filename ):
+        """
+            Save the classifier to a .cls file
+        """
         f = open(filename,'w')
         f.write( "%s\n"%self.name() )
         f.write( "%s\t%s\t%d\n"%(self.feature_type(), self.description(), self.include_unlabeled()) )
@@ -88,10 +101,12 @@ class Classifier:
             self.save_trained( f )
         f.close()
 
-    def train_impl( ):
-        abstract
 
     def read_untrained( self, input_file ):
+        """
+            Populate _labeled_features from an input, open file with
+            read only access
+        """
         num_features = int( input_file.readline().split()[0] )
         for i in range( num_features ):
             tokens = input_file.readline().split()
@@ -102,6 +117,12 @@ class Classifier:
 
 
     def save_untrained( self, output_file ):
+        """
+            Save _labeled_features to an output, open file with
+            write only access.
+            If I have not yet been trained, my data is the same regardless
+            of what sort of classifier I am: a list of labeled features
+        """
         output_file.write( "%d\n" % len( self._labeled_features ) )
         for labeled_feature in self._labeled_features:
             output_file.write( "%d\t" % labeled_feature.label )
@@ -110,20 +131,61 @@ class Classifier:
                 output_file.write( "%f " % val )
             output_file.write( "\n" )
 
-
-    def read_trained( self, input_file ):
-        abstract
-
-    def save_trained( self, output_file ):
-        abstract
-
+    
     def get_labeled_features( self ):
         return list(self._labeled_features)
 
     def clear( self ):
         self._labeled_features = []
         self._is_trained = False
+
+    ###     USER EXTENDED METHODS ###
+
+    ##      REQUIRED    ##
+
+    def predict_label( self, feature ):
+        """ 
+            predict_label( self, feature ) -> label
+            Given an input feature, output a label
+            By convention, valid labels are nonnegative integers; a label
+            of -1 indicates that prediction was somehow impossible on the 
+            input data
+            You may assume that train_impl() has been run prior to this.
+        """
+        abstract
+
+    def train_impl( self ):
+        """ 
+            train_impl( self ) -> None
+            Train your classifier on all features, accessible through
+            get_labeled_features(). Once trained, you must assume that
+            you will no longer have access to the labeled features unless
+            you explicitly save and read them in read_trained and save_trained
+            respectively.
+        """
+        abstract
+
+    def save_trained( self, output_file ):
+        """
+            save_trained( self, output_file ) -> None
+            Given an open file with write access, output_file,
+            write all data you will need to repopulate yourself
+            from scratch via read_trained()
+        """
+        abstract
+
+    def read_trained( self, input_file ):
+        """
+            read_trained( self, input_file ) -> None
+            Given an open file with read access, input_file,
+            saved by a prior call to save_info
+            populate all members of this class
+        """
+        abstract
+
+
     
+    ##      OPTIONAL    ##
     def name(self):
         return self.__class__.__name__ 
 

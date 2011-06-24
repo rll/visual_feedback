@@ -11,7 +11,7 @@ class NNClassifier ( Classifier ):
         return nn.label
 
     def train_impl( self ):
-        #No need to train a NN Classifier
+        #No need to train anything with a NN Classifier
         return
 
     def read_trained ( self, input_file ):
@@ -21,7 +21,7 @@ class NNClassifier ( Classifier ):
         self.save_untrained( output_file )
 
     def dist( self, v1, v2 ):
-        #Hard coded for now, make variable later
+        #Hard coded for now, make dist fxn variable later
         return l2_dist( v1, v2 )
 
 def l2_dist(v1, v2):
