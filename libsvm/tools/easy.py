@@ -3,19 +3,27 @@
 import sys
 import os
 from subprocess import *
+from optparse import OptionParser
 
 if len(sys.argv) <= 1:
 	print('Usage: {0} training_file [testing_file]'.format(sys.argv[0]))
 	raise SystemExit
 
+parser = OptionParser()
+parser.add_option("-l", "--lower", dest="lower", help="lowest value allowed in each dimension (defaults to -1)",
+    default="-1")
+(options, args) = parser.parse_args();
+
 # svm, grid, and gnuplot executable files
+
+currdir = os.popen("rospack find libsvm").readlines()[0][0:-1]+"/tools/"
 
 is_win32 = (sys.platform == 'win32')
 if not is_win32:
-	svmscale_exe = "../bin/svm-scale"
-	svmtrain_exe = "../bin/svm-train"
-	svmpredict_exe = "../bin/svm-predict"
-	grid_py = "./grid.py"
+	svmscale_exe = currdir+"../bin/svm-scale"
+	svmtrain_exe = currdir+"../bin/svm-train"
+	svmpredict_exe = currdir+"../bin/svm-predict"
+	grid_py = currdir+"/grid.py"
 	gnuplot_exe = "/usr/bin/gnuplot"
 else:
         # example for windows
@@ -45,7 +53,7 @@ if len(sys.argv) > 2:
 	scaled_test_file = file_name + ".scale"
 	predict_test_file = file_name + ".predict"
 
-cmd = '{0} -s "{1}" "{2}" > "{3}"'.format(svmscale_exe, range_file, train_pathname, scaled_file)
+cmd = '{0} -l "{1}" -s "{2}" "{3}" > "{4}"'.format(svmscale_exe, options.lower, range_file, train_pathname, scaled_file)
 print('Scaling training data...')
 Popen(cmd, shell = True, stdout = PIPE).communicate()	
 

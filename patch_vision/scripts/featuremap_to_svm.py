@@ -9,7 +9,6 @@ import numpy as np
 
 from patch_vision.extraction.feature_io import FeatureMap
 
-
 def parse():
     import argparse
     
