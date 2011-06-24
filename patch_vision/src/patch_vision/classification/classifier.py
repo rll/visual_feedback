@@ -91,7 +91,7 @@ class Classifier:
         """
             Save the classifier to a .cls file
             Note: Required to save this way, so that all classifiers, regardless of type,
-            have the same header.
+            have the same header. Extended classes only modify save_trained and (optionally) save_untrained
         """
         f = open(filename,'w')
         f.write( "%s\n"%self.name() )
@@ -137,8 +137,7 @@ class Classifier:
             Train your classifier on all features, accessible through
             get_labeled_features(). Once trained, you must assume that
             you will no longer have access to the labeled features unless
-            you explicitly save and read them in read_trained and save_trained
-            respectively.
+            you explicitly save and read them via save_ & read_trained()
         """
         abstract
 
