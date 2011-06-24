@@ -4,7 +4,9 @@ import cv
 import re
 from patch_vision.labelling.label_set import LabelSet
 
+# different key mappings for different systems
 cvkeymappings = {}
+# first set of key mappings
 for i,charcode in enumerate(range(ord('a'),ord('z')+1)):
     cvkeymappings[1048673+i] = chr(charcode)
 for i,charcode in enumerate(range(ord('0'),ord('9')+1)):
@@ -16,6 +18,12 @@ cvkeymappings[1113940] = 'DOWN'
 cvkeymappings[1048621] = '-'
 cvkeymappings[1048637] = '='
 cvkeymappings[1048586] = 'ENTER'
+# second set
+# 0-128 handled using chr(keycode) (ASCII value)
+cvkeymappings[65361] = 'LEFT'
+cvkeymappings[65362] = 'UP'
+cvkeymappings[65363] = 'RIGHT'
+cvkeymappings[65364] = 'DOWN'
 
 class ZoomWindow:
     def __init__(self, name = "Viewer", update_period = 100, zoom_out = 1):
