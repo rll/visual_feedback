@@ -90,6 +90,8 @@ class Classifier:
     def save_to_file( self, filename ):
         """
             Save the classifier to a .cls file
+            Note: Required to save this way, so that all classifiers, regardless of type,
+            have the same header.
         """
         f = open(filename,'w')
         f.write( "%s\n"%self.name() )
@@ -102,34 +104,6 @@ class Classifier:
         f.close()
 
 
-    def read_untrained( self, input_file ):
-        """
-            Populate _labeled_features from an input, open file with
-            read only access
-        """
-        num_features = int( input_file.readline().split()[0] )
-        for i in range( num_features ):
-            tokens = input_file.readline().split()
-            label = int(tokens[0])
-            feature_size = int(tokens[1])
-            feature = [float(val) for val in tokens[2:] ]
-            self.add_label_and_feature( feature, label )
-
-
-    def save_untrained( self, output_file ):
-        """
-            Save _labeled_features to an output, open file with
-            write only access.
-            If I have not yet been trained, my data is the same regardless
-            of what sort of classifier I am: a list of labeled features
-        """
-        output_file.write( "%d\n" % len( self._labeled_features ) )
-        for labeled_feature in self._labeled_features:
-            output_file.write( "%d\t" % labeled_feature.label )
-            output_file.write( "%d\t" % len(labeled_feature.feature) )
-            for val in labeled_feature.feature:
-                output_file.write( "%f " % val )
-            output_file.write( "\n" )
 
     
     def get_labeled_features( self ):
@@ -168,24 +142,51 @@ class Classifier:
     def save_trained( self, output_file ):
         """
             save_trained( self, output_file ) -> None
-            Given an open file with write access, output_file,
+            Given an open file with write access,
             write all data you will need to repopulate yourself
-            from scratch via read_trained()
         """
         abstract
 
     def read_trained( self, input_file ):
         """
             read_trained( self, input_file ) -> None
-            Given an open file with read access, input_file,
-            saved by a prior call to save_info
-            populate all members of this class
+            Given an open file with read access, populate all members of this class
         """
         abstract
 
 
     
     ##      OPTIONAL    ##
+    def save_untrained( self, output_file ):
+        """
+            Save _labeled_features to an already-open file with write only access.
+            By default, untrained classifiers all store the exact same information:
+            the labeled data. If you want other things, such as classifier parameters,
+            to be persist even when you have not trained yet, extend this method and
+            read_untrained accordingly
+        """
+        output_file.write( "%d\n" % len( self._labeled_features ) )
+        for labeled_feature in self._labeled_features:
+            output_file.write( "%d\t" % labeled_feature.label )
+            output_file.write( "%d\t" % len(labeled_feature.feature) )
+            for val in labeled_feature.feature:
+                output_file.write( "%f " % val )
+            output_file.write( "\n" )
+
+    def read_untrained( self, input_file ):
+        """
+            Populate _labeled_features from an already-open file with read only access.
+        """
+        num_features = int( input_file.readline().split()[0] )
+        for i in range( num_features ):
+            tokens = input_file.readline().split()
+            label = int(tokens[0])
+            feature_size = int(tokens[1])
+            feature = [float(val) for val in tokens[2:] ]
+            self.add_label_and_feature( feature, label )
+
+
+
     def name(self):
         return self.__class__.__name__ 
 
