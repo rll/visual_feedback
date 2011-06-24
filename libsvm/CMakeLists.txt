@@ -9,6 +9,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
 #set(ROS_BUILD_TYPE RelWithDebInfo)
 
+set(ROS_COMPILE_FLAGS "-Wall -Wconversion -9 -fPIC" )
 rosbuild_init()
 
 #set the default path for built executables to the "bin" directory
@@ -19,8 +20,8 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #Making SVM library
 rosbuild_add_library(svm include/libsvm/svm.cpp)
 rosbuild_add_executable(svm-train include/libsvm/svm-train.c)
-target_link_libraries(svm-train svm)
+target_link_libraries(svm-train svm m)
 rosbuild_add_executable(svm-predict include/libsvm/svm-predict.c)
-target_link_libraries(svm-predict svm)
+target_link_libraries(svm-predict svm m)
 rosbuild_add_executable(svm-scale include/libsvm/svm-scale.c)
-target_link_libraries(svm-scale svm)
+target_link_libraries(svm-scale svm m)
