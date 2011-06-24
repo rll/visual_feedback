@@ -5,7 +5,6 @@ import numpy as np
 
 class NNClassifier ( Classifier ):
 
-
     def train_impl( self ):
         #No need to train anything with a NN Classifier
         return
@@ -26,6 +25,7 @@ class NNClassifier ( Classifier ):
     def dist( self, v1, v2 ):
         #Hard coded for now, make dist fxn variable later
         return l2_dist( v1, v2 )
+
 
 def l2_dist(v1, v2):
     v1_arr = np.array(v1)
