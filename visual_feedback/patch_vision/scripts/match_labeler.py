@@ -6,11 +6,12 @@ import os.path
 import sys
 import rospy
 import numpy as np
-from patch_vision.labelling.zoom_window import ZoomWindow, cvkeymappings
+from patch_vision.utils.zoom_window import ZoomWindow, keycommand, globalkeycommand, update_all_windows
 from patch_vision.matching.match_io import MatchSet
 
 # Map from points in reference image to points in comparison image
 MODES = [SET, SELECT] = range(2)
+global mode
 mode = SET
 IMAGE_TYPES = [COMPARE, REFERENCE] = range(2)
 strength = 1
@@ -18,6 +19,7 @@ reference_pts = []
 compare_pts = []
 strengths = []
 
+global selected_index
 selected_index = -1
 
 save_flag = False
@@ -49,7 +51,7 @@ class ClickWindow( ZoomWindow ):
             cv.Circle( self.view_image, pt, 5*self.zoom_out, pts_color, -1 )
         return self.view_image
 
-    def handleEvents(self,event,x,y,flags,param):
+    def handleEventsUnzoomed(self,event,x,y,flags,param):
         if event == cv.CV_EVENT_LBUTTONDOWN:
             if mode == SET:
                 self.click_pt = (x,y)
@@ -135,10 +137,7 @@ def main(args):
     global mode
     global strength
     while(True):
-        keycode = cv.WaitKey(100)
-        cont = compare_window.update(keycode)
-        cont &= reference_window.update(keycode)
-        cont &= handle_key(keycode)
+        cont = update_all_windows()
         if not cont:
             break
         if compare_window.click_pt and reference_window.click_pt:
@@ -154,59 +153,78 @@ def main(args):
         match_set.save_to_file( output_file )
         print "Saved to %s"%output_file
 
-def handle_key(keycode):
-    if not keycode in cvkeymappings.keys():
-        return True
-    char_str = cvkeymappings[keycode]
-    if char_str == 'm':
-        global mode
-        mode = (mode + 1) % len(MODES)
-    elif char_str == 'LEFT':
-        global mode
-        mode = SELECT
-        global selected_index
-        if selected_index == -1:
-            selected_index = len(compare_pts) - 1
-        else:
-            selected_index = (selected_index - 1) % len(compare_pts)
-        print_selected_info()
-    elif char_str == 'RIGHT':
-        global mode
-        mode = SELECT
-        global selected_index
-        selected_index = (selected_index + 1) % len(compare_pts)
-        print_selected_info()
-    elif char_str == 's':
-        global save_flag
-        save_flag = True
-        return False
-    
+@globalkeycommand( 'm', "Go to the next mode")
+def increment_mode():
+    global mode
+    mode = (mode + 1) % len(MODES)
+
+@globalkeycommand( 'LEFT', "Select previous match")
+def select_previous():
+    global mode
+    mode = SELECT
+    global selected_index
+    if selected_index == -1:
+        selected_index = len(compare_pts) - 1
+    else:
+        selected_index = (selected_index - 1) % len(compare_pts)
+    print_selected_info()
+
+@globalkeycommand( 'RIGHT', "Select next match")
+def select_next():
+    global mode
+    mode = SELECT
+    global selected_index
+    selected_index = (selected_index + 1) % len(compare_pts)
+    print_selected_info()
+
+@globalkeycommand( 's', "Save the match to file", exits=True )
+def save():
+    global save_flag
+    save_flag = True
+
+@globalkeycommand( 'u', "Undo the last action" )
+def undo():
     if mode == SET:
-        if char_str == 'u':
-            compare_pts.pop()
-            reference_pts.pop()
-            strengths.pop()
-        elif char_str == '=':
-            global strength
-            strength = min(strength + 0.05, 1)
-            print "Strength: %f"%strength
-        elif char_str == '-':
-            global strength
-            strength = max(strength - 0.05, 0)
-            print "Strength: %f"%strength
+        compare_pts.pop()
+        reference_pts.pop()
+        strengths.pop()
+
+@globalkeycommand( '=', 
+                    "Increase the strength"+
+                    "\n\t\t-- in SET mode, changes what will be set to"+
+                    "\n\t\t-- in SELECT mode, changes the strength of current match")
+def increase_strength( ):
+    global selected_index
+    if mode == SET:
+        global strength
+        strength = min(strength + 0.05, 1)
+        print "Strength: %f"%strength
     elif mode == SELECT and selected_index != -1:
-        if char_str == 'd':
-            del compare_pts[selected_index]
-            del reference_pts[selected_index]
-            del strengths[selected_index]
-            selected_index = (selected_index - 1) % len(compare_pts)
-        elif char_str == '=':
-            strengths[selected_index] = min(strengths[selected_index] + 0.05, 1)
-            print "Match strength %d set to %f"%(selected_index, strengths[selected_index])
-        elif char_str == '-':
-            strengths[selected_index] = max(strengths[selected_index] - 0.05, 0)
-            print "Match strength %d set to %f"%(selected_index, strengths[selected_index])
-    return True
+        strengths[selected_index] = min(strengths[selected_index] + 0.05, 1)
+        print "Match strength %d set to %f"%(selected_index, strengths[selected_index])
+
+@globalkeycommand( '-', 
+                    "Decrease the strength"+
+                    "\n\t\t-- in SET mode, changes what will be set to"+
+                    "\n\t\t-- in SELECT mode, changes the strength of current match")
+def decrease_strength( ):
+    global selected_index
+    if mode == SET:
+        global strength
+        strength = max(strength - 0.05, 0)
+        print "Strength: %f"%strength
+    elif mode == SELECT and selected_index != -1:
+        strengths[selected_index] = max(strengths[selected_index] - 0.05, 0)
+        print "Match strength %d set to %f"%(selected_index, strengths[selected_index])
+
+@globalkeycommand( 'd', "Delete the selected match" )
+def delete_selected( ):
+    global selected_index
+    if mode == SELECT and selected_index != -1:
+        del compare_pts[selected_index]
+        del reference_pts[selected_index]
+        del strengths[selected_index]
+        selected_index = (selected_index - 1) % len(compare_pts)
 
 def print_selected_info():
     if selected_index == -1:

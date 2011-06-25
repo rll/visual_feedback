@@ -7,7 +7,7 @@ import sys
 import rospy
 import numpy as np
 from patch_vision.extraction.feature_io import FeatureMap, draw_patch
-from patch_vision.labelling.zoom_window import ZoomWindow
+from patch_vision.utils.zoom_window import ZoomWindow, keycommand, update_all_windows
 
 class ClickWindow( ZoomWindow ):
     def __init__(self, image, zoom_out):
@@ -23,7 +23,7 @@ class ClickWindow( ZoomWindow ):
             cv.Circle( self.view_image, self.click_pt, 5*self.zoom_out, cv.RGB(0,0,255), -1 )
         return self.view_image
 
-    def handleEvents(self,event,x,y,flags,param):
+    def handleEventsUnzoomed(self,event,x,y,flags,param):
         if event == cv.CV_EVENT_LBUTTONDOWN:
             self.click_pt = (x,y)
             self.update_nn = True
@@ -101,27 +101,27 @@ class ReferenceWindow( ZoomWindow ):
     def set_size_map( self, size_map):
         self.size_map = size_map
 
+    @keycommand('m', "Switch to the next view mode")
     def toggle_mode(self):
         self.view_mode = (self.view_mode + 1) % len(VIEW_MODES);
         print "switched to mode %d" % self.view_mode
 
+    @keycommand('l', "Toggle log scale on and off")
     def toggle_log_scale(self):
         self.log_scale = not self.log_scale
 
-    def handle_keypress( self, char_str ):
-        if char_str == 'm':
-            self.toggle_mode()
-        elif char_str == 'l':
-            self.toggle_log_scale()
-        elif char_str == 'p':
-            self.show_patch = not self.show_patch
-        elif char_str == '=':
-            self.gamma *= 2
-            print "Gamma = %f"%self.gamma
-        elif char_str == "-":
-            self.gamma *= 0.5
-            print "Gamma = %f"%self.gamma
-        return ZoomWindow.handle_keypress( self, char_str)
+    @keycommand('p', "Toggle whether or not to display patch outlines")
+    def toggle_show_patch(self):
+        self.show_patch = not self.show_patch
+
+    @keycommand('=', "Increase gamma")
+    def increase_gamma(self):
+        self.gamma *= 2
+    
+    @keycommand('-', "Decrease gamma")
+    def decrease_gamma(self):
+        self.gamma *= 0.5
+
 
 def get_rect_vertices(center, width, height):
     x = center[0] - (width + 1)/2.0
@@ -166,9 +166,7 @@ def main(args):
 
     #nn_solver = pyflann.FLANN()
     while(True):
-        keycode = cv.WaitKey(100)
-        cont = compare_window.update(keycode)
-        cont &= reference_window.update(keycode)
+        cont = update_all_windows()
         if not cont:
             break
         if compare_window.update_nn:

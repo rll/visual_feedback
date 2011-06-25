@@ -7,7 +7,7 @@ import sys
 import rospy
 import numpy as np
 from patch_vision.extraction.feature_io import FeatureMap, draw_patch
-from patch_vision.labelling.zoom_window import ZoomWindow
+from patch_vision.utils.zoom_window import ZoomWindow, update_all_windows
 from patch_vision.labelling.label_set import LabelSet
 from patch_vision.classification.classifiers_common import load_classifier_from_file
 
@@ -31,7 +31,7 @@ class ClickWindow( ZoomWindow ):
     def set_patch( self, ctr, shape, size, color ):
         self.patch = (ctr, shape, size, color)
 
-    def handleEvents(self,event,x,y,flags,param):
+    def handleEventsUnzoomed(self,event,x,y,flags,param):
         if event == cv.CV_EVENT_LBUTTONDOWN:
             self.click_pt = (x,y)
             self.update_label = True
@@ -71,8 +71,7 @@ def main(args):
     window = ClickWindow( image, args.zoom_out)
 
     while(True):
-        keycode = cv.WaitKey(100)
-        cont = window.update(keycode)
+        cont = update_all_windows()
         if not cont:
             break
         if window.update_label:
