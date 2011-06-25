@@ -6,7 +6,7 @@ import os.path
 import sys
 import rospy
 import numpy as np
-from patch_vision.labelling.zoom_window import ZoomWindow, cvkeymappings
+from patch_vision.utils.zoom_window import ZoomWindow, keycommand, cvkeymappings
 from patch_vision.slicing.pt_io import PointSet
 
 points = []
@@ -42,7 +42,7 @@ class PointWindow( ZoomWindow ):
                 cv.Circle( self.view_image, self.tile_params[4], 5*self.zoom_out, cv.RGB(255,255,255),-1)
         return self.view_image
 
-    def handleEvents(self,event,x,y,flags,param):
+    def handleEventsUnzoomed(self,event,x,y,flags,param):
         if event == cv.CV_EVENT_LBUTTONDOWN:
             if self.mode == SET:
                 points.append( (x,y) )
@@ -57,44 +57,51 @@ class PointWindow( ZoomWindow ):
                 if len(self.tile_params) < 5:
                     self.tile_params.append( (x,y) )
 
+    @keycommand('d', "Go to DELETE Mode" )
+    def delete_mode(self):
+        self.mode = DELETE
 
-    def handle_keypress( self, char_str ):
-        if char_str == 'd':
-            self.mode = DELETE
-        elif char_str == 'a':
-            self.mode = SET
-        elif char_str == 'b':
-            self.mode = BLOCK_TILE
-        elif char_str == 'l':
-            self.mode = LINE_TILE
-        elif char_str == 'ENTER':
-            if self.mode == BLOCK_TILE:
-                if len(self.tile_params) >= 5:
-                    self.block_tile()
-                    self.tile_params = []
-            elif self.mode == LINE_TILE:
-                if len(self.tile_params) >= 3:
-                    self.line_tile()
-                    self.tile_params = []
-        elif char_str == 'u':
-            if self.mode == SET:
-                if len(points) > 0:
-                    points.pop()
-            elif self.mode == DELETE:
-                if len(deleted) > 0:
-                    points.append(deleted.pop())
-            elif self.mode == BLOCK_TILE or self.mode == LINE_TILE:
-                if len(self.tile_params) > 0:
-                    self.tile_params.pop()
-                elif len(points) > 0:
-                    points.pop()
-        elif char_str == 's':
-            global save_flag
-            save_flag = True
-            return False
-        else:
-            return ZoomWindow.handle_keypress( self, char_str )
-        return True
+    @keycommand('a', "Go to SET Mode" )
+    def set_mode(self):
+        self.mode = SET
+
+    @keycommand('l', "Go to LINE_TILE Mode" )
+    def line_tile_mode(self):
+        self.mode = LINE_TILE
+
+    @keycommand('b', "Go to BLOCK Mode" )
+    def block_mode(self):
+        self.mode = BLOCK_TILE
+
+    @keycommand('ENTER', "In TILE Mode: create the tile from the selected parameters")
+    def commit_params(self):
+        if self.mode == BLOCK_TILE:
+            if len(self.tile_params) >= 5:
+                self.block_tile()
+                self.tile_params = []
+        elif self.mode == LINE_TILE:
+            if len(self.tile_params) >= 3:
+                self.line_tile()
+                self.tile_params = []
+
+    @keycommand('u', "Undo the last change made in the current mode")
+    def undo(self):
+        if self.mode == SET:
+            if len(points) > 0:
+                points.pop()
+        elif self.mode == DELETE:
+            if len(deleted) > 0:
+                points.append(deleted.pop())
+        elif self.mode == BLOCK_TILE or self.mode == LINE_TILE:
+            if len(self.tile_params) > 0:
+                self.tile_params.pop()
+            elif len(points) > 0:
+                points.pop()
+
+    @keycommand('s', "Save the points and quit", exits=True)
+    def save(self):
+        global save_flag
+        save_flag = True
 
     def line_tile(self):
         [start, first, end] = self.tile_params
@@ -129,14 +136,6 @@ class PointWindow( ZoomWindow ):
                 points.append( tuple(start + step_amt_u + step_amt_v) )
                 step_amt_v += step_v
             step_amt_u += step_u
-        ##[start, first, end] = self.tile_params
-        ##dx = first[0] - start[0]
-        ##dy = first[1] - start[1]
-        ##print "Step: %f, %f"%(dx,dy)
-        ##for x in range(start[0],end[0]+0.01,dx):
-        ##    for y in range(start[1],end[1]+0.01,dy):
-        ##        points.append( (x,y) )
-
 
     def get_pts( self ):
         if self.id == COMPARE:
@@ -174,7 +173,7 @@ def main(args):
     if args.output_directory:
         directory = args.output_directory
     else:
-        directory = os.path.dirname(args.compared_image)
+        directory = os.path.dirname(args.input_image)
         print "No output directory specified. Defaulting to %s"%directory
     if not os.path.exists(directory):
         os.makedirs(directory)
