@@ -53,7 +53,6 @@ def update_all_windows( period=100 ):
     for obj in key_commanded_objects:
         cont &= obj.update( char_str )
     return cont
-    
 
 
 class KeyCommandedObject(object):
