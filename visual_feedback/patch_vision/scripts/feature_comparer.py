@@ -8,7 +8,7 @@ import rospy
 import numpy as np
 from patch_vision.extraction.feature_io import FeatureMap, draw_patch
 from patch_vision.utils.zoom_window import ZoomWindow, keycommand, update_all_windows
-from patch_vision.utils.formulas import l2_dist, chi2_dist, compute_knn, get_rect_vertices
+from patch_vision.utils.formulas import l2_dist, chi2_dist, compute_knn
 
 class ClickWindow( ZoomWindow ):
     def __init__(self, image, zoom_out):
@@ -37,7 +37,7 @@ class ReferenceWindow( ZoomWindow ):
         self.distance_layer = cv.CreateImage( (image.width, image.height), image.depth, 3)
         self.view_image = cv.CreateImage( (image.width, image.height), image.depth, 3)
         self.knn = None
-        self.show_patch = None
+        self.show_patch = False
         self.view_mode = NN
         self.log_scale = True
         self.gamma = 0.1
@@ -51,6 +51,8 @@ class ReferenceWindow( ZoomWindow ):
         if self.view_mode == GRADIENT and self.distance_map:
             pts = self.distance_map.keys()
             if self.log_scale:
+                #TODO: fix case of np.log(0) and other small values since this results
+                # in pct and color being nan
                 distances = [np.log(dist) for dist in self.distance_map.values()]
             else:
                 distances = self.distance_map.values()
@@ -65,6 +67,7 @@ class ReferenceWindow( ZoomWindow ):
                 size = self.size_map[pt]
                 pct = 1 - (dist - min_distance) /  (max_distance - min_distance)
                 color = tuple( transparency * ((1-pct)*start_from + pct*end_at) )
+                #print pt, shape, size, color
                 draw_patch( self.distance_layer, pt, shape, size, color, True )
             cv.ScaleAdd(self.view_image, 1 - transparency, self.distance_layer, self.view_image)
 
@@ -75,6 +78,7 @@ class ReferenceWindow( ZoomWindow ):
             if self.show_patch:
                 shape = self.shape_map[pt]
                 size = self.size_map[pt]
+                #print pt, shape, size, color
                 draw_patch( self.view_image, pt, shape, size, color)
         if self.view_mode == KNN and self.knn:
             for i,pt in enumerate(self.knn):
@@ -84,6 +88,7 @@ class ReferenceWindow( ZoomWindow ):
                 if self.show_patch:
                     shape = self.shape_map[pt]
                     size = self.size_map[pt]
+                    #print pt, shape, size, color
                     draw_patch( self.view_image, pt, shape, size, color )
                 
                 
@@ -110,18 +115,22 @@ class ReferenceWindow( ZoomWindow ):
     @keycommand('l', "Toggle log scale on and off")
     def toggle_log_scale(self):
         self.log_scale = not self.log_scale
+        print 'log_scale turned %s' % ('on' if self.log_scale else 'off')
 
     @keycommand('p', "Toggle whether or not to display patch outlines")
     def toggle_show_patch(self):
         self.show_patch = not self.show_patch
+        print 'show_patch turned %s' % ('on' if self.show_patch else 'off')
 
     @keycommand('=', "Increase gamma")
     def increase_gamma(self):
         self.gamma *= 2
+        print 'gamma: %d' % gamma
     
     @keycommand('-', "Decrease gamma")
     def decrease_gamma(self):
         self.gamma *= 0.5
+        print 'gamma: %d' % gamma
 
 
 def parse():

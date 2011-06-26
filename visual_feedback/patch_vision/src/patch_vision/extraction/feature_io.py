@@ -21,6 +21,8 @@ class FeatureMap:
         self.features = {}
         self.labels = {}
         
+    def set_patch_size(self, size):
+        self.patch_size = size
 
     def add_feature(self, location, shape, size, feature, label=-1):
         self.shapes[location] = shape

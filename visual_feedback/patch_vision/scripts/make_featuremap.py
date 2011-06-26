@@ -103,12 +103,10 @@ def main(args):
 
     feature_map = FeatureMap()
     feature_map.set_patch_size( (args.patch_size,args.patch_size) )
+    shape = 'SQUARE' if 'SQUARE' in args.detector else 'CIRCLE'
     for i, ctr in enumerate(patch_centers):
-        feature_map.add_feature( ctr, features[i] )
+        feature_map.add_feature( ctr, shape, (args.patch_size, args.patch_size), features[i] )
     feature_map.save_to_file("%s/%s.fm"%(directory,prefix))
-
-
-
         
 if __name__ == '__main__':
     args = parse()
