@@ -8,6 +8,7 @@ import rospy
 import numpy as np
 from patch_vision.utils.zoom_window import ZoomWindow, keycommand, cvkeymappings
 from patch_vision.slicing.pt_io import PointSet
+from patch_vision.utils.formulas import l2_dist
 
 points = []
 deleted = []
@@ -200,12 +201,6 @@ def main(args):
         point_set.save_to_file( output_file )
         print "Saved to %s"%output_file
         
-def l2_dist(v1, v2):
-    v1_arr = np.array(v1)
-    v2_arr = np.array(v2)
-    diff = v1_arr - v2_arr
-    return np.dot(diff,diff)
-
 if __name__ == '__main__':
     args = parse()
     try:

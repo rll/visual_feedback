@@ -2,6 +2,7 @@
 import roslib
 roslib.load_manifest("patch_vision")
 import cv
+from patch_vision.utils.formulas import get_rect_vertices
 
 SHAPES = ["SQUARE", "CIRCLE"]
 
