@@ -8,6 +8,7 @@ import rospy
 import numpy as np
 from patch_vision.extraction.feature_io import FeatureMap, draw_patch
 from patch_vision.utils.zoom_window import ZoomWindow, keycommand, update_all_windows
+from patch_vision.utils.formulas import l2_dist, chi2_dist, compute_knn, get_rect_vertices
 
 class ClickWindow( ZoomWindow ):
     def __init__(self, image, zoom_out):
@@ -123,12 +124,6 @@ class ReferenceWindow( ZoomWindow ):
         self.gamma *= 0.5
 
 
-def get_rect_vertices(center, width, height):
-    x = center[0] - (width + 1)/2.0
-    y = center[1] - (height + 1)/2.0
-    return (x,y),(x+width,y+height)
-
-
 def parse():
     import argparse
     
@@ -189,39 +184,6 @@ def main(args):
             reference_window.set_shape_map( shape_map )
             reference_window.set_size_map( size_map )
             compare_window.update_nn = False
-
-def l2_dist(v1, v2):
-    v1_arr = np.array(v1)
-    v2_arr = np.array(v2)
-    diff = v1_arr - v2_arr
-    return np.dot(diff,diff)
-
-def chi2_dist(v1, v2):
-    v1_arr = np.array(v1)
-    v2_arr = np.array(v2)
-    abs_sum = abs(v1_arr) + abs(v2_arr)
-    diff = (v1_arr - v2_arr)**2 / abs_sum
-    #Weed out nans
-    for i,is_nan in enumerate(np.isnan(diff)):
-        if is_nan:
-            diff[i] = 0
-    dist = np.dot(diff,diff)
-    return dist
-
-
-def compute_knn( comparisons, key, n ):
-    knn = []
-    for i in range(len(comparisons)):
-        dist = key( comparisons[i] )
-        if len(knn) < n:
-            knn.append( comparisons[i] )
-        elif dist < key( knn[n-1] ):
-            knn[n-1] = comparisons[i]
-        else:
-            continue
-        knn.sort(key = key)
-    return knn    
-
         
 if __name__ == '__main__':
     args = parse()

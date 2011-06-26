@@ -10,6 +10,7 @@ from patch_vision.extraction.feature_io import FeatureMap, draw_patch
 from patch_vision.utils.zoom_window import ZoomWindow, update_all_windows
 from patch_vision.labelling.label_set import LabelSet
 from patch_vision.classification.classifiers_common import load_classifier_from_file
+from patch_vision.utils.formulas import l2_dist
 
 class ClickWindow( ZoomWindow ):
     def __init__(self, image, zoom_out):
@@ -89,13 +90,6 @@ def main(args):
             window.set_patch( closest_pt, shape, size, label_color )
             window.update_label = False
 
-
-def l2_dist(v1, v2):
-    v1_arr = np.array(v1)
-    v2_arr = np.array(v2)
-    diff = v1_arr - v2_arr
-    return np.dot(diff,diff)
-        
 if __name__ == '__main__':
     args = parse()
     try:

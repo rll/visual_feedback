@@ -8,6 +8,7 @@ import rospy
 import numpy as np
 from patch_vision.utils.zoom_window import ZoomWindow, keycommand, globalkeycommand, update_all_windows
 from patch_vision.matching.match_io import MatchSet
+from patch_vision.utils.formulas import l2_dist
 
 # Map from points in reference image to points in comparison image
 MODES = [SET, SELECT] = range(2)
@@ -232,13 +233,6 @@ def print_selected_info():
     print "Selected match: (%d,%d) -> (%d,%d)" %( compare_pts[selected_index][0], compare_pts[selected_index][1],
                                             reference_pts[selected_index][0], reference_pts[selected_index][1])
     print "Strength: %f" % strengths[selected_index]
-
-def l2_dist(v1, v2):
-    v1_arr = np.array(v1)
-    v2_arr = np.array(v2)
-    diff = v1_arr - v2_arr
-    return np.dot(diff,diff)
-
         
 if __name__ == '__main__':
     args = parse()
