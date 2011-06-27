@@ -31,24 +31,28 @@ class FeatureMap:
         self.labels[location] = label
 
     def get_shape(self, location):
-        if not location in self.get_feature_points():
+        try:
+            return self.shapes[location]
+        except:
             raise Exception("That location has no associated feature")
-        return self.shapes[location]
         
     def get_size(self, location):
-        if not location in self.get_feature_points():
+        try:
+            return self.sizes[location]
+        except:
             raise Exception("That location has no associated feature")
-        return self.sizes[location]
     
     def get_feature(self, location):
-        if not location in self.get_feature_points():
+        try:
+            return self.features[location]
+        except:
             raise Exception("That location has no associated feature")
-        return self.features[location]
 
     def get_label(self, location):
-        if not location in self.get_feature_points():
+        try:
+            return self.labels[location]
+        except:
             raise Exception("That location has no associated label")
-        return self.labels[location]
 
     def get_feature_points(self):
         return self.features.keys()
