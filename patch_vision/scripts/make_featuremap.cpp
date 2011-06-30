@@ -240,11 +240,11 @@ int main(int argc, char** argv) {
     Descriptor* descriptor;
     switch ( opts.feature ){
         case RAW_BW:
-            //Do nothing
+            descriptor = new RawBWDescriptor( );
             break;
         
         case RAW_COLOR:
-            //Do nothing
+            descriptor = getColored( new RawBWDescriptor ( ), RGB);
             break;
 
         case LBP:

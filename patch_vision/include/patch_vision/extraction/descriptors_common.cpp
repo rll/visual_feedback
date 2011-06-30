@@ -259,6 +259,39 @@ ColorMode RotatedDescriptor :: required_color_mode() const{
     return _bw_descriptor->required_color_mode();
 }
 
+///////////////////////////////////////////
+//          RawBWDescriptor              //
+///////////////////////////////////////////
+
+RawBWDescriptor :: RawBWDescriptor( ){}
+
+RawBWDescriptor :: ~RawBWDescriptor( ){}
+
+void RawBWDescriptor :: process_patch( const Mat &patch, vector<float> &feature, const Mat &mask ){
+    int height = patch.size().height;
+    int width = patch.size().width;
+    for (int j = 0; j < height; j++){
+        for (int i = 0; i < width; i++){
+            if( mask.at<uint8_t>(j,i) ){
+                feature.push_back( patch.at<uint8_t>(j,i) );
+            }
+        }
+    }
+}
+
+string RawBWDescriptor :: name( ) const{
+    return "RawBWDescriptor";
+}
+
+int RawBWDescriptor :: descriptor_size( ) const{
+    //Variable length
+    return -1;
+}
+
+ColorMode RawBWDescriptor :: required_color_mode( ) const{
+    return BW;
+}
+
 
 //////////////////////////////////////////
 //          LBP DESCRIPTOR              //
