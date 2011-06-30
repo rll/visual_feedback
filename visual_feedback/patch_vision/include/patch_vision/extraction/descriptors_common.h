@@ -103,6 +103,19 @@ class RotatedDescriptor : public Descriptor{
 
 };
 
+class RawBWDescriptor : public Descriptor{
+    public:
+        RawBWDescriptor( );
+        ~RawBWDescriptor( );
+
+        void process_patch( const Mat &patch, vector<float> &feature, const Mat &mask );
+        string name( ) const;
+        int descriptor_size( ) const;
+
+        ColorMode required_color_mode( ) const;
+
+};
+
 class LBPDescriptor : public Descriptor{
     public:
 
