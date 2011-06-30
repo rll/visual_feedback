@@ -100,7 +100,6 @@ def main(args):
     input_image = cv.LoadImage( args.input_image )
     patch_maker = SlidingWindowPatchMaker( args.patch_size, args.patch_step)
     features, patch_centers = descriptor.process_image( input_image, patch_maker, args.verbose )
-
     feature_map = FeatureMap()
     feature_map.set_patch_size( (args.patch_size,args.patch_size) )
     shape = 'SQUARE' if 'SQUARE' in args.detector else 'CIRCLE'
