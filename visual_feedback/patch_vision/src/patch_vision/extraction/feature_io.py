@@ -64,7 +64,7 @@ class FeatureMap:
             f.write("%f %f"%(pt[0],pt[1]))
             f.write("\t")
             shape = self.get_shape(pt)
-            f.write("%s"%shape)
+            f.write("%s "%shape)
             size = self.get_size(pt)
             f.write("%f %f"%(size[0], size[1]) )
             f.write("\t")
@@ -87,11 +87,11 @@ class FeatureMap:
             pt = (float(str_vals[0]),float(str_vals[1]))
             shape = str_vals[2]
             patch_size = (float(str_vals[3]), float(str_vals[4]))
-            num_features = int(str_vals[5]);
+            num_features = int(float(str_vals[5]));
             feature = [float(val) for val in str_vals[6:6+num_features]]
             #Backwards compatibility -- remove later
             if len(str_vals) > 6+num_features:
-                label = int(str_vals[6+num_features])
+                label = int(float(str_vals[6+num_features]))
             else:
                 label = -1
             assert len(feature) == num_features

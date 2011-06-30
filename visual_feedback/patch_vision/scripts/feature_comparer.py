@@ -67,7 +67,6 @@ class ReferenceWindow( ZoomWindow ):
                 size = self.size_map[pt]
                 pct = 1 - (dist - min_distance) /  (max_distance - min_distance)
                 color = tuple( transparency * ((1-pct)*start_from + pct*end_at) )
-                #print pt, shape, size, color
                 draw_patch( self.distance_layer, pt, shape, size, color, True )
             cv.ScaleAdd(self.view_image, 1 - transparency, self.distance_layer, self.view_image)
 
@@ -78,7 +77,6 @@ class ReferenceWindow( ZoomWindow ):
             if self.show_patch:
                 shape = self.shape_map[pt]
                 size = self.size_map[pt]
-                #print pt, shape, size, color
                 draw_patch( self.view_image, pt, shape, size, color)
         if self.view_mode == KNN and self.knn:
             for i,pt in enumerate(self.knn):
@@ -88,7 +86,6 @@ class ReferenceWindow( ZoomWindow ):
                 if self.show_patch:
                     shape = self.shape_map[pt]
                     size = self.size_map[pt]
-                    #print pt, shape, size, color
                     draw_patch( self.view_image, pt, shape, size, color )
                 
                 
