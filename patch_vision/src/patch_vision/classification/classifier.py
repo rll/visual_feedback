@@ -82,9 +82,9 @@ class Classifier:
         self._include_unlabeled = bool( int( include_unlabeled) )
         self._is_trained = bool( int( f.readline().split()[0] ) )
         if not self._is_trained:
-            self.read_untrained( f )
+            self.read_untrained( f, filename )
         else:
-            self.read_trained( f )
+            self.read_trained( f, filename )
         f.close()
 
     def save_to_file( self, filename ):
@@ -98,9 +98,9 @@ class Classifier:
         f.write( "%s\t%s\t%d\n"%(self.feature_type(), self.description(), self.include_unlabeled()) )
         f.write( "%d\n"%self.is_trained() )
         if not self.is_trained():
-            self.save_untrained( f )
+            self.save_untrained( f, filename )
         else:
-            self.save_trained( f )
+            self.save_trained( f, filename )
         f.close()
 
 
@@ -141,7 +141,7 @@ class Classifier:
         """
         abstract
 
-    def save_trained( self, output_file ):
+    def save_trained( self, output_file, filename ):
         """
             save_trained( self, output_file ) -> None
             Given an open file with write access,
@@ -149,7 +149,7 @@ class Classifier:
         """
         abstract
 
-    def read_trained( self, input_file ):
+    def read_trained( self, input_file, filename ):
         """
             read_trained( self, input_file ) -> None
             Given an open file with read access, populate all members of this class
@@ -159,7 +159,7 @@ class Classifier:
 
     
     ##      OPTIONAL    ##
-    def save_untrained( self, output_file ):
+    def save_untrained( self, output_file, filename ):
         """
             Save _labeled_features to an already-open file with write only access.
             By default, untrained classifiers all store the exact same information:
@@ -175,7 +175,7 @@ class Classifier:
                 output_file.write( "%f " % val )
             output_file.write( "\n" )
 
-    def read_untrained( self, input_file ):
+    def read_untrained( self, input_file, filename ):
         """
             Populate _labeled_features from an already-open file with read only access.
         """

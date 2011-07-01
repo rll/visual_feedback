@@ -11,7 +11,7 @@ from patch_vision.extraction.feature_io import FeatureMap
 from patch_vision.classification.classifiers_common import load_classifier_from_file, instantiate_classifier_by_name, get_classifier_name
 
 CPP_CLASSIFIERS = []
-PYTHON_CLASSIFIERS = ['NNClassifier']
+PYTHON_CLASSIFIERS = ['NNClassifier', 'KNNClassifier', 'SVMClassifier']
 
 def parse():
     import argparse
