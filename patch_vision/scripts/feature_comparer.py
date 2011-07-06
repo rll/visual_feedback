@@ -164,6 +164,7 @@ def main(args):
     reference_featuremap.read_from_file( args.reference_features )
     compare_window = ClickWindow( compared_image, args.compare_zoom_out)
     reference_window = ReferenceWindow( reference_image, args.reference_zoom_out)
+    reference_window.move( compare_window.size()[0], 0 ) 
 
     #nn_solver = pyflann.FLANN()
     while(True):

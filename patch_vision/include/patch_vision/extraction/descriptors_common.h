@@ -89,7 +89,7 @@ class ColoredDescriptor : public Descriptor{
 class RotatedDescriptor : public Descriptor{
     public:
         
-        RotatedDescriptor( Descriptor* bw_descriptor );
+        RotatedDescriptor( Descriptor* bw_descriptor, int num_angles=8 );
         ~RotatedDescriptor( );
 
         void process_patch( const Mat &patch, vector<float> &feature, const Mat &mask );
@@ -100,6 +100,7 @@ class RotatedDescriptor : public Descriptor{
 
     private:
         Descriptor* _bw_descriptor;
+        int _num_angles;
 
 };
 

@@ -139,7 +139,6 @@ class InteractiveWindow(KeyCommandedObject):
             fxn = self.keys_to_methods[key]
             print "%s\t%s"%(key, fxn.kc_info.description)
     
-
     ### REQUIRED METHOD ###
     def show_image(self):
         """
@@ -186,7 +185,7 @@ class ZoomWindow(InteractiveWindow):
             scaled_image = cv.CreateImage(
                             ( unscaled_image.width/self.zoom_out, 
                               unscaled_image.height/self.zoom_out ),
-                            unscaled_image.depth, 3 )
+                              unscaled_image.depth, unscaled_image.channels )
             cv.Resize(unscaled_image, scaled_image)
         cv.ShowImage(self.name,scaled_image)
 
@@ -206,6 +205,14 @@ class ZoomWindow(InteractiveWindow):
     @keycommand('o', "Zoom out more" )
     def zoom_out_more(self):
         self.zoom_out *= 2
+    
+    def move(self, x, y):
+        cv.MoveWindow(self.name, x, y )
+
+    def size(self):
+        im = self.image_to_show()
+        return (im.width/self.zoom_out, im.height/self.zoom_out)
+
 
 
 ### Optionally, can have 'global' key commands which aren't assigned to any window.  ###

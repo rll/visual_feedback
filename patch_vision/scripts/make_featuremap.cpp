@@ -48,6 +48,7 @@ enum FeatureT{
     LBP_PLUS_SIFT,
     LBP_PLUS_SIFT_PLUS_HUE_HISTOGRAM,
     ROTATED_LBP,
+    ROTATED_LUV_LBP,
     ROTATED_LBP_PLUS_HUE_HISTOGRAM,
     ROTATED_LBP_PLUS_SIFT,
     ROTATED_LBP_PLUS_SIFT_PLUS_HUE_HISTOGRAM
@@ -165,6 +166,9 @@ int options(int ac, char ** av, Options& opts)
     else if ( !strcmp(opts.feature_name.c_str(), "ROTATED_LBP") ){
         opts.feature = ROTATED_LBP;
     }
+    else if ( !strcmp(opts.feature_name.c_str(), "ROTATED_LUV_LBP") ){
+        opts.feature = ROTATED_LUV_LBP;
+    }
     else if ( !strcmp(opts.feature_name.c_str(), "ROTATED_LBP+HUE_HISTOGRAM") ){
         opts.feature = ROTATED_LBP_PLUS_HUE_HISTOGRAM;
     }
@@ -268,6 +272,9 @@ int main(int argc, char** argv) {
         case LUV_LBP:
             descriptor = getColored( new LBPDescriptor ( ), LUV );
             break; 
+        case ROTATED_LUV_LBP:
+            descriptor = getRotated( getColored( new LBPDescriptor( ), LUV ) );
+            break;
         case HUE_HISTOGRAM:
             descriptor = new HueHistogramDescriptor( 20 );
             break;

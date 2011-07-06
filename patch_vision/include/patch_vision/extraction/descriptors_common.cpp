@@ -221,8 +221,9 @@ ColorMode ColoredDescriptor :: required_color_mode() const{
 //          ROTATED DESCRIPTOR          //
 //////////////////////////////////////////
 
-RotatedDescriptor :: RotatedDescriptor( Descriptor* bw_descriptor ){
+RotatedDescriptor :: RotatedDescriptor( Descriptor* bw_descriptor, int num_angles ){
     _bw_descriptor = bw_descriptor;
+    _num_angles = num_angles;
 }
 
 
@@ -233,17 +234,28 @@ RotatedDescriptor :: ~RotatedDescriptor( ){
 void RotatedDescriptor :: process_patch( const Mat &patch, vector<float> &feature, const Mat &mask ){
     float ctr_x = (patch.size().width-1)  / 2.;
     float ctr_y = (patch.size().height-1) / 2.;
-    for (int i = 0; i < 4; i++){
-        Mat r = getRotationMatrix2D( Point2f(ctr_x, ctr_y), 90*i, 1 );
+    float angle_step = 360. / _num_angles;
+    vector< vector<float> > rotated_features( _num_angles );
+    for (int i = 0; i < _num_angles; i++){
+        Mat r = getRotationMatrix2D( Point2f(ctr_x, ctr_y), i*angle_step, 1 );
         Mat rotated_patch;
         Mat rotated_mask;
         warpAffine( patch, rotated_patch, r, patch.size() );
         warpAffine( mask,  rotated_mask, r,  mask.size() );
-        _bw_descriptor->process_patch( rotated_patch, feature, mask );
+        vector<float> rotated_feature;
+        _bw_descriptor->process_patch( rotated_patch, rotated_feature, mask );
         rotated_patch.release();
         r.release();
+        rotated_features[i] = rotated_feature;
     }
-
+    for (size_t j = 0; j < rotated_features[0].size(); j++){
+        float feat_avg = 0;
+        for(int i = 0; i < _num_angles; i++){
+            feat_avg += rotated_features[i][j];
+        }
+        feat_avg /= _num_angles;
+        feature.push_back( feat_avg );
+    }
 }
 
 string RotatedDescriptor :: name( ) const{
@@ -251,7 +263,7 @@ string RotatedDescriptor :: name( ) const{
 }
 
 int RotatedDescriptor :: descriptor_size( ) const{
-    return 4*_bw_descriptor->descriptor_size();
+    return _bw_descriptor->descriptor_size();
 }
 
 

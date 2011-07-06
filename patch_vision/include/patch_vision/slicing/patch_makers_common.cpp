@@ -214,7 +214,9 @@ PointsSquarePatchMaker :: ~PointsSquarePatchMaker ( ){ };
 void PointsSquarePatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const{
     for( size_t i = 0; i < _point_set.num_points(); i++ ){
         PointT point = _point_set.get_point(i);
-        patch_definitions.push_back( new RectangularPatch(point.first, point.second, _patch_size, _patch_size ) );
+        float start_x = point.first - (_patch_size-1)/2.;
+        float start_y = point.second -(_patch_size-1)/2.;
+        patch_definitions.push_back( new RectangularPatch(start_x, start_y, _patch_size, _patch_size ) );
     }
 }
 
@@ -228,6 +230,8 @@ PointsCirclePatchMaker :: ~PointsCirclePatchMaker ( ){ };
 void PointsCirclePatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const{
     for( size_t i = 0; i < _point_set.num_points(); i++ ){
         PointT point = _point_set.get_point(i);
-        patch_definitions.push_back( new CircularPatch(point.first, point.second, _patch_size ) );
+        float start_x = point.first - (_patch_size-1)/2.;
+        float start_y = point.second -(_patch_size-1)/2.;
+        patch_definitions.push_back( new CircularPatch(start_x, start_y, _patch_size ) );
     }
 }

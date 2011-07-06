@@ -12,7 +12,7 @@
   <depend package="libsvm"/>
   <depend package="rospy"/>
   <export>
-      <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -Wl, -rpath, -L${prefix}/lib -lpatch_vision_thirdparty -lpatch_vision_slicing -lpatch_vision_extraction"/>
+      <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -Wl,-rpath,-L${prefix}/lib -lpatch_vision_thirdparty -lpatch_vision_slicing -lpatch_vision_extraction -lpatch_vision_matching"/>
   </export>
 
 </package>
