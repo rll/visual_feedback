@@ -17,10 +17,10 @@ def parse():
                             required=True,
                             help='the match file' )
     parser.add_argument(    '-rf','--ref-file',     dest='ref_file',    type=str,
-                            required=True, 
+                            required=False, default=None,
                             help='Prefix of the ref output (defaults to original filenames)' )
     parser.add_argument(    '-cf','--comp-file',     dest='comp_file',    type=str,
-                            required=True,
+                            required=False, default=None,
                             help='Prefix of the ref output (defaults to original filenames)' )
     
                             
@@ -28,16 +28,21 @@ def parse():
 
 def main(args):
     match_set = MatchSet( "foo", "bar" )
+    print "Reading from " + args.match
     match_set.read_from_file( args.match )
     compare_set = PointSet( )
     ref_set = PointSet( )
+    if not args.ref_file:
+        args.ref_file = os.path.basename(args.match).split('_TO_')[1].split('.matches')[0]+".pts"
+    if not args.comp_file:
+        args.comp_file = os.path.basename(args.match).split('_TO_')[0]+".pts"
     for match in match_set.get_matches():
             compare_set.add_point(match.compare_pt)
             ref_set.add_point(match.reference_pt)
-    if not os.path.exists(os.path.dirname( args.ref_file ) ):
-        os.makedirs(os.path.dirname( args.ref_file ) )
-    if not os.path.exists(os.path.dirname( args.comp_file ) ):
-        os.makedirs(os.path.dirname( args.comp_file ) )
+    ##if not os.path.exists(os.path.dirname( args.ref_file ) ):
+    ##    os.makedirs(os.path.dirname( args.ref_file ) )
+    ##if not os.path.exists(os.path.dirname( args.comp_file ) ):
+    ##    os.makedirs(os.path.dirname( args.comp_file ) )
     ref_set.save_to_file( args.ref_file )
     compare_set.save_to_file( args.comp_file )
 
