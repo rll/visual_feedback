@@ -187,21 +187,8 @@ void SlidingCirclePatchMaker :: get_patch_definitions( const Mat &image, vector<
     }
 }
 
-SIFTPatchMaker :: SIFTPatchMaker( ){
-    _detector = FeatureDetector::create("SIFT");
-}
 
-SIFTPatchMaker :: ~SIFTPatchMaker( ){ }
 
-void SIFTPatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefinition* > &patch_definitions ) const{
-    vector<KeyPoint> key_points;
-    cout << "Detecting key points" << endl;
-    _detector->detect( image, key_points );
-    cout << "Detected " << key_points.size() << " keypoints" << endl;
-    for ( size_t i = 0; i < key_points.size(); i++){
-        patch_definitions.push_back( new KeyPointPatch( key_points[i] ) );
-    }
-}
 
 
 PointsSquarePatchMaker :: PointsSquarePatchMaker ( string input_points_file, int patch_size ){
@@ -235,3 +222,44 @@ void PointsCirclePatchMaker :: get_patch_definitions( const Mat &image, vector<P
         patch_definitions.push_back( new CircularPatch(start_x, start_y, _patch_size ) );
     }
 }
+
+////////////////////////////////
+//      CVPatchMaker      //
+////////////////////////////////
+CVPatchMaker :: CVPatchMaker( string type ){
+    _detector = FeatureDetector::create(type);
+}
+
+CVPatchMaker :: ~CVPatchMaker( ){  }
+
+void CVPatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefinition* > &patch_definitions ) const{
+    vector<KeyPoint> key_points;
+    cout << "Detecting key points" << endl;
+    _detector->detect( image, key_points );
+    cout << "Detected " << key_points.size() << " keypoints" << endl;
+    for ( size_t i = 0; i < key_points.size(); i++){
+        patch_definitions.push_back( new KeyPointPatch( key_points[i] ) );
+    }
+}
+
+////////////////////////////////
+//      SIFTPatchMaker      //
+////////////////////////////////
+SIFTPatchMaker :: SIFTPatchMaker( ) :
+  CVPatchMaker("SIFT")
+{}
+
+SIFTPatchMaker :: ~SIFTPatchMaker( ) { }
+////////////////////////////////
+//      MSERPatchMaker      //
+////////////////////////////////
+MSERPatchMaker :: MSERPatchMaker( ) :
+  CVPatchMaker("MSER")
+{}
+
+MSERPatchMaker :: ~MSERPatchMaker( ) { }
+
+
+
+
+

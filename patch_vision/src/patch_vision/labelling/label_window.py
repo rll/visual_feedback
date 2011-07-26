@@ -3,7 +3,7 @@ roslib.load_manifest("patch_vision")
 import cv
 import re
 from patch_vision.labelling.label_set import LabelSet
-from patch_vision.labelling.zoom_window import ZoomWindow
+from patch_vision.utils.zoom_window import ZoomWindow
 
 class LabelWindowParams:
     def __init__(self):
@@ -32,7 +32,7 @@ class LabelWindow (ZoomWindow):
         
         ZoomWindow.__init__(self, "Labeler", 100)
 
-    def handleEvents(self,event,x,y,flags,param):
+    def handleEventsUnzoomed(self,event,x,y,flags,param):
         if flags-32 == cv.CV_EVENT_FLAG_LBUTTON:
            label_color = self.params.label_set.get_label_color(self.brush_label)
            label_number = self.brush_label

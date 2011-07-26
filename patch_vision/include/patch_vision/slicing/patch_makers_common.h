@@ -104,15 +104,6 @@ class SlidingCirclePatchMaker : public PatchMaker{
        int _diameter, _step_x, _step_y;
 };
 
-class SIFTPatchMaker : public PatchMaker{
-    public:
-        SIFTPatchMaker( );
-        ~SIFTPatchMaker( );
-       void get_patch_definitions( const Mat &image, vector<PatchDefinition* > &patch_definitions ) const;
-
-    private:
-        Ptr<FeatureDetector> _detector;                
-};
 
 class PointsSquarePatchMaker : public PatchMaker{
     public:
@@ -135,4 +126,28 @@ class PointsCirclePatchMaker : public PatchMaker{
         PointSet _point_set;
         int _patch_size;             
 };
+
+class CVPatchMaker : public PatchMaker{
+    public:
+        CVPatchMaker( string type );
+        ~CVPatchMaker( );
+        void get_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const;
+
+    private:
+        Ptr<FeatureDetector> _detector;
+};
+
+class SIFTPatchMaker : public CVPatchMaker{
+    public:
+        SIFTPatchMaker( );
+        ~SIFTPatchMaker( );
+};
+
+class MSERPatchMaker: public CVPatchMaker{
+    public:
+        MSERPatchMaker( );
+        ~MSERPatchMaker( );
+};
+
+
 #endif

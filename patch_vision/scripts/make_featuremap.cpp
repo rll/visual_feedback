@@ -58,6 +58,7 @@ enum DetectorT{
     DENSE_SQUARE_DETECTOR,
     DENSE_CIRCLE_DETECTOR,
     SIFT_DETECTOR,
+    MSER_DETECTOR,
     POINTS_CIRCLE_DETECTOR,
     POINTS_SQUARE_DETECTOR
 };
@@ -192,6 +193,9 @@ int options(int ac, char ** av, Options& opts)
     else if ( !strcmp(opts.detector_name.c_str(), "SIFT") ){
         opts.detector = SIFT_DETECTOR;
     }
+    else if ( !strcmp(opts.detector_name.c_str(), "MSER") ){
+        opts.detector = MSER_DETECTOR;
+    }
     else if ( !strcmp(opts.detector_name.c_str(), "POINTS_SQUARE") ){
         opts.detector = POINTS_SQUARE_DETECTOR;
     }
@@ -232,6 +236,9 @@ int main(int argc, char** argv) {
         
         case SIFT_DETECTOR:
             pm = new SIFTPatchMaker( );
+            break;
+        case MSER_DETECTOR:
+            pm = new MSERPatchMaker( );
             break;
         case POINTS_SQUARE_DETECTOR:
             pm = new PointsSquarePatchMaker(opts.input_points_file, opts.patch_size );

@@ -82,9 +82,10 @@ void PatchMaker::get_patches( const Mat &image, vector<Mat> &patches, vector<Mat
     }
 }
 
-/*  Returns true if the mask has no nonzero values */
+/*  Returns true if the mask has less that 10% nonzero values */
 bool is_blank( const Mat &mask ){
-    cv::Scalar tot = sum(mask);
-    bool blank = tot == cv::Scalar(0);
-    return blank;
+    float tot = cv::countNonZero(mask);
+    float size = mask.size().width*mask.size().height;
+    float frac = tot /  size;
+    return frac < 0.2;
 }
