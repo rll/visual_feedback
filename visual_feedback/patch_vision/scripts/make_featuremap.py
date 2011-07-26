@@ -19,7 +19,7 @@ CPP_DESCRIPTORS = [ 'RAW_BW', 'RAW_COLOR',
                     'ROTATED_LBP+HUE_HISTOGRAM', 'ROTATED_LBP+SIFT', 'ROTATED_LBP+SIFT+HUE_HISTOGRAM', 
                     'ROTATED_LBP', 'ROTATED_LUV_LBP']
 PYTHON_DESCRIPTORS = []
-CPP_DETECTORS = ["DENSE_SQUARE","DENSE_CIRCLE","SIFT","POINTS_SQUARE","POINTS_CIRCLE"]
+CPP_DETECTORS = ["DENSE_SQUARE","DENSE_CIRCLE","SIFT","MSER","POINTS_SQUARE","POINTS_CIRCLE"]
 
 def parse():
     import argparse
@@ -52,6 +52,9 @@ def parse():
     parser.add_argument(    '-m','--mask-file', dest='mask_file', type=str,
                             default = None,
                             help="Mask file" );
+    parser.add_argument(    '-im','--ignore-mask', dest='use_mask', action='store_false',
+                            default = True,
+                            help="Add this flag to ignore all masks" );
     parser.add_argument(    '-l','--label-file', dest='label_file', type=str,
                             default = None,
                             help="label file" );
@@ -78,7 +81,12 @@ def main(args):
     output_file = "%s/%s.fm"%(directory,prefix)
     if not args.patch_step:
         args.patch_step = args.patch_size
-    
+    if args.use_mask and not args.mask_file:
+        pre, ext = os.path.splitext(args.input_image)
+        possible_mask_path = "%s.mask.png"%(prefix)
+        if os.path.exists(possible_mask_path):
+            args.mask_file = possible_mask_path
+            print "Using mask"
     if args.feature_type in CPP_DESCRIPTORS:
         cmd = "rosrun %s make_featuremap -i %s -o %s -f %s -p %d -s %d -D %s %s %s %s %s"%(
                 PACKAGE_NAME, args.input_image, output_file, args.feature_type, 

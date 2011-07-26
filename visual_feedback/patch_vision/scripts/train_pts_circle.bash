@@ -5,7 +5,7 @@ TOP_DIR=/home/stephen/feature_test
 IMAGE_DIR=$TOP_DIR/images
 FEAT_DIR=$TOP_DIR/features/$FEAT/dPOINTS_CIRCLEp${PATCH_SIZE}
 POINTS_DIR=$TOP_DIR/points
-for img in $IMAGE_DIR/*;
+for img in $IMAGE_DIR/*.JPG;
 do
   prefix=`basename $img .JPG`
   PT_FILE=${POINTS_DIR}/${prefix}.pts
