@@ -35,10 +35,10 @@ class ClumpCenterFinder(ImageProcessor):
             self.bg_mode = thresholding.YELLOW_BG
         else:
             self.bg_mode = thresholding.GREEN_BG
-        self.cropx = rospy.get_param("~cropx", 120)
-        self.cropy = rospy.get_param("~cropy", 170)
-        self.cropwidth = rospy.get_param("~cropwidth", 390)
-        self.cropheight = rospy.get_param("~cropheight", 267)
+        self.cropx = rospy.get_param("cropx", 120)
+        self.cropy = rospy.get_param("cropy", 170)
+        self.cropwidth = rospy.get_param("cropwidth", 390)
+        self.cropheight = rospy.get_param("cropheight", 267)
         self.left_to_right = rospy.get_param("~left_to_right",True)
         self.listener = tf.TransformListener()
         
