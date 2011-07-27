@@ -32,11 +32,15 @@ class FurthestCornerFinder(ImageProcessor):
         self.threshold = rospy.get_param("~threshold",95)
         self.left_to_right = rospy.get_param("~left_to_right",True)
         self.listener = tf.TransformListener()
+        self.cropx = rospy.get_param("cropx", 115)
+        self.cropy = rospy.get_param("cropy", 58)
+        self.cropwidth = rospy.get_param("cropwidth", 396)
+        self.cropheight = rospy.get_param("cropheight", 355)
         
     def process(self,cv_image,info,image2=None):
         self.image2 = cv.CloneImage( cv_image )
-        
-        shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True,crop_rect=(51,135,560,300),cam_info=info,listener=self.listener)
+        crop_rect=(self.cropx, self.cropy,self.cropwidth,self.cropheight) 
+        shape_contour = thresholding.get_contour(cv_image,bg_mode=thresholding.GREEN_BG,filter_pr2=True,crop_rect=crop_rect,cam_info=info,listener=self.listener)
 
         multiplier = 1
         if not self.left_to_right:

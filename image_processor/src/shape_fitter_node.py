@@ -49,10 +49,10 @@ class ShapeFitterNode(ImageProcessor):
             self.listener = tf.TransformListener()
         else:
             self.listener = None
-        self.cropx = rospy.get_param("~cropx", 115)
-        self.cropy = rospy.get_param("~cropy", 58)
-        self.cropwidth = rospy.get_param("~cropwidth", 396)
-        self.cropheight = rospy.get_param("~cropheight", 355)
+        self.cropx = rospy.get_param("cropx", 115)
+        self.cropy = rospy.get_param("cropy", 58)
+        self.cropwidth = rospy.get_param("cropwidth", 396)
+        self.cropheight = rospy.get_param("cropheight", 355)
         if rospy.get_param("~bg_mode", "green") == "white":
             self.bg_mode = thresholding.YELLOW_BG
         else:
