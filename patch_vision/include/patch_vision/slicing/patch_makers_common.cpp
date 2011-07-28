@@ -265,7 +265,7 @@ MSERPatchMaker :: ~MSERPatchMaker( ) { }
 //      STARPatchMaker      //
 ////////////////////////////////
 STARPatchMaker :: STARPatchMaker( ) :
-  CVPatchMaker("Star")
+  CVPatchMaker("STAR")
 {}
 
 STARPatchMaker :: ~STARPatchMaker( ) { }
