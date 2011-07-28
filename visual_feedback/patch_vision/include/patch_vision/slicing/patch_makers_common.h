@@ -149,5 +149,10 @@ class MSERPatchMaker: public CVPatchMaker{
         ~MSERPatchMaker( );
 };
 
+class STARPatchMaker: public CVPatchMaker{
+    public:
+        STARPatchMaker( );
+        ~STARPatchMaker( );
+};
 
 #endif

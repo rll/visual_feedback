@@ -250,6 +250,7 @@ SIFTPatchMaker :: SIFTPatchMaker( ) :
 {}
 
 SIFTPatchMaker :: ~SIFTPatchMaker( ) { }
+
 ////////////////////////////////
 //      MSERPatchMaker      //
 ////////////////////////////////
@@ -260,6 +261,14 @@ MSERPatchMaker :: MSERPatchMaker( ) :
 MSERPatchMaker :: ~MSERPatchMaker( ) { }
 
 
+////////////////////////////////
+//      STARPatchMaker      //
+////////////////////////////////
+STARPatchMaker :: STARPatchMaker( ) :
+  CVPatchMaker("Star")
+{}
+
+STARPatchMaker :: ~STARPatchMaker( ) { }
 
 
 
