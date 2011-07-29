@@ -20,6 +20,7 @@ CPP_DESCRIPTORS = [ 'RAW_BW', 'RAW_COLOR',
                     'ROTATED_LBP', 'ROTATED_LUV_LBP']
 PYTHON_DESCRIPTORS = []
 CPP_DETECTORS = ["DENSE_SQUARE","DENSE_CIRCLE",
+                 "DOG_DENSE_CIRCLE",
                  "SIFT","MSER","STAR","SURF",
                  "POINTS_SQUARE","POINTS_CIRCLE"]
 

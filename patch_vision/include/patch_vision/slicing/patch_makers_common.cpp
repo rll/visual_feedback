@@ -27,6 +27,10 @@ using cv::circle;
 using cv::Point2f;
 using cv::Point;
 using cv::minMaxLoc;
+using cv::GaussianBlur;
+using cv::Size;
+using cv::absdiff;
+using cv::cvtColor;
 
 ////////////////////////////////
 //      RectangularPatch      //
@@ -327,10 +331,17 @@ SURFPatchMaker :: SURFPatchMaker( ) :
 
 SURFPatchMaker :: ~SURFPatchMaker( ) { }
 
+////////////////////////////////
+//       DIPPatchMaker        //
+////////////////////////////////
+
 DIPPatchMaker :: DIPPatchMaker( PatchMaker* dense_patch_maker )
     : _dense_patch_maker( dense_patch_maker ){ };
 
-DIPPatchMaker :: ~DIPPatchMaker( ){ };
+/*  NOTE: I will kill the dense_patch_maker when I'm done with it */
+DIPPatchMaker :: ~DIPPatchMaker( ){ 
+    delete _dense_patch_maker;
+};
 
 void DIPPatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const{
     /* First want to get the original, dense patch definitions */
@@ -353,4 +364,30 @@ void DIPPatchMaker :: refine_patch_definitions( const Mat &image, vector<PatchDe
         Point offset = max_loc - patch_ctr;
         patch_definitions[i]->shift_by( offset.x, offset.y );
     }
+}
+
+////////////////////////////////
+//       DOGPatchMaker        //
+////////////////////////////////
+
+DOGPatchMaker :: DOGPatchMaker( PatchMaker* dense_patch_maker, int k1, int k2 )
+    : DIPPatchMaker( dense_patch_maker ), _k1(k1), _k2(k2) { };
+
+DOGPatchMaker :: ~DOGPatchMaker( ){ };
+
+//FIXME This assumes any 3 channel image is HSV. Clearly not the case.
+void DOGPatchMaker :: rank_patch_centers( const Mat &image, Mat &rank_image ) const{
+    Mat gray_image;
+    if( image.channels() == 1 ){
+        gray_image = image;
+    }
+    else{
+        Mat bgr_image;
+        cvtColor(image, bgr_image, CV_HSV2BGR );
+        cvtColor(bgr_image, gray_image, CV_BGR2GRAY);
+    }
+    Mat blur1, blur2;
+    GaussianBlur( gray_image, blur1, Size(_k1, _k1), 0 );  
+    GaussianBlur( gray_image, blur2, Size(_k2, _k2), 0 );  
+    absdiff(blur1, blur2, rank_image);
 }

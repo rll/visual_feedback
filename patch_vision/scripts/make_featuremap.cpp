@@ -57,6 +57,7 @@ enum FeatureT{
 enum DetectorT{
     DENSE_SQUARE_DETECTOR,
     DENSE_CIRCLE_DETECTOR,
+    DOG_DENSE_CIRCLE_DETECTOR,
     SIFT_DETECTOR,
     MSER_DETECTOR,
     STAR_DETECTOR,
@@ -192,6 +193,9 @@ int options(int ac, char ** av, Options& opts)
     else if ( !strcmp(opts.detector_name.c_str(), "DENSE_CIRCLE") ){
         opts.detector = DENSE_CIRCLE_DETECTOR;
     }
+    else if ( !strcmp(opts.detector_name.c_str(), "DOG_DENSE_CIRCLE") ){
+        opts.detector = DOG_DENSE_CIRCLE_DETECTOR;
+    }
     else if ( !strcmp(opts.detector_name.c_str(), "SIFT") ){
         opts.detector = SIFT_DETECTOR;
     }
@@ -240,6 +244,9 @@ int main(int argc, char** argv) {
             break;
         case DENSE_CIRCLE_DETECTOR:
             pm = new SlidingCirclePatchMaker(opts.patch_size, opts.step_size, opts.step_size );
+            break;
+        case DOG_DENSE_CIRCLE_DETECTOR:
+            pm = new DOGPatchMaker( new SlidingCirclePatchMaker(opts.patch_size, opts.step_size, opts.step_size ), 1, 3 );
             break;
         
         case SIFT_DETECTOR:
