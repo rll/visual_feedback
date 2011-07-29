@@ -41,6 +41,8 @@ class PatchDefinition{
     public:
 
         virtual pair<double, double> center() const=0;
+        virtual void shift_by(int dx, int dy) = 0;
+        virtual void scale_by(float scale) = 0;
         virtual PatchShape shape() const=0;
         virtual int size() const=0;
         virtual void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const=0; 

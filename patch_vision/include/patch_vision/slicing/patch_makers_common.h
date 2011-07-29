@@ -35,6 +35,8 @@ class RectangularPatch : public PatchDefinition{
         ~RectangularPatch( );
 
         pair<double, double> center() const;
+        void shift_by(int dx, int dy);
+        void scale_by(float scale);
         PatchShape shape() const;
         int size() const;
         void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const;
@@ -53,6 +55,8 @@ class CircularPatch : public PatchDefinition{
         ~CircularPatch( );
 
         pair<double, double> center() const;
+        void shift_by(int dx, int dy);
+        void scale_by(float scale);
         PatchShape shape() const;
         int size() const;
         void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const;
@@ -69,6 +73,8 @@ class KeyPointPatch : public PatchDefinition{
         ~KeyPointPatch( );
 
         pair<double, double> center() const;
+        void shift_by(int dx, int dy);
+        void scale_by(float scale);
         PatchShape shape() const;
         int size() const;
         void extract_from_image(const Mat &image, Mat &patch, Mat &mask) const;
@@ -163,6 +169,20 @@ class SURFPatchMaker: public CVPatchMaker{
     public:
         SURFPatchMaker( );
         ~SURFPatchMaker( );
+};
+
+/*  The Dense Interest Point Patch Maker */
+/*  Assumes only the centers will be altered */
+class DIPPatchMaker : public PatchMaker{
+    public:
+        DIPPatchMaker( PatchMaker* dense_patch_maker );
+        ~DIPPatchMaker( );
+        void get_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const;
+        void refine_patch_definitions( const Mat &image, 
+                vector<PatchDefinition*> &patch_definitions ) const;
+    private:
+        virtual void rank_patch_centers( const Mat &image, Mat &rank_image ) const = 0;
+        PatchMaker* _dense_patch_maker; 
 };
 
 #endif
