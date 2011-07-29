@@ -136,8 +136,8 @@ int KeyPointPatch :: size( ) const{
 void KeyPointPatch :: extract_from_image(const Mat &image, Mat &patch, Mat &mask) const{
     float start_x = max(_kp.pt.x-(_kp.size-1)/2., 0.);
     float start_y = max(_kp.pt.y-(_kp.size-1)/2., 0.);
-    float end_x = min(_kp.pt.x + (_kp.size-1)/2., (double) image.size().width);
-    float end_y = min(_kp.pt.y + (_kp.size-1)/2., (double) image.size().height);
+    float end_x = min(_kp.pt.x + (_kp.size-1)/2.+1., (double) image.size().width);
+    float end_y = min(_kp.pt.y + (_kp.size-1)/2.+1, (double) image.size().height);
     patch = image( Range(start_y, end_y), Range(start_x, end_x) );
     mask = Mat::zeros( patch.size().height, patch.size().width, CV_8UC1 );
     Point2f ctr = Point2f( (patch.size().width - 1) / 2., (patch.size().height - 1) / 2. );
@@ -226,7 +226,7 @@ void PointsCirclePatchMaker :: get_patch_definitions( const Mat &image, vector<P
 ////////////////////////////////
 //      CVPatchMaker      //
 ////////////////////////////////
-CVPatchMaker :: CVPatchMaker( string type ){
+CVPatchMaker :: CVPatchMaker( string type ) : _min_patch_size( -1 ), _max_patch_size( -1 ) {
     _detector = FeatureDetector::create(type);
 }
 
@@ -238,8 +238,27 @@ void CVPatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefini
     _detector->detect( image, key_points );
     cout << "Detected " << key_points.size() << " keypoints" << endl;
     for ( size_t i = 0; i < key_points.size(); i++){
-        patch_definitions.push_back( new KeyPointPatch( key_points[i] ) );
+        if( is_within_bounds( key_points[i] ) ){
+            patch_definitions.push_back( new KeyPointPatch( key_points[i] ) );
+        }
     }
+}
+
+void CVPatchMaker :: set_bounds ( int min_patch_size, int max_patch_size ) {
+    _min_patch_size = min_patch_size;
+    _max_patch_size = max_patch_size;
+}
+
+bool CVPatchMaker :: is_within_bounds ( const KeyPoint &kp ) const{
+    bool valid = true;
+    if (_min_patch_size >= 0 && kp.size < _min_patch_size){
+        valid = false;
+    }
+    if (_max_patch_size >= 0 && kp.size > _max_patch_size){
+        valid = false;
+    }
+    return valid;
+
 }
 
 ////////////////////////////////
@@ -270,5 +289,13 @@ STARPatchMaker :: STARPatchMaker( ) :
 
 STARPatchMaker :: ~STARPatchMaker( ) { }
 
+////////////////////////////////
+//      SURFPatchMaker      //
+////////////////////////////////
+SURFPatchMaker :: SURFPatchMaker( ) :
+  CVPatchMaker("SURF")
+{}
+
+SURFPatchMaker :: ~SURFPatchMaker( ) { }
 
 

@@ -132,9 +132,14 @@ class CVPatchMaker : public PatchMaker{
         CVPatchMaker( string type );
         ~CVPatchMaker( );
         void get_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const;
+        void set_bounds( int min_patch_size, int max_patch_size );
 
     private:
+        bool is_within_bounds ( const KeyPoint &kp ) const;
+
         Ptr<FeatureDetector> _detector;
+        int _min_patch_size;
+        int _max_patch_size;
 };
 
 class SIFTPatchMaker : public CVPatchMaker{
@@ -153,6 +158,11 @@ class STARPatchMaker: public CVPatchMaker{
     public:
         STARPatchMaker( );
         ~STARPatchMaker( );
+};
+class SURFPatchMaker: public CVPatchMaker{
+    public:
+        SURFPatchMaker( );
+        ~SURFPatchMaker( );
 };
 
 #endif
