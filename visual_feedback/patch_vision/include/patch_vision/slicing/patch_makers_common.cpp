@@ -25,6 +25,8 @@ using std::cout;
 using cv::Range;
 using cv::circle;
 using cv::Point2f;
+using cv::Point;
+using cv::minMaxLoc;
 
 ////////////////////////////////
 //      RectangularPatch      //
@@ -44,6 +46,16 @@ pair<double, double> RectangularPatch :: center( ) const{
     ctr.first = _x + (_width - 1)/2.;
     ctr.second = _y + (_height - 1)/2.;
     return ctr;
+}
+
+void RectangularPatch :: shift_by(int dx, int dy){
+    _x += dx;
+    _y += dy;
+}
+
+void RectangularPatch :: scale_by(float scale){
+    _width  *= scale;
+    _height *= scale;
 }
 
 PatchShape RectangularPatch :: shape( ) const{
@@ -82,6 +94,15 @@ pair<double, double> CircularPatch :: center( ) const{
     ctr.first = _x +  (_diameter - 1)/2.;
     ctr.second = _y + (_diameter - 1)/2.;
     return ctr;
+}
+
+void CircularPatch :: shift_by(int dx, int dy){
+    _x += dx;
+    _y += dy;
+}
+
+void CircularPatch :: scale_by(float scale){
+    _diameter  *= scale;
 }
 
 PatchShape CircularPatch :: shape( ) const{
@@ -123,6 +144,14 @@ pair<double, double> KeyPointPatch :: center( ) const{
     return ctr;
 }
 
+void KeyPointPatch :: shift_by(int dx, int dy){
+    _kp.pt.x += dx;
+    _kp.pt.y += dy;
+}
+
+void KeyPointPatch :: scale_by(float scale){
+    _kp.size  *= scale;
+}
 
 PatchShape KeyPointPatch :: shape( ) const{
     return CIRCLE;
@@ -298,4 +327,30 @@ SURFPatchMaker :: SURFPatchMaker( ) :
 
 SURFPatchMaker :: ~SURFPatchMaker( ) { }
 
+DIPPatchMaker :: DIPPatchMaker( PatchMaker* dense_patch_maker )
+    : _dense_patch_maker( dense_patch_maker ){ };
 
+DIPPatchMaker :: ~DIPPatchMaker( ){ };
+
+void DIPPatchMaker :: get_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const{
+    /* First want to get the original, dense patch definitions */
+    _dense_patch_maker->get_patch_definitions( image, patch_definitions );
+    /*  Want to adjust to the proper ones */
+    refine_patch_definitions( image, patch_definitions );
+}
+
+void DIPPatchMaker :: refine_patch_definitions( const Mat &image, vector<PatchDefinition*> &patch_definitions ) const{
+    Mat rank_image;
+    rank_patch_centers( image, rank_image );
+    for ( size_t i = 0; i < patch_definitions.size(); i++ ){
+        /*  Only consider the region in this patch */
+        Mat rank_patch;
+        Mat rank_mask;
+        patch_definitions[i]->extract_from_image( rank_image, rank_patch, rank_mask );
+        Point patch_ctr = Point( (rank_patch.size().width - 1) / 2, (rank_patch.size().height - 1) / 2 );
+        Point max_loc;
+        minMaxLoc( rank_patch, NULL, NULL, NULL, &max_loc, rank_mask );
+        Point offset = max_loc - patch_ctr;
+        patch_definitions[i]->shift_by( offset.x, offset.y );
+    }
+}
