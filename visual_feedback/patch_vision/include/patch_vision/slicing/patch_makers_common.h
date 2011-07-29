@@ -185,4 +185,14 @@ class DIPPatchMaker : public PatchMaker{
         PatchMaker* _dense_patch_maker; 
 };
 
+class DOGPatchMaker : public DIPPatchMaker{
+    public:
+        DOGPatchMaker( PatchMaker* dense_patch_maker, int k1, int k2 );
+        ~DOGPatchMaker( );
+
+    private:
+        void rank_patch_centers( const Mat &image, Mat &rank_image ) const;
+        int _k1, _k2;
+};
+
 #endif
