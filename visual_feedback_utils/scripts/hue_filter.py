@@ -55,14 +55,14 @@ class HueClickWindow:
 		self.set_background(cv.CreateImage((500,500),8,3))
 		self.set_listeners()
 		self.hue_low = 0
-		self.hue_up = 25
+		self.hue_up = 0
 	
 	##	Creates a window and updates it for the first time
 	def create_window(self):
 		cv.NamedWindow(self.name)
 		cv.WaitKey(25)
 		cv.CreateTrackbar('hue_low', self.name, 0, 255, self.update_hue_low)
-		cv.CreateTrackbar('hue_up', self.name, 255, 255, self.update_hue_up)		
+		cv.CreateTrackbar('hue_up', self.name, 0, 255, self.update_hue_up)		
 		print "Window created"	
 		
 	def update_hue_low(self, x):
