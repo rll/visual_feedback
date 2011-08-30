@@ -19,10 +19,10 @@ from geometry_msgs.msg import PointStamped
 from visual_feedback_utils.shape_fitting_utils import *
 import image_geometry
 
-(WHITE_BG,GREEN_BG,YELLOW_BG) = range(3)
+(WHITE_BG,GREEN_BG,YELLOW_BG, CUSTOM) = range(4)
 MODE = WHITE_BG
 
-def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=None):
+def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=None, hue_low=0, hue_up=255):
     image_hsv = cv.CloneImage(image)
     cv.CvtColor(image,image_hsv,cv.CV_RGB2HSV)
     image_hue = cv.CreateImage(cv.GetSize(image_hsv),8,1)
@@ -55,7 +55,17 @@ def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=Non
         cv.Or(upper_thresh,lower_thresh,image_thresh) #image_thresh = white for all h<85 OR h>98
         #Filter out pure black, for boundaries in birdseye
         cv.And(image_thresh, black_thresh, image_thresh) #image_thresh = white for all non-pure-black pixels and (h<30 or h>80)
-
+    elif bg_mode==CUSTOM:
+        upper_thresh = cv.CloneImage(image_hue)
+        lower_thresh = cv.CloneImage(image_hue)
+        black_thresh = cv.CloneImage(image_hue)
+        cv.Threshold( image_hue, upper_thresh, hue_up, 255, cv.CV_THRESH_BINARY)
+        cv.Threshold( image_hue, lower_thresh, hue_low, 255, cv.CV_THRESH_BINARY_INV)
+        cv.Threshold( image_gray, black_thresh, 1, 255, cv.CV_THRESH_BINARY)
+        #Filter out the selected band of the hue
+        cv.Or(upper_thresh,lower_thresh,image_thresh) #image_thresh = white for all h<85 OR h>98
+        #Filter out pure black, for boundaries in birdseye
+        cv.And(image_thresh, black_thresh, image_thresh) #image_thresh = white for all non-pure-black pixels and (h<30 or h>80)       
         
     #set all pixels outside the crop_rect to black
     if crop_rect:
