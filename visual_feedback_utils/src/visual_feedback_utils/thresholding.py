@@ -21,6 +21,18 @@ import image_geometry
 (WHITE_BG,GREEN_BG,YELLOW_BG, CUSTOM) = range(4)
 MODE = WHITE_BG
 
+def sat_threshold(image, min_sat):
+    image_hsv = cv.CloneImage(image)
+    cv.CvtColor(image,image_hsv,cv.CV_RGB2HSV)
+    image_sat = cv.CreateImage(cv.GetSize(image_hsv),8,1)
+    cv.Split(image_hsv,None,image_sat,None,None)
+    sat_thresh = cv.CloneImage(image_sat)
+    cv.Threshold(image_sat, sat_thresh, min_sat, 255, cv.CV_THRESH_BINARY)
+    image_out = cv.CloneImage(image)
+    cv.Zero(image_out)
+    cv.Copy(image, image_out, sat_thresh)
+    return image_out
+    
 def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=None, hue_low=0, hue_up=255):
     image_hsv = cv.CloneImage(image)
     cv.CvtColor(image,image_hsv,cv.CV_RGB2HSV)
@@ -62,9 +74,9 @@ def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=Non
         cv.Threshold( image_hue, lower_thresh, hue_low, 255, cv.CV_THRESH_BINARY_INV)
         cv.Threshold( image_gray, black_thresh, 1, 255, cv.CV_THRESH_BINARY)
         #Filter out the selected band of the hue
-        cv.Or(upper_thresh,lower_thresh,image_thresh) #image_thresh = white for all h<85 OR h>98
+        cv.Or(upper_thresh,lower_thresh,image_thresh) #image_thresh = white for all h outside range
         #Filter out pure black, for boundaries in birdseye
-        cv.And(image_thresh, black_thresh, image_thresh) #image_thresh = white for all non-pure-black pixels and (h<30 or h>80)       
+        cv.And(image_thresh, black_thresh, image_thresh) #image_thresh = white for all non-pure-black pixels and h outside range)
         
     #set all pixels outside the crop_rect to black
     if crop_rect:

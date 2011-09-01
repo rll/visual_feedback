@@ -147,10 +147,10 @@ class HueClickWindow:
 		cp.camera_info = self.camera_info
 		self.cp = cp
 		self.point_pub.publish(cp)
-		image_hsv = cv.CloneImage(self.background)
+		image_hsv = cv.CloneMat(self.background)
 		cv.CvtColor(self.background,image_hsv,cv.CV_RGB2HSV)
-		pixel = cv.Get2D(image_hsv, x, y)
-		print pixel
+		pixel = cv.Get2D(image_hsv, int(y), int(x))
+		print 'HSV', pixel
 		
 		
 	
@@ -163,13 +163,15 @@ class HueClickWindow:
 		cv.GetRectSubPix(bgimg,smallimg,(self.background.width/(2*self.zoom)+self.offset[0],self.background.height/(2*self.zoom)+self.offset[1]))
 		cv.Resize(smallimg,img)
 		if(self.cp != False):
-			cv.Circle(img,self.zoomPt(self.cp.x,self.cp.y),3,cv.RGB(0,255,0),-1)
+			cv.Circle(img,self.zoomPt(int(self.cp.x),int(self.cp.y)),3,cv.RGB(0,255,0),-1)
 		mask = thresholding.threshold(img,thresholding.CUSTOM,False,crop_rect=None,cam_info=None,listener=None, hue_low=self.hue_low, hue_up=self.hue_up)
 		
 		cv.Not(mask, mask)
 		new_img = cv.CloneImage(img)
 		cv.SetZero(new_img)
 		cv.Copy(img, new_img, mask)
+		new_img = thresholding.sat_threshold(new_img, 30)
+		
 		cv.Line(img,(self.ch_x-25,self.ch_y),(self.ch_x+25,self.ch_y),cv.RGB(255,255,0))
 		cv.Line(img,(self.ch_x,self.ch_y-25),(self.ch_x,self.ch_y+25),cv.RGB(255,255,0))
 		cv.ShowImage(self.name,new_img)
