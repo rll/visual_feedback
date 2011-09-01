@@ -55,7 +55,7 @@ class HueClickWindow:
 		self.set_background(cv.CreateImage((500,500),8,3))
 		self.set_listeners()
 		self.hue_low = 0
-		self.hue_up = 0
+		self.hue_up = 180
 	
 	##	Creates a window and updates it for the first time
 	def create_window(self):
