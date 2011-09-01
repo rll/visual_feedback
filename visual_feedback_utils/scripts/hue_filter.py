@@ -61,8 +61,8 @@ class HueClickWindow:
 	def create_window(self):
 		cv.NamedWindow(self.name)
 		cv.WaitKey(25)
-		cv.CreateTrackbar('hue_low', self.name, 0, 255, self.update_hue_low)
-		cv.CreateTrackbar('hue_up', self.name, 0, 255, self.update_hue_up)		
+		cv.CreateTrackbar('hue_low', self.name, 0, 180, self.update_hue_low)
+		cv.CreateTrackbar('hue_up', self.name, 180, 180, self.update_hue_up)		
 		print "Window created"	
 		
 	def update_hue_low(self, x):
@@ -147,6 +147,12 @@ class HueClickWindow:
 		cp.camera_info = self.camera_info
 		self.cp = cp
 		self.point_pub.publish(cp)
+		image_hsv = cv.CloneImage(self.background)
+		cv.CvtColor(self.background,image_hsv,cv.CV_RGB2HSV)
+		pixel = cv.Get2D(image_hsv, x, y)
+		print pixel
+		
+		
 	
 	##	The listener, which updates the camera feed and registers onMouse events	
 	def listen(self):
@@ -159,6 +165,8 @@ class HueClickWindow:
 		if(self.cp != False):
 			cv.Circle(img,self.zoomPt(self.cp.x,self.cp.y),3,cv.RGB(0,255,0),-1)
 		mask = thresholding.threshold(img,thresholding.CUSTOM,False,crop_rect=None,cam_info=None,listener=None, hue_low=self.hue_low, hue_up=self.hue_up)
+		
+		cv.Not(mask, mask)
 		new_img = cv.CloneImage(img)
 		cv.SetZero(new_img)
 		cv.Copy(img, new_img, mask)
