@@ -23,6 +23,8 @@ from cv_bridge import CvBridge, CvBridgeError
 import thread
 from stereo_click.msg import *
 from visual_feedback_utils import thresholding
+from scipy import sparse
+import numpy as np
 
 ##	ClickWindow documentation
 #
@@ -170,10 +172,34 @@ class HueClickWindow:
 		new_img = cv.CloneImage(img)
 		cv.SetZero(new_img)
 		cv.Copy(img, new_img, mask)
-		new_img = thresholding.sat_threshold(new_img, 30)
-		
+		new_img = thresholding.sat_threshold(new_img, 60)
 		cv.Line(img,(self.ch_x-25,self.ch_y),(self.ch_x+25,self.ch_y),cv.RGB(255,255,0))
 		cv.Line(img,(self.ch_x,self.ch_y-25),(self.ch_x,self.ch_y+25),cv.RGB(255,255,0))
+
+		image_gray = cv.CreateImage(cv.GetSize(new_img),8,1)
+		cv.CvtColor(new_img,image_gray,cv.CV_RGB2GRAY)
+		cv.MorphologyEx(image_gray, image_gray, None, None, cv.CV_MOP_OPEN, 1)
+		storage = cv.CreateMemStorage(0)
+		seq = cv.FindContours (image_gray, storage)
+		points = []
+		contour = seq
+		while contour:
+			bound_rect = cv.BoundingRect(list(contour))
+			area = cv.ContourArea(contour)
+			cc = contour
+			contour = contour.h_next()
+
+			if area<50 or area>300:
+				continue
+			cv.DrawContours(new_img, cc, (255,0,0), (0,255,0),0,1)
+			pt1 = (bound_rect[0], bound_rect[1])
+			pt2 = (bound_rect[0] + bound_rect[2], bound_rect[1] + bound_rect[3])
+			points.append(pt1)
+			points.append(pt2)
+			#cv.Rectangle(new_img, pt1, pt2, cv.CV_RGB(255,0,0), 1)
+
+			font = cv.InitFont(cv.CV_FONT_HERSHEY_PLAIN,1,1)
+			cv.PutText(new_img, "%.2f"%area, pt1, font, (255,255,255))
 		cv.ShowImage(self.name,new_img)
 		cv.WaitKey(25)
 		
@@ -181,7 +207,15 @@ class HueClickWindow:
 	def clear_request(self,args):
 		self.cp = False
 		return []
-		
+
+def count_nonzero(img):
+	l = 0
+	for i in xrange(img.height):
+		for j in xrange(img.width):
+			if cv.Get2D(img, i, j) != (0, 0, 0, 0):
+				l = l + 1
+	return l
+
 def usage():
 	print "clickwindow.py [name] [cameraName] [outputName]"
 

@@ -20,7 +20,11 @@ import image_geometry
 
 (WHITE_BG,GREEN_BG,YELLOW_BG, CUSTOM) = range(4)
 MODE = WHITE_BG
-
+BLUE = (0,20)
+GREEN = (30,80)
+YELLOW = (85,95)
+ORANGE = (100, 115)
+RED = (120,140)
 def sat_threshold(image, min_sat):
     image_hsv = cv.CloneImage(image)
     cv.CvtColor(image,image_hsv,cv.CV_RGB2HSV)
@@ -77,7 +81,8 @@ def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=Non
         cv.Or(upper_thresh,lower_thresh,image_thresh) #image_thresh = white for all h outside range
         #Filter out pure black, for boundaries in birdseye
         cv.And(image_thresh, black_thresh, image_thresh) #image_thresh = white for all non-pure-black pixels and h outside range)
-        
+        cv.Erode(image_thresh, image_thresh)#Opening to remove noise
+        cv.Dilate(image_thresh, image_thresh)
     #set all pixels outside the crop_rect to black
     if crop_rect:
         (x,y,width,height) = crop_rect
