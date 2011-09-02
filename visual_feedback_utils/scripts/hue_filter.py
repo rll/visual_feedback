@@ -23,9 +23,11 @@ from cv_bridge import CvBridge, CvBridgeError
 import thread
 from stereo_click.msg import *
 from visual_feedback_utils import thresholding
+from visual_feedback_utils.thresholding import HueRanges
+
 from scipy import sparse
 import numpy as np
-
+print HueRanges.__dict__
 ##	ClickWindow documentation
 #
 #	A class which, when instantiated, creates a clickable window from a camera stream
@@ -166,7 +168,7 @@ class HueClickWindow:
 		cv.Resize(smallimg,img)
 		if(self.cp != False):
 			cv.Circle(img,self.zoomPt(int(self.cp.x),int(self.cp.y)),3,cv.RGB(0,255,0),-1)
-		mask = thresholding.threshold(img,thresholding.CUSTOM,False,crop_rect=None,cam_info=None,listener=None, hue_low=self.hue_low, hue_up=self.hue_up)
+		mask = thresholding.threshold(img,thresholding.CUSTOM,False,crop_rect=None,cam_info=None,listener=None, hue_interval=(self.hue_low, self.hue_up))
 		
 		cv.Not(mask, mask)
 		new_img = cv.CloneImage(img)
@@ -201,6 +203,12 @@ class HueClickWindow:
 			font = cv.InitFont(cv.CV_FONT_HERSHEY_PLAIN,1,1)
 			cv.PutText(new_img, "%.2f"%area, pt1, font, (255,255,255))
 		cv.ShowImage(self.name,new_img)
+		
+		#Do some funny business
+		for color in HueRanges.__dict__:
+		    if color == color.upper():
+		        img_c = thresholding.filter_color(img, color)
+		        cv.ShowImage(color, img_c)
 		cv.WaitKey(25)
 		
 	## Clears the current click point
@@ -226,7 +234,7 @@ def main(args):
 #	[name, cameraName, outputName] = args
 	name = "ClickWindowName"
 	rospy.init_node(name)
-	cameraName = rospy.get_param("~cam","defaultClickPointCamera")
+	cameraName = rospy.get_param("~cam","camera/rgb")
 	outputName = rospy.get_param("~output","defaultClickPointOutput")
 	gui = HueClickWindow(cameraName=cameraName,outputName=outputName)
 	while not rospy.is_shutdown():

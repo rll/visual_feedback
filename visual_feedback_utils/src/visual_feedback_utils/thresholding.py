@@ -20,11 +20,38 @@ import image_geometry
 
 (WHITE_BG,GREEN_BG,YELLOW_BG, CUSTOM) = range(4)
 MODE = WHITE_BG
-BLUE = (0,20)
-GREEN = (30,80)
-YELLOW = (85,95)
-ORANGE = (100, 115)
-RED = (120,140)
+class HueRanges:
+    BLUE = (0,20)
+    GREEN = (30,80)
+    YELLOW = (85,95)
+    ORANGE = (100, 115)
+    RED = (120,140)
+    
+def color_mask(image, color):
+    """
+    Generates a mask which can be used to get the pixels of a particular color
+    from a given image.
+    """
+    if color.upper() in  dir(HueRanges):
+        hr = HueRanges.__dict__[color.upper()]
+        try:
+            low = hr[0]
+            mask = threshold(image, CUSTOM, False, hue_interval= hr)
+            cv.Not(mask, mask)
+            return mask
+        except:
+            print "Not a valid color", color
+    print "Not a valid color", color
+
+def filter_color(image, color):
+    mask = color_mask(image, color)
+    if mask:
+        new_img = cv.CreateImage((image.width,image.height),image.depth,image.nChannels)
+        cv.SetZero(new_img)
+        cv.Copy(image, new_img, mask)
+        return new_img
+        
+
 def sat_threshold(image, min_sat):
     image_hsv = cv.CloneImage(image)
     cv.CvtColor(image,image_hsv,cv.CV_RGB2HSV)
@@ -37,7 +64,7 @@ def sat_threshold(image, min_sat):
     cv.Copy(image, image_out, sat_thresh)
     return image_out
     
-def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=None, hue_low=0, hue_up=255):
+def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=None, hue_interval=(0,180)):
     image_hsv = cv.CloneImage(image)
     cv.CvtColor(image,image_hsv,cv.CV_RGB2HSV)
     image_hue = cv.CreateImage(cv.GetSize(image_hsv),8,1)
@@ -45,6 +72,8 @@ def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=Non
     cv.CvtColor(image,image_gray,cv.CV_RGB2GRAY)
     cv.Split(image_hsv,image_hue,None,None,None)
     image_thresh = cv.CloneImage(image_gray)
+    hue_low = hue_interval[0]
+    hue_up = hue_interval[1]
     if bg_mode==GREEN_BG:
         upper_thresh = cv.CloneImage(image_hue)
         lower_thresh = cv.CloneImage(image_hue)
