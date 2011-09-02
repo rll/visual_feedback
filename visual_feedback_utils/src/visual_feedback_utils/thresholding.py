@@ -22,11 +22,11 @@ import image_geometry
 MODE = WHITE_BG
 class HueRanges:
     BLUE = (0,20)
-    GREEN = (30,80)
-    YELLOW = (85,95)
-    ORANGE = (100, 115)
-    RED = (120,140)
-    
+    DARKGREEN = (20,34)
+    YELLOW = (85,100)
+    ORANGE = (100, 118)
+    RED = (117,145)
+    PURPLE = (155,170)
 def color_mask(image, color):
     """
     Generates a mask which can be used to get the pixels of a particular color
@@ -66,7 +66,7 @@ def sat_threshold(image, min_sat):
     
 def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=None, hue_interval=(0,180)):
     image_hsv = cv.CloneImage(image)
-    cv.CvtColor(image,image_hsv,cv.CV_RGB2HSV)
+    cv.CvtColor(image,image_hsv,cv.CV_RGB2HSV)#TODO: THIS SHOULD BE BGR
     image_hue = cv.CreateImage(cv.GetSize(image_hsv),8,1)
     image_gray = cv.CreateImage(cv.GetSize(image_hsv),8,1)
     cv.CvtColor(image,image_gray,cv.CV_RGB2GRAY)
@@ -79,7 +79,7 @@ def threshold(image,bg_mode,filter_pr2,crop_rect=None,cam_info=None,listener=Non
         lower_thresh = cv.CloneImage(image_hue)
         black_thresh = cv.CloneImage(image_hue)
         cv.Threshold( image_hue, upper_thresh, 80, 255, cv.CV_THRESH_BINARY) #upper_thresh = white for all h>80, black o/w
-        cv.Threshold( image_hue, lower_thresh, 30, 255, cv.CV_THRESH_BINARY_INV) #lower_thresh = white for all h<30, black o/w 
+        cv.Threshold( image_hue, lower_thresh, 40, 255, cv.CV_THRESH_BINARY_INV) #lower_thresh = white for all h<30, black o/w 
         cv.Threshold( image_gray, black_thresh, 1, 255, cv.CV_THRESH_BINARY) #black_thresh = black for pure black, white o/w
         #Filter out the green band of the hue
         cv.Or(upper_thresh,lower_thresh,image_thresh) #image_thresh = white for all h<30 OR h>80
