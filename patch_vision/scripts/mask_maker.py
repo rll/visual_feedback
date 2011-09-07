@@ -20,7 +20,7 @@ class MaskWindow (ZoomWindow):
         ZoomWindow.__init__(self, "MaskLabeler", 100, zoom_out=zoom_out)
 
     def handleEventsUnzoomed(self,event,x,y,flags,param):
-        if flags:
+        if flags-32 == cv.CV_EVENT_FLAG_LBUTTON:
             color = 0 if not self.erase else 255
             cv.Circle(self.mask,  (x,y), self.brush_size, color, -1)
 

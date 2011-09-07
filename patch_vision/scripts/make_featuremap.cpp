@@ -395,7 +395,6 @@ int main(int argc, char** argv) {
     if (opts.use_label){
         CvMat* cvlabel_mat = (CvMat*)cvLoad( opts.label_file.c_str() );
         Mat label_mat(cvlabel_mat);
-        cout << "Made it this far" << endl;
         compute_labels( label_mat, patch_definitions, labels );
     }
     // Save the featuremap

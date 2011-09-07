@@ -18,7 +18,7 @@ def parse():
     
     parser = argparse.ArgumentParser(description='Train a classifier on a labeled featuremap and save it to file')
     parser.add_argument(    '-f','--input-features',             dest='input_features', type=str,   
-                            required=True,
+                            default=None,
                             help='the input labeled features' )
     parser.add_argument(    '-d','--output-directory',  dest='output_directory', type=str,
                             default=None,
@@ -75,7 +75,8 @@ def main(args):
         classifier = instantiate_classifier_by_name( args.classifier_type, include_unlabeled=args.include_unlabeled )
 
     fm = FeatureMap()
-    fm.read_from_file( args.input_features )
+    if( args.input_features):
+        fm.read_from_file( args.input_features )
 
     classifier.add_featuremap( fm )
     if args.train:

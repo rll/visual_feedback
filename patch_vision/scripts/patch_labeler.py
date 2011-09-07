@@ -31,6 +31,9 @@ def parse():
     parser.add_argument(    '-b','--brush-size',     dest='brush_size',    type=int,
                             default=5,
                             help='Default brush size to begin with' )
+    parser.add_argument(    '-z','--zoom-out',   dest='zoom_out', type=int,   
+                            default=1,
+                            help='Amount to zoom by' )
 
                             
     return parser.parse_args()
@@ -131,6 +134,7 @@ def main(args):
     if args.save_image:
         params.save_image_path = params.save_mat_path + ".png"
 
+    params.default_zoom = args.zoom_out
     lw = LabelWindow(image, params)
     
 

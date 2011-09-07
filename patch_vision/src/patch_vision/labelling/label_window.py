@@ -11,6 +11,7 @@ class LabelWindowParams:
         self.default_brush_size = 5
         self.save_mat_path = None
         self.save_image_path = None
+        self.default_zoom = 1
 
 
 
@@ -30,7 +31,7 @@ class LabelWindow (ZoomWindow):
         
         self.clear()
         
-        ZoomWindow.__init__(self, "Labeler", 100)
+        ZoomWindow.__init__(self, "Labeler", 100, params.default_zoom)
 
     def handleEventsUnzoomed(self,event,x,y,flags,param):
         if flags-32 == cv.CV_EVENT_FLAG_LBUTTON:
