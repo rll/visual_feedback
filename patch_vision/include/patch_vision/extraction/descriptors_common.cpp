@@ -17,6 +17,7 @@
 
 #include <patch_vision/extraction/descriptors_common.h>
 
+namespace patch_vision{
 
 using std::cout;
 using std::endl;
@@ -509,3 +510,4 @@ int int_mod(int a, int b){
   return ret_val;
 }
 
+};

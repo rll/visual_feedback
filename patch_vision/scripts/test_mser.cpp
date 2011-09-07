@@ -28,6 +28,8 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <boost/program_options.hpp>
 
+using namespace patch_vision;
+
 using std::cout;
 using std::endl;
 using std::strcmp;
@@ -36,6 +38,7 @@ using cv::imread;
 
 using cv::MSER;
 using cv::Point;
+
 
 struct Options
 {

@@ -22,6 +22,8 @@
 #include <iostream>
 #include <fstream>
 
+namespace patch_vision{
+
 using std::string;
 
 typedef struct FeatureMapItem{
@@ -53,6 +55,6 @@ class FeatureMap{
         
 
 };
-
-
+    
+};
 #endif

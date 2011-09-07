@@ -17,6 +17,7 @@
  */
 #include <patch_vision/matching/match_io.h>
 
+namespace patch_vision{
 
 using std::ofstream;
 using std::ifstream;
@@ -90,3 +91,5 @@ void MatchSet :: read_from_file( string filename ){
 void MatchSet :: clear(){
     _matches.clear();
 }
+
+};

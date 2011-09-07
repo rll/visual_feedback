@@ -19,6 +19,8 @@
 #include <patch_vision/classification/classifier.h>
 #include <iostream>
 
+namespace patch_vision{
+
 using std::cout;
 using std::endl;
 using std::ofstream;
@@ -167,4 +169,4 @@ void Classifier :: clear( ){
     _labeled_features.clear();
 }
 
-
+};

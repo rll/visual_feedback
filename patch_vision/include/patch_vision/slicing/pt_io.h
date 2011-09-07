@@ -22,6 +22,8 @@
 #include <fstream>
 #include <vector>
 
+namespace patch_vision{
+
 using std::string;
 using std::pair;
 using std::vector;
@@ -51,5 +53,5 @@ class PointSet{
 
 };
 
-
+};
 #endif

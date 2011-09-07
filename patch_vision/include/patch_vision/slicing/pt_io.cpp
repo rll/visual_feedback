@@ -22,6 +22,8 @@ using std::ifstream;
 using std::endl;
 using std::cout;
 
+namespace patch_vision{
+
 PointSet :: PointSet( ){
     clear();
 }
@@ -78,3 +80,5 @@ void PointSet :: read_from_file( string filename ){
 void PointSet :: clear(){
     _points.clear();
 }
+
+};

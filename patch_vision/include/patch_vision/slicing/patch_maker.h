@@ -25,11 +25,14 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
+namespace patch_vision{
+
 using std::vector;
 using std::pair;
 using std::string;
 using cv::Mat;
 using cv::KeyPoint;
+
 
 enum PatchShape{
     SQUARE, CIRCLE, INVALID
@@ -60,5 +63,7 @@ class PatchMaker{
 };
 
 bool is_blank( const Mat &mask );
+
+};
 
 #endif

@@ -18,6 +18,9 @@
 
 #include <patch_vision/slicing/label_extraction.h>
 #include<iostream>
+
+namespace patch_vision{
+
 using std::string;
 using std::map;
 using cv::Mat;
@@ -68,5 +71,6 @@ int compute_label( const Mat &label_slice, const Mat &mask ){
     }
 }
 
+};
 
 

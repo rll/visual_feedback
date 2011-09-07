@@ -23,6 +23,8 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <patch_vision/slicing/pt_io.h>
 
+namespace patch_vision{
+
 using cv::FeatureDetector;
 using cv::Ptr;
 using cv::KeyPoint;
@@ -193,6 +195,8 @@ class DOGPatchMaker : public DIPPatchMaker{
     private:
         void rank_patch_centers( const Mat &image, Mat &rank_image ) const;
         int _k1, _k2;
+};
+    
 };
 
 #endif

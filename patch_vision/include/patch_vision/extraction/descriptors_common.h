@@ -23,9 +23,12 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
 
+namespace patch_vision{
+
 using cv::Ptr;
 using cv::DescriptorExtractor;
-//using cv::HOGDescriptor;
+
+
 typedef cv::HOGDescriptor HOGDescriptor_cv;
 
 class CVDescriptor : public Descriptor{
@@ -179,5 +182,6 @@ class SIFTDescriptor : public CVDescriptor{
         ~SIFTDescriptor( ) {};
         
 };
-
+    
+};
 #endif

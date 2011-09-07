@@ -20,6 +20,8 @@
 #include <math.h>
 #include <limits>
 
+namespace patch_vision{
+
 using std::strcmp;
 
 int NNClassifier :: predict_label( const vector<float> &feature ) const{
@@ -83,3 +85,5 @@ Classifier* load_classifier_from_file( string filename ){
     classifier->read_from_file( filename );
     return classifier;
 }
+
+};

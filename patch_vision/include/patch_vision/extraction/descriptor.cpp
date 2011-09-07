@@ -18,6 +18,9 @@
 
 #include <patch_vision/extraction/descriptor.h>
 #include <iostream>
+
+namespace patch_vision{
+
 using std::cerr;
 using std::cout;
 using std::endl;
@@ -90,3 +93,5 @@ void Descriptor::get_proper_colors( const Mat &image, Mat &converted_image ){
             break;
     }
 }
+
+};

@@ -24,6 +24,8 @@
 #include <patch_vision/extraction/feature_io.h>
 #include <patch_vision/slicing/patch_maker.h>
 
+namespace patch_vision{
+
 using std::vector;
 using std::ifstream;
 using std::ofstream;
@@ -90,5 +92,6 @@ class Classifier{
 
 };
 
+};
 
 #endif

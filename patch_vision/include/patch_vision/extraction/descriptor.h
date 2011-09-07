@@ -27,10 +27,13 @@
 #include <patch_vision/slicing/patch_maker.h>
 #include <patch_vision/slicing/patch_makers_common.h>
 
+namespace patch_vision{
+
 using std::vector;
 using std::pair;
 using std::string;
 using cv::Mat;
+
 
 enum ColorMode{
     ANY_COLOR, BW, RGB, HSV, Opponent, LUV
@@ -58,5 +61,5 @@ class Descriptor{
 
         void get_proper_colors( const Mat &image, Mat &converted_image );
 };
-
+};
 #endif

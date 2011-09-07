@@ -18,6 +18,8 @@
 
 #include <patch_vision/slicing/patch_makers_common.h>
 
+namespace patch_vision{
+
 using std::min;
 using std::max;
 using std::cout;
@@ -391,3 +393,5 @@ void DOGPatchMaker :: rank_patch_centers( const Mat &image, Mat &rank_image ) co
     GaussianBlur( gray_image, blur2, Size(_k2, _k2), 0 );  
     absdiff(blur1, blur2, rank_image);
 }
+
+};

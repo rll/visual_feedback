@@ -28,11 +28,14 @@
 
 #include <boost/program_options.hpp>
 
+using namespace patch_vision;
+
 using std::cout;
 using std::endl;
 using std::strcmp;
 using cv::Mat;
 using cv::imread;
+
 
 enum FeatureT{
     RAW_BW,

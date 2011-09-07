@@ -17,9 +17,12 @@
  */
 #include <patch_vision/extraction/feature_io.h>
 
+namespace patch_vision{
+
 using std::ofstream;
 using std::ifstream;
 using std::endl;
+
 
 FeatureMap :: FeatureMap( ){
     clear();
@@ -105,3 +108,5 @@ void FeatureMap :: read_from_file( string filename ){
 void FeatureMap :: clear(){
     _items.clear();
 }
+
+};

@@ -20,6 +20,8 @@
 #include <cstring>
 #include <iostream>
 
+namespace patch_vision{
+
 using cv::sum;
 using std::cout;
 using std::endl;
@@ -89,3 +91,4 @@ bool is_blank( const Mat &mask ){
     float frac = tot /  size;
     return frac < 0.5;
 }
+};

@@ -22,9 +22,12 @@
 #include <fstream>
 #include <vector>
 
+namespace patch_vision{
+
 using std::string;
 using std::pair;
 using std::vector;
+
 
 typedef pair<float, float> PointT;
 
@@ -56,4 +59,5 @@ class MatchSet{
 
 };
 
+};
 #endif

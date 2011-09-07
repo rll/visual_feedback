@@ -22,6 +22,8 @@
 #include <iostream>
 #include <fstream>
 
+namespace patch_vision{
+
 using std::string;
 using cv::Mat;
 
@@ -30,6 +32,6 @@ void compute_labels( const Mat &label_mat, const vector<PatchDefinition*> &patch
 
 int compute_label( const Mat &label_slice, const Mat &mask );
 
-
+};
 #endif
 
