@@ -230,7 +230,7 @@ def delete_selected( ):
 def print_selected_info():
     if selected_index == -1:
         return
-    print "Selected match: (%d,%d) -> (%d,%d)" %( compare_pts[selected_index][0], compare_pts[selected_index][1],
+    print "Selected match: %d (%d,%d) -> (%d,%d)" %( selected_index, compare_pts[selected_index][0], compare_pts[selected_index][1],
                                             reference_pts[selected_index][0], reference_pts[selected_index][1])
     print "Strength: %f" % strengths[selected_index]
         

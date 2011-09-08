@@ -16,7 +16,7 @@ class MatchSet:
     def add_match(self, compare_pt, reference_pt, strength, ref_idx = -1):
         self.matches.append( Match( compare_pt, reference_pt, strength, ref_idx) )
 
-    def add_match(self, match):
+    def add_match_obj(self, match):
         self.matches.append( match )
 
     def get_matches(self):
