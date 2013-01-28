@@ -116,7 +116,7 @@ class Model:
         global nn_solver
         model_arr = array(model_contour)
         contour_arr = array(sparse_contour)
-        result,dists = nn_solver.nn(np.array (sparse_contour),np.array (model_contour), num_neighbors=1,algorithm="kmeans",branching=32, iterations=3, checks=16);
+        result,dists = nn_solver.nn(np.array (sparse_contour, 'float32'),np.array (model_contour, 'float32'), num_neighbors=1,algorithm="kmeans",branching=32, iterations=3, checks=16);
         return [sqrt(dist) for dist in dists]
 
     def dist_fxn(self,val):
