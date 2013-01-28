@@ -33,6 +33,9 @@ class Model:
 
     def polygon_vertices(self):
         abstract
+    
+    def polygon_vertices_int(self):
+        return [(int(pt[0]), int(pt[1])) for pt in self.polygon_vertices()]
         
     def set_image(self,image):
         self.image = image
@@ -181,13 +184,13 @@ class Model:
         abstract
         
     def draw_to_image(self,img,color):
-        cv.PolyLine(img,[self.polygon_vertices()],1,color,3)
+        cv.PolyLine(img,[self.polygon_vertices_int()],1,color,3)
         
     def draw_point(self,img,pt,color):
-        cv.Circle(img,pt,5,color,-1)
+        cv.Circle(img,(int(pt[0]), int(pt[1])),5,color,-1)
         
     def draw_line(self,img,pt1,pt2,color,thickness=2):
-        cv.Line(img,pt1,pt2,color,thickness=thickness)
+        cv.Line(img,(int(pt1[0]), int(pt1[1])),(int(pt2[0]), int(pt2[1])),color,thickness=thickness)
         
 
     def make_asymm(self):
@@ -373,6 +376,7 @@ class Point_Model_Contour_Only_Asymm(Point_Model):
         
     def polygon_vertices(self):
         return self.vertices
+
         
     def __getattr__(self,attr):
         if attr == "num_variable_pts":
@@ -1419,8 +1423,6 @@ class Model_Shirt_Skel_Less_Restricted(Model_Long_Shirt_Generic):
         straight_pt = extrapolate(horiz_axis,-1)
         new_pt = rotate_pt(straight_pt,angle,self.right_shoulder_joint())
         return make_ln_from_pts(self.right_shoulder_joint(),new_pt)
-    
-        return extrapolate(self.right_sleeve_axis(),abs(self.right_sleeve_length()))
         
     def left_sleeve_top(self):
         straight_pt = extrapolate(self.left_sleeve_axis(),abs(self.left_sleeve_length()) + abs(self.left_sleeve_width())/2.0)

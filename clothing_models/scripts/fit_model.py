@@ -101,7 +101,8 @@ def main(args):
     else:
         directory = os.path.dirname(args.input_image)
     if not os.path.exists(directory):
-        os.path.makedirs(directory)
+        print "Making dir %s"%directory
+        os.system("mkdir -p %s"%directory)
     if args.output_prefix:
         prefix = args.output_prefix
     else:

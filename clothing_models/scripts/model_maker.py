@@ -2,6 +2,7 @@
 
 ##    @package cloth_models 
 # 	  Define shape models by hand.
+import math
 import roslib
 import sys
 roslib.load_manifest("clothing_models")
@@ -96,30 +97,31 @@ class ModelMaker(ShapeWindow):
             return self.sockSkelDrawer(event,x,y,flags,param)
             
     def skelDrawer(self,event,x,y,flags,param):
+
         if self.mode==0:
             #Draw spine_bottom
+            print "Select midle of a spine_bottom"
             if event==cv.CV_EVENT_LBUTTONUP:
-                self.permanentHighlightPt(self.toe_center)
-                self.permanentHighlightSegment(Geometry2D.LineSegment(self.ankle_joint,self.toe_center))
-                self.mode += 1
-            else:
-                self.highlightPoint(self.toe_center)
-                self.highlightSegment(Geometry2D.LineSegment(self.ankle_joint,self.toe_center))
                 self.spine_bottom = Geometry2D.Point(x,y)
                 self.permanentHighlightPt(self.spine_bottom)
                 self.mode += 1
-                    
+            else:
+                pass
+ 
+               
         elif self.mode==1:
-                if event==cv.CV_EVENT_LBUTTONUP:
-                    self.spine_top = Geometry2D.Point(x,y)
-                    self.permanentHighlightPt(self.spine_top)
-                    self.permanentHighlightSegment(Geometry2D.LineSegment(self.spine_bottom,self.spine_top))
-                    self.mode += 1
-                else:
-                    self.highlightSegment(Geometry2D.LineSegment(self.spine_bottom,Geometry2D.Point(x,y)))
+            print "Select bottom point of a collar"
+            if event==cv.CV_EVENT_LBUTTONUP:
+                self.spine_top = Geometry2D.Point(x,y)
+                self.permanentHighlightPt(self.spine_top)
+                self.permanentHighlightSegment(Geometry2D.LineSegment(self.spine_bottom,self.spine_top))
+                self.mode += 1
+            else:
+                self.highlightSegment(Geometry2D.LineSegment(self.spine_bottom,Geometry2D.Point(x,y)))
             
         elif self.mode==2:
             #Draw collar
+            print "Select left upper point of a collar"
             if event==cv.CV_EVENT_LBUTTONUP:
                 self.collar = Geometry2D.Point(x,y)
                 self.virtual_collar = Geometry2D.mirrorPt(self.collar,Geometry2D.LineSegment(self.spine_bottom,self.spine_top))
@@ -137,9 +139,10 @@ class ModelMaker(ShapeWindow):
                 self.highlightPt(virtual_collar)
                 self.highlightSegment(Geometry2D.LineSegment(self.spine_top,virtual_collar))
                 
-
+		
         elif self.mode==3:
             #Draw shoulder
+            print "Select point between a left shoulder and a left armpit"
             new_pt = Geometry2D.Point(x,y)
             if event==cv.CV_EVENT_LBUTTONUP:
                 self.shoulder_joint = new_pt
@@ -170,6 +173,8 @@ class ModelMaker(ShapeWindow):
                 self.highlightSegment(bottom_seg)
 
         elif self.mode==4:
+			#Draw shoulder
+            print "Select point in a left shoulder"
             new_pt = Geometry2D.Point(x,y)
             if event==cv.CV_EVENT_LBUTTONUP:
                 self.shoulder_top = new_pt
@@ -198,6 +203,8 @@ class ModelMaker(ShapeWindow):
                 self.highlightSegment(Geometry2D.LineSegment(virtual_armpit,virtual_shoulder_top))
            
         elif self.mode==5:
+			#Draw sleeve
+            print "Select midle point at the end of a left sleeve"
             new_pt = Geometry2D.Point(x,y)
             if event==cv.CV_EVENT_LBUTTONUP:
                 self.sleeve_node = new_pt
@@ -215,6 +222,8 @@ class ModelMaker(ShapeWindow):
                 self.highlightSegment(Geometry2D.LineSegment(self.shoulder_joint,temp_sleeve_node))
                 self.highlightSegment(Geometry2D.LineSegment(self.virtual_shoulder_joint,virtual_sleeve_node))
         elif self.mode==6:
+			#Draw shoulder
+            print "Select upper end point at the end of a left sleeve"
             new_pt = Geometry2D.Point(x,y)
             if event==cv.CV_EVENT_LBUTTONUP:
                 self.sleeve_top = new_pt
@@ -510,8 +519,9 @@ def usage():
 	exit()
     
 def main(args):
-	if len(args) != 2:
-		usage()
+    if len(args) != 2:
+	usage()
+
     imagepath = args[0]
     modelpath = args[1]
 

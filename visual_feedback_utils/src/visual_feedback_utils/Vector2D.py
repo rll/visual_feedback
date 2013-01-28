@@ -73,7 +73,11 @@ def projection(pt,ln):
 
     
 def extrapolate(ln,amt):
+    #old version
     return pt_sum(line_offset(ln), pt_scale(line_vector(ln),amt))
+    return iePt
+
+    
     
 def extrapolate_pct(seg,pct):
     (start,end) = end_points(seg)
@@ -159,8 +163,7 @@ def mirror_pt(pt,ln):
     vect = line_vector(ln)
     pt_o = pt_diff(pt,offset)
     pt_r = pt_diff(pt_scale(vect,2 * dot_prod(pt_o,vect) / float(dot_prod(vect,vect))), pt_o)
-    
-    return pt_sum(pt_r,offset)
+    return pt_sum(pt_r,offset) 
         
             
 def translate_pt(pt,trans):
