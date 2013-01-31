@@ -135,10 +135,10 @@ class Model:
         self.draw_skeleton(img,color)
         self.draw_contour(img,color)
    
-    def draw_skeleton(self,img,color,thickness):
-        abstract
+    def draw_skeleton(self,img,color,thickness=2):
+        pass
 
-    def draw_contour(self,img,color,thickness):
+    def draw_contour(self,img,color,thickness=2):
         abstract
 
     #Simple hack to get the outer contour: draw it on a white background and find the largest contour            
@@ -184,8 +184,8 @@ class Model:
     def from_params(self,params):
         abstract
         
-    def draw_to_image(self,img,color):
-        cv.PolyLine(img,[self.polygon_vertices_int()],1,color,3)
+    def draw_contour(self,img,color, thickness=2):
+        cv.PolyLine(img,[self.polygon_vertices_int()],1,color,thickness)
         
     def draw_point(self,img,pt,color):
         cv.Circle(img,(int(pt[0]), int(pt[1])),5,color,-1)
@@ -531,12 +531,12 @@ class Point_Model_Folded(Point_Model):
     def allow_intersections(self):
         return True
         
-    def draw_to_image(self,img,color):
-        self.draw_line(img,intercept(self.foldline(),horiz_ln(y=0.0)),intercept(self.foldline(),horiz_ln(y=img.height)),color)
+    def draw_contour(self,img,color, thickness=2):
+        self.draw_line(img,intercept(self.foldline(),horiz_ln(y=0.0)),intercept(self.foldline(),horiz_ln(y=img.height)),color, thickness)
         val = [self.draw_point(img,pt,color) for pt in self.polygon_vertices()]
         self.draw_point(img,self.fold_bottom(),cv.CV_RGB(0,255,0))
         self.draw_point(img,self.fold_top(),cv.CV_RGB(0,0,255))
-        Point_Model.draw_to_image(self,img,color)
+        Point_Model.draw_contour(self,img,color, thickness=2)
         
     def clone(self,init_args):
         myclone = self.__class__(self.initial_model,*init_args)
@@ -701,8 +701,8 @@ class Model_Pants_Generic(Point_Model_Variable_Symm):
         displ = pt_sum( pt_diff(self.top_center(),self.mid_center()), pt_diff(self.right_leg_right(),self.right_leg_center()))
         return translate_pt(self.mid_right(),displ)
         
-    def draw_to_image(self,img,color):
-        Point_Model_Variable_Symm.draw_to_image(self,img,color)
+    def draw_contour(self,img,color, thickness=2):
+        Point_Model_Variable_Symm.draw_contour(self,img,color, thickness)
         
         #Draw skeletal frame
         self.draw_point(img,self.crotch(),color)
@@ -937,8 +937,8 @@ class Model_Shirt_Generic(Point_Model_Variable_Symm):
     """
     Defining drawing
     """
-    def draw_to_image(self,img,color):
-        Point_Model_Variable_Symm.draw_to_image(self,img,color)
+    def draw_contour(self,img,color, thickness=2):
+        Point_Model_Variable_Symm.draw_contour(self,img,color, thickness=2)
         #Draw skeletal frame
         self.draw_point(img,self.spine_bottom(),color)
         self.draw_line(img,self.spine_bottom(),self.spine_top(),color)

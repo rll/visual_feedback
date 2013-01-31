@@ -67,7 +67,7 @@ class FoldMaker(ShapeWindow):
                 self.foldline = Vector2D.make_ln_from_pts(self.foldline_pts[0],self.foldline_pts[1])
                 ln_start = Vector2D.intercept(self.foldline,Vector2D.horiz_ln(y=0))
                 ln_end = Vector2D.intercept(self.foldline,Vector2D.horiz_ln(y=self.background.height))
-                cv.Line(self.background,ln_start,ln_end,cv.CV_RGB(0,0,0))
+                cv.Line(self.background,(int(ln_start[0]),int(ln_start[1])),(int(ln_end[0]),int(ln_end[1])),cv.CV_RGB(0,0,0))
                 self.has_foldline = True
         elif len(self.foldline_pts) > 0:
             self.addTempCVShape(CVLineSegment(cv.CV_RGB(255,255,255),2,Geometry2D.LineSegment(Geometry2D.Point(self.foldline_pts[0][0],self.foldline_pts[0][1]),Geometry2D.Point(x,y))))
